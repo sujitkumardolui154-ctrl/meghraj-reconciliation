@@ -62,10 +62,10 @@
       "category": "A — Reports Development",
       "title": "CREDIT NOTE: approved 18-column report and count",
       "user_checklist": "checked",
-      "verification": "user_accepted_report_review_only",
+      "verification": "private_real_report_staging_passed",
       "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "2026-11-01 real all-invoice CREDIT NOTE export: 14,374 rows; 1,009 observed unique CREDIT NOTE invoices, 1,004 unambiguous; 5 invoice-ID conflicts. Private review CSV created at reports/credit_note/CREDIT_NOTE_CONFLICT_REVIEW_20261101T095733Z.csv; report SHA256 verified PASS; database unchanged, financial execution restricted. Approved phrase matching CREDIT NOTE/CREDIT NORTE incl date suffixes; report Column R per original U. Live authenticated dashboard report integration and completed-import completeness still pending.",
+      "evidence": "User confirmed Batch 11 Cloud Shell final result (2026-11-01): PRIVATE REAL CREDIT NOTE STAGING PASS, private storage security PASS, 14,374 report rows, observed 1,009 CREDIT NOTE invoices, five conflicts preserved REVIEW_REQUIRED. Main dashboard unchanged, staging tagged candidate only, traffic unchanged; authenticated main dashboard integration pending; financial execution restricted.",
       "requirement": {
         "scope": "ALL invoices in the approved original 53-column invoice database plus completed legitimate imports",
         "source": "Original payment received field Column U (index 20) named Payment Received ( If With GST or Excluding GST)",
@@ -117,7 +117,10 @@
           "Completed import completeness",
           "Authenticated live dashboard integration",
           "Financial execution release"
-        ]
+        ],
+        "staging_execution": "PASS",
+        "main_dashboard": "NOT_CHANGED",
+        "production_traffic": "NOT_CHANGED"
       }
     },
     {
@@ -403,7 +406,7 @@
       "verification": "partial_verified",
       "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "Step 18 staging public invoker False; application-level auth/role checks for dashboard not verified"
+      "evidence": "Step 18 staging public invoker False; application-level auth/role checks for dashboard not verified Batch 11 only authenticated private staging, main dashboard login/session/role integration still pending."
     },
     {
       "id": "E04",
@@ -448,10 +451,10 @@
       "category": "E — Deployment & Operations",
       "title": "Deploy approved reporting/database features and verify",
       "user_checklist": "checked",
-      "verification": "staging_verified",
+      "verification": "private_real_credit_note_staging_verified",
       "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "Step 18 private staging preview verified; main dashboard not changed, real Firestore report disabled Batch4 on 2026-11-01: strict read-only Firestore adapter installed and synthetic QA passed; live row shape not safely mapped, staging intentionally unchanged. Real Firestore integration remains blocked by live_row_format_requires_exact_adapter."
+      "evidence": "Batch 11 private staging completed, real report API passed, tagged candidate no traffic shift; main dashboard unchanged and authenticated integration not verified. Five conflicts remain REVIEW_REQUIRED."
     },
     {
       "id": "F01",
