@@ -1,0 +1,37 @@
+name: SBI Task Queue Readiness Audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'agent/**'
+      - 'backend_source/**'
+      - '.github/workflows/sbi-task-audit.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sbi-readiness-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Read-only task queue and syntax audit
+        run: |
+          SBI_READINESS_OUTPUT="$RUNNER_TEMP/sbi-agent-readiness.json" python agent/readiness.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sbi-agent-readiness
+          path: ${{ runner.temp }}/sbi-agent-readiness.json
+          if-no-files-found: warn
+          retention-days: 7
