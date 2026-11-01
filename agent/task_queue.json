@@ -65,7 +65,22 @@
       "verification": "staging_verified",
       "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "Step 14 53-column to 18-column mapping passed synthetic QA; Step 18 private staging CSV and count HTTP 200; real Firestore report remains disconnected Batch4 on 2026-11-01: strict read-only Firestore adapter installed and synthetic QA passed; live row shape not safely mapped, staging intentionally unchanged. Real Firestore integration remains blocked by live_row_format_requires_exact_adapter."
+      "evidence": "Step 14 53-column to 18-column mapping passed synthetic QA; Step 18 private staging CSV and count HTTP 200; real Firestore report remains disconnected Batch4 on 2026-11-01: strict read-only Firestore adapter installed and synthetic QA passed; live row shape not safely mapped, staging intentionally unchanged. Real Firestore integration remains blocked by live_row_format_requires_exact_adapter.",
+      "requirement": {
+        "scope": "ALL invoices in the approved original 53-column invoice database plus completed legitimate imports",
+        "source": "Original payment received field Column U (index 20) named Payment Received ( If With GST or Excluding GST)",
+        "condition": "case-insensitive, collapse whitespace; match CREDIT NOTE only",
+        "output": "18-column report with columns A-Q preserved exact source values; output Column R (Credi note) CREDIT NOTE for qualifying rows, otherwise empty",
+        "count": "Unique qualifying Invoice No; duplicate conflicting source rows require review",
+        "source_positions": {
+          "Branch Code": "G index 6",
+          "Client Name": "H index 7",
+          "Invoice No": "M index 12",
+          "Payment Received": "U index 20"
+        },
+        "safety": "Do not modify 53-column original source, derive from Creit Note Ammount, or reinterpret financial values",
+        "confirmed_by_owner": true
+      }
     },
     {
       "id": "A07",
