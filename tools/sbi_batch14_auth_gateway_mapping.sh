@@ -44,7 +44,8 @@ def session_info(node):
         if k:
             if isinstance(child.ctx,ast.Store):write.add(k)
             else:read.add(k)
-        if isinstance(child,ast.Call) and is_session(child.func.value) if isinstance(child,ast.Call) and isinstance(child.func,ast.Attribute) else False:
+        if (isinstance(child,ast.Call) and isinstance(child.func,ast.Attribute)
+            and is_session(child.func.value)):
             f=child.func.attr
             if f in ("get","pop","setdefault") and child.args and isinstance(child.args[0],ast.Constant) and isinstance(child.args[0].value,str):
                 read.add(child.args[0].value)
@@ -57,6 +58,8 @@ def session_info(node):
 def route_info(fn):
     found=[]
     for deco in fn.decorator_list:
+        if isinstance(deco,ast.Attribute) and isinstance(deco.value,ast.Name) and deco.value.id in ("app","router","bp") and deco.attr=="before_request":
+            found.append(("before_request",""))
         if isinstance(deco,ast.Call) and isinstance(deco.func,ast.Attribute):
             base=deco.func.value
             if (isinstance(base,ast.Name) and base.id in ("app","router","bp")
