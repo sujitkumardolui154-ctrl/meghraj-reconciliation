@@ -12,6 +12,7 @@ from collections import defaultdict, Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from credit_note_53_adapter import REPORT_HEADERS
+from sbi_credit_firestore_all_v2 import is_credit
 
 folder = Path("reports/credit_note")
 manifests = sorted(folder.glob("SBI_CREDIT_NOTE_ALL_INVOICES_*.json"),key=lambda p:p.stat().st_mtime)
@@ -40,8 +41,7 @@ with csv_path.open("r",encoding="utf-8-sig",newline="") as f:
             raise SystemExit(f"STOP: 18-column width mismatch at report row {rowno}")
         all_invoice_rows += 1
         invoice = row[8].strip()
-        raw_status = " ".join(row[16].upper().split())
-        matched = raw_status == "CREDIT NOTE"
+        matched = is_credit(row[16])
         expected = "CREDIT NOTE" if matched else ""
         if row[17] != expected:
             raise SystemExit(f"STOP: Column U to R mismatch at report row {rowno}")
