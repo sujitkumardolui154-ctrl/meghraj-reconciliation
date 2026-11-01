@@ -1,0 +1,393 @@
+{
+  "schema_version": 1,
+  "project": "meghraj-reconciliation",
+  "source": "Owner-submitted 42-item checklist; checklist ticks are not deployment evidence",
+  "policy": {
+    "mode": "read_only",
+    "cloud_deployment": "disabled",
+    "live_database_writes": "disabled",
+    "financial_execution": "restricted",
+    "sensitive_data_in_git": "forbidden",
+    "require_review_before_write": true
+  },
+  "tasks": [
+    {
+      "id": "A01",
+      "category": "A — Reports Development",
+      "title": "Verify existing report APIs and handlers",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "A02",
+      "category": "A — Reports Development",
+      "title": "Unpaid / OK / Balance Review / Suspense reports",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "A03",
+      "category": "A — Reports Development",
+      "title": "Preserve exact v2.18 output format",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "A04",
+      "category": "A — Reports Development",
+      "title": "Consolidated Report: all approved CSV reports in one ZIP",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "A05",
+      "category": "A — Reports Development",
+      "title": "Reconciliation Change Report: old/new payments and statuses",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "A06",
+      "category": "A — Reports Development",
+      "title": "CREDIT NOTE: approved 18-column report and count",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "A07",
+      "category": "A — Reports Development",
+      "title": "Log Report: full database change history",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "A08",
+      "category": "A — Reports Development",
+      "title": "Excel/CSV exports and financial totals validation",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "B01",
+      "category": "B — Database Update",
+      "title": "Add Single data update tab",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "database_write"
+    },
+    {
+      "id": "B02",
+      "category": "B — Database Update",
+      "title": "SOL-wide Branch Name correction",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "database_write"
+    },
+    {
+      "id": "B03",
+      "category": "B — Database Update",
+      "title": "SOL-wide Client Name correction",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "database_write"
+    },
+    {
+      "id": "B04",
+      "category": "B — Database Update",
+      "title": "Invoice-specific Taxable Amount correction",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "database_write"
+    },
+    {
+      "id": "B05",
+      "category": "B — Database Update",
+      "title": "Use approved existing financial formulas",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "database_write"
+    },
+    {
+      "id": "B06",
+      "category": "B — Database Update",
+      "title": "SOL-wide Mail Id assignment",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "database_write"
+    },
+    {
+      "id": "B07",
+      "category": "B — Database Update",
+      "title": "Full before/after review and impact counts",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "database_write"
+    },
+    {
+      "id": "B08",
+      "category": "B — Database Update",
+      "title": "Mandatory warning and Confirm & Save",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "database_write"
+    },
+    {
+      "id": "B09",
+      "category": "B — Database Update",
+      "title": "Atomic update, audit receipt and rollback protection",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "database_write"
+    },
+    {
+      "id": "C01",
+      "category": "C — Database Backup & Recovery",
+      "title": "Google Drive backup workspace and five subfolders",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "C02",
+      "category": "C — Database Backup & Recovery",
+      "title": "Initial full database baseline snapshot",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "C03",
+      "category": "C — Database Backup & Recovery",
+      "title": "Complete pre-change and post-change snapshots",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "C04",
+      "category": "C — Database Backup & Recovery",
+      "title": "Preserve all original database headers and values",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "C05",
+      "category": "C — Database Backup & Recovery",
+      "title": "Log username and UTC/IST timestamp",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "C06",
+      "category": "C — Database Backup & Recovery",
+      "title": "Snapshot hash and integrity manifest",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "C07",
+      "category": "C — Database Backup & Recovery",
+      "title": "Historical CSV download and version comparison",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "C08",
+      "category": "C — Database Backup & Recovery",
+      "title": "Protected restoration preview and approval",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "C09",
+      "category": "C — Database Backup & Recovery",
+      "title": "Five-minute Cloud Scheduler integrity monitor",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "D01",
+      "category": "D — Financial Engine",
+      "title": "Verify full v2.51 engine integration",
+      "user_checklist": "unchecked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "database_write"
+    },
+    {
+      "id": "D02",
+      "category": "D — Financial Engine",
+      "title": "Confirm approved SBI SOL/Branch master",
+      "user_checklist": "unchecked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "database_write"
+    },
+    {
+      "id": "D03",
+      "category": "D — Financial Engine",
+      "title": "Validate historical paid and partial allocation ledger",
+      "user_checklist": "unchecked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "database_write"
+    },
+    {
+      "id": "D04",
+      "category": "D — Financial Engine",
+      "title": "Preserve v2.18 Excel output writer",
+      "user_checklist": "unchecked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "database_write"
+    },
+    {
+      "id": "D05",
+      "category": "D — Financial Engine",
+      "title": "Verify TDS, SBISA, GST, DNM and waterfall rules",
+      "user_checklist": "unchecked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "database_write"
+    },
+    {
+      "id": "D06",
+      "category": "D — Financial Engine",
+      "title": "Consolidated independent financial QA",
+      "user_checklist": "unchecked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "database_write"
+    },
+    {
+      "id": "D07",
+      "category": "D — Financial Engine",
+      "title": "Synthetic deployment rehearsal and rollback",
+      "user_checklist": "unchecked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "database_write"
+    },
+    {
+      "id": "D08",
+      "category": "D — Financial Engine",
+      "title": "Separate financial production release approval",
+      "user_checklist": "unchecked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "finance_release"
+    },
+    {
+      "id": "E01",
+      "category": "E — Deployment & Operations",
+      "title": "Verify Cloud Run active revisions and API contracts",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "E02",
+      "category": "E — Deployment & Operations",
+      "title": "Verify upload and report endpoint integration",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "E03",
+      "category": "E — Deployment & Operations",
+      "title": "Secure application access and role permissions",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "E04",
+      "category": "E — Deployment & Operations",
+      "title": "Create versioned source backup",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "E05",
+      "category": "E — Deployment & Operations",
+      "title": "Validate monitoring and reporting performance",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "E06",
+      "category": "E — Deployment & Operations",
+      "title": "Run consolidated reporting regression checks",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "E07",
+      "category": "E — Deployment & Operations",
+      "title": "Complete reporting-only release review",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    },
+    {
+      "id": "E08",
+      "category": "E — Deployment & Operations",
+      "title": "Deploy approved reporting/database features and verify",
+      "user_checklist": "checked",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard"
+    }
+  ]
+}
