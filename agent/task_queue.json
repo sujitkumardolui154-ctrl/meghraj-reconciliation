@@ -65,7 +65,7 @@
       "verification": "staging_verified",
       "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "Step 14 53-column to 18-column mapping passed synthetic QA; Step 18 private staging CSV and count HTTP 200; real Firestore report remains disconnected"
+      "evidence": "Step 14 53-column to 18-column mapping passed synthetic QA; Step 18 private staging CSV and count HTTP 200; real Firestore report remains disconnected Batch4 on 2026-11-01: strict read-only Firestore adapter installed and synthetic QA passed; live row shape not safely mapped, staging intentionally unchanged. Real Firestore integration remains blocked by live_row_format_requires_exact_adapter."
     },
     {
       "id": "A07",
@@ -398,7 +398,7 @@
       "verification": "staging_verified",
       "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "Step 18 private staging preview verified; main dashboard not changed, real Firestore report disabled"
+      "evidence": "Step 18 private staging preview verified; main dashboard not changed, real Firestore report disabled Batch4 on 2026-11-01: strict read-only Firestore adapter installed and synthetic QA passed; live row shape not safely mapped, staging intentionally unchanged. Real Firestore integration remains blocked by live_row_format_requires_exact_adapter."
     },
     {
       "id": "F01",
