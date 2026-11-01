@@ -76,6 +76,19 @@ def _validate_snapshot_counts(raw, manifest):
         raise ValueError("Unexpected release classification")
     return actual
 
+def _verify_conflicts_digest(raw, manifest):
+    """Require an authenticated snapshot manifest to cover the conflict CSV.
+
+    A missing or invalid digest never authorizes confidential conflict-review
+    output. This guard uses only raw bytes and a SHA-256 field; no invoice data.
+    """
+    digest = manifest.get("conflicts_sha256") if isinstance(manifest, dict) else None
+    if not isinstance(digest, str) or re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+        raise ValueError("CREDIT NOTE conflict-review SHA-256 missing or invalid")
+    if hashlib.sha256(raw).hexdigest() != digest:
+        raise ValueError("CREDIT NOTE conflict-review hash mismatch")
+
+
 def _read_snapshot():
     from google.cloud import storage
     uri = os.environ.get("SBI_CREDIT_GCS_PREFIX", "")
@@ -95,12 +108,10 @@ def _read_snapshot():
     if man.get("release_status") != "REVIEW_REQUIRED":
         raise ValueError("Unexpected release classification")
     _validate_snapshot_counts(raw, man)
-    # If a future snapshot has a signed conflict-file digest, enforce it.
-    # Older snapshots are reviewed for count consistency separately; they
-    # are not falsely presented as fully artifact-integrity-certified.
-    if "conflicts_sha256" in man:
-        if hashlib.sha256(conflicts).hexdigest() != man["conflicts_sha256"]:
-            raise ValueError("CREDIT NOTE conflict-review hash mismatch")
+    # Never release conflicts.csv without a validated manifest digest.
+    # Historical snapshots without this field remain unavailable until
+    # independently regenerated and verified; no silent hash bypass.
+    _verify_conflicts_digest(conflicts, man)
     return man, raw, conflicts
 
 

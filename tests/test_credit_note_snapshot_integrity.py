@@ -6,7 +6,8 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "dashboard_source"))
-from sbi_credit_report_auth import _validate_snapshot_counts
+from sbi_credit_report_auth import _validate_snapshot_counts, _verify_conflicts_digest
+import hashlib
 
 HEADERS = ["Source Field " + str(i) for i in range(18)]
 HEADERS[8] = "Invoice No"
@@ -109,6 +110,19 @@ class CreditNoteSnapshotIntegrityTests(unittest.TestCase):
         data = b"\xef\xbb\xbf" + csv_bytes()
         self.assertEqual(_validate_snapshot_counts(data, MANIFEST)[
             "conflicting_duplicate_invoice_numbers"], 1)
+
+    def test_conflict_report_digest_required(self):
+        raw = b"synthetic,conflict\\r\\n"
+        digest = hashlib.sha256(raw).hexdigest()
+        _verify_conflicts_digest(raw, {"conflicts_sha256": digest})
+        for invalid in (None, "", True, "not-a-sha256", digest.upper(), digest[:-1]):
+            with self.subTest(invalid=invalid):
+                with self.assertRaisesRegex(ValueError, "missing or invalid"):
+                    _verify_conflicts_digest(raw, {"conflicts_sha256": invalid})
+        with self.assertRaisesRegex(ValueError, "missing or invalid"):
+            _verify_conflicts_digest(raw, {})
+        with self.assertRaisesRegex(ValueError, "hash mismatch"):
+            _verify_conflicts_digest(raw + b"tampered", {"conflicts_sha256": digest})
 
     def test_approval_claim_rejected_for_review_snapshot(self):
         with self.assertRaisesRegex(ValueError, "release classification"):
