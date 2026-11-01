@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in | Meghraj _ SBI Reconciliation Control Center</title>
+<link rel="stylesheet" href="/login.css">
+<script src="/login.js" defer></script>
+</head>
+<body>
+<div class="glow glow-one" aria-hidden="true"></div>
+<div class="glow glow-two" aria-hidden="true"></div>
+<main>
+  <section class="intro" aria-label="DIL dashboard">
+    <div class="brand"><span class="brand-mark">D</span> DIL</div>
+    <p class="eyebrow">SBI RECONCILIATION CONTROL CENTER</p>
+    <h1>Your invoices.<br>Your reports.<br><span>One workspace.</span></h1>
+    <p class="description">Access your invoice database, monthly imports
+    and payment reports from your dashboard.</p>
+    <div class="features">
+      <span>Invoice records</span>
+      <span>Excel imports</span>
+      <span>CSV reports</span>
+    </div>
+  </section>
+
+  <section class="login-card" aria-labelledby="login-title">
+    <p class="eyebrow">WELCOME BACK</p>
+    <h2 id="login-title">Sign in to DIL</h2>
+    <p class="subtitle">Use the email and password assigned to your account.</p>
+
+    <form id="login-form">
+      <label for="email">Login ID / Email</label>
+      <input id="email" name="username" type="email"
+        autocomplete="username" inputmode="email"
+        placeholder="you@example.com" maxlength="254" required>
+
+      <label for="password">Password</label>
+      <div class="password-field">
+        <input id="password" name="password" type="password"
+          autocomplete="current-password" maxlength="4096" required>
+        <button id="toggle-password" type="button"
+          aria-controls="password" aria-pressed="false">Show</button>
+      </div>
+
+      <button class="submit" id="sign-in" type="submit">
+        <span class="spinner" aria-hidden="true"></span>
+        <span id="button-label">Sign in</span>
+      </button>
+      <p id="login-status" role="status" aria-live="polite"></p>
+    </form>
+
+    <div class="account-note">
+      <strong>Need an account?</strong>
+      <p>Contact your dashboard administrator to create your login.</p>
+    </div>
+    <p class="version">DIL Dashboard · Login v1.5.0</p>
+    <noscript>Enable JavaScript to sign in.</noscript>
+  </section>
+</main>
+</body>
+</html>

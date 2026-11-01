@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Create User · DIL Dashboard</title>
+<link rel="stylesheet" href="/login.css">
+<script src="/users.js" defer></script>
+</head>
+<body>
+<main>
+<section class="intro">
+<div class="brand"><span class="brand-mark">D</span> DIL</div>
+<p class="eyebrow">ADMINISTRATOR</p>
+<h1>Your team.<br><span>Controlled access.</span></h1>
+<p class="description">Create individual dashboard accounts.
+New users can access the dashboard but cannot create other users.</p>
+<a href="/" style="color:#9dccff">← Return to dashboard</a>
+</section>
+<section class="login-card" aria-labelledby="title">
+<p class="eyebrow">USER MANAGEMENT</p>
+<h2 id="title">Create a user</h2>
+<p class="subtitle">Use the person's email as their login ID.</p>
+<form id="create-user-form">
+<label for="display-name">Full name</label>
+<input id="display-name" maxlength="100" required autocomplete="off">
+<label for="new-email">Login ID / Email</label>
+<input id="new-email" type="email" maxlength="254"
+ autocomplete="off" required>
+<label for="new-password">Password</label>
+<input id="new-password" type="password" minlength="12"
+ maxlength="128" autocomplete="new-password" required>
+<label for="confirm-password">Confirm password</label>
+<input id="confirm-password" type="password" minlength="12"
+ maxlength="128" autocomplete="new-password" required>
+<p class="subtitle">Use 12–128 characters. Share the password privately.</p>
+<button class="submit" id="create-user" type="submit">
+<span class="spinner" aria-hidden="true"></span>
+<span id="create-label">Create user</span>
+</button>
+<p id="login-status" role="status" aria-live="polite"></p>
+</form>
+<div class="account-note">
+<strong>Existing Google access protection</strong>
+<p>Creating this account does not grant Google IAP access.
+The user must also be allowed through the existing Google sign-in gate.</p>
+</div>
+<p class="version">DIL Dashboard · User management v1.5.0</p>
+</section>
+</main>
+</body>
+</html>
