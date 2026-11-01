@@ -16,9 +16,10 @@
       "category": "A — Reports Development",
       "title": "Verify existing report APIs and handlers",
       "user_checklist": "checked",
-      "verification": "not_verified",
-      "execution": "pending",
-      "approval_gate": "standard"
+      "verification": "partial_verified",
+      "execution": "in_progress",
+      "approval_gate": "standard",
+      "evidence": "Existing report handler and Firestore import functions inspected; production contract not fully verified"
     },
     {
       "id": "A02",
@@ -61,9 +62,10 @@
       "category": "A — Reports Development",
       "title": "CREDIT NOTE: approved 18-column report and count",
       "user_checklist": "checked",
-      "verification": "not_verified",
-      "execution": "pending",
-      "approval_gate": "standard"
+      "verification": "staging_verified",
+      "execution": "in_progress",
+      "approval_gate": "standard",
+      "evidence": "Step 14 53-column to 18-column mapping passed synthetic QA; Step 18 private staging CSV and count HTTP 200; real Firestore report remains disconnected"
     },
     {
       "id": "A07",
@@ -79,9 +81,10 @@
       "category": "A — Reports Development",
       "title": "Excel/CSV exports and financial totals validation",
       "user_checklist": "checked",
-      "verification": "not_verified",
-      "execution": "pending",
-      "approval_gate": "standard"
+      "verification": "partial_verified",
+      "execution": "in_progress",
+      "approval_gate": "standard",
+      "evidence": "Step 18 18-column CREDIT NOTE CSV passed; all financial exports and totals not verified"
     },
     {
       "id": "B01",
@@ -169,18 +172,20 @@
       "category": "C — Database Backup & Recovery",
       "title": "Google Drive backup workspace and five subfolders",
       "user_checklist": "checked",
-      "verification": "not_verified",
-      "execution": "pending",
-      "approval_gate": "standard"
+      "verification": "structure_verified",
+      "execution": "in_progress",
+      "approval_gate": "standard",
+      "evidence": "Google Drive backup vault and five subfolders created previously; secondary data transfer not verified"
     },
     {
       "id": "C02",
       "category": "C — Database Backup & Recovery",
       "title": "Initial full database baseline snapshot",
       "user_checklist": "checked",
-      "verification": "not_verified",
-      "execution": "pending",
-      "approval_gate": "standard"
+      "verification": "export_verified",
+      "execution": "in_progress",
+      "approval_gate": "standard",
+      "evidence": "2026-11-01 Firestore full export metadata verified in private Cloud Storage; restoration and dataset completeness not tested"
     },
     {
       "id": "C03",
@@ -322,9 +327,10 @@
       "category": "E — Deployment & Operations",
       "title": "Verify Cloud Run active revisions and API contracts",
       "user_checklist": "checked",
-      "verification": "not_verified",
-      "execution": "pending",
-      "approval_gate": "standard"
+      "verification": "partial_verified",
+      "execution": "in_progress",
+      "approval_gate": "standard",
+      "evidence": "Step 18 new staging Cloud Run service Ready true; live main dashboard and backend revision contracts not verified"
     },
     {
       "id": "E02",
@@ -340,18 +346,20 @@
       "category": "E — Deployment & Operations",
       "title": "Secure application access and role permissions",
       "user_checklist": "checked",
-      "verification": "not_verified",
-      "execution": "pending",
-      "approval_gate": "standard"
+      "verification": "partial_verified",
+      "execution": "in_progress",
+      "approval_gate": "standard",
+      "evidence": "Step 18 staging public invoker False; application-level auth/role checks for dashboard not verified"
     },
     {
       "id": "E04",
       "category": "E — Deployment & Operations",
       "title": "Create versioned source backup",
       "user_checklist": "checked",
-      "verification": "not_verified",
-      "execution": "pending",
-      "approval_gate": "standard"
+      "verification": "local_backup_verified",
+      "execution": "in_progress",
+      "approval_gate": "standard",
+      "evidence": "Step 12 local source archive created, SHA256 recorded; offsite source recovery not tested"
     },
     {
       "id": "E05",
@@ -367,9 +375,10 @@
       "category": "E — Deployment & Operations",
       "title": "Run consolidated reporting regression checks",
       "user_checklist": "checked",
-      "verification": "not_verified",
-      "execution": "pending",
-      "approval_gate": "standard"
+      "verification": "partial_verified",
+      "execution": "in_progress",
+      "approval_gate": "standard",
+      "evidence": "Step 14 synthetic adapter tests and Step 18 staging smoke checks passed; complete cross-feature regression not yet run"
     },
     {
       "id": "E07",
@@ -385,9 +394,99 @@
       "category": "E — Deployment & Operations",
       "title": "Deploy approved reporting/database features and verify",
       "user_checklist": "checked",
+      "verification": "staging_verified",
+      "execution": "in_progress",
+      "approval_gate": "standard",
+      "evidence": "Step 18 private staging preview verified; main dashboard not changed, real Firestore report disabled"
+    },
+    {
+      "id": "F01",
+      "category": "F — Intelligent Chatbot",
+      "title": "Embed DIL chatbot inside authenticated main dashboard",
+      "user_checklist": "newly_selected",
       "verification": "not_verified",
       "execution": "pending",
-      "approval_gate": "standard"
+      "approval_gate": "standard",
+      "evidence": "Main dashboard unchanged; staging preview only"
+    },
+    {
+      "id": "F02",
+      "category": "F — Intelligent Chatbot",
+      "title": "Integrate chatbot API with existing application authentication and roles",
+      "user_checklist": "newly_selected",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "evidence": "Private Cloud Run service passed; application auth scope not verified"
+    },
+    {
+      "id": "F03",
+      "category": "F — Intelligent Chatbot",
+      "title": "Verify live Vertex AI model invocation and model permissions",
+      "user_checklist": "newly_selected",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "evidence": "Chatbot HTTP 200 and nonempty response; model/provider path not independently verified"
+    },
+    {
+      "id": "F04",
+      "category": "F — Intelligent Chatbot",
+      "title": "Enable authorized read-only Firestore invoice and SOL enquiries",
+      "user_checklist": "newly_selected",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "evidence": "Staging data_connected false"
+    },
+    {
+      "id": "F05",
+      "category": "F — Intelligent Chatbot",
+      "title": "Explain reconciliation findings using approved rulebook and cited invoice evidence",
+      "user_checklist": "newly_selected",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "evidence": "Actual financial evidence retrieval not connected"
+    },
+    {
+      "id": "F06",
+      "category": "F — Intelligent Chatbot",
+      "title": "Secure session-scoped conversation history, data privacy, and rate limits",
+      "user_checklist": "newly_selected",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "evidence": "Not end-to-end verified"
+    },
+    {
+      "id": "F07",
+      "category": "F — Intelligent Chatbot",
+      "title": "Run automatic knowledge refresh, evaluations and controlled improvement without self-modifying financial code",
+      "user_checklist": "newly_selected",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "evidence": "Not implemented or verified"
+    },
+    {
+      "id": "F08",
+      "category": "F — Intelligent Chatbot",
+      "title": "Consolidated chatbot regression QA, monitoring, staging-to-main integration and separate release review",
+      "user_checklist": "newly_selected",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "evidence": "Staging smoke test passed; live integration pending"
     }
-  ]
+  ],
+  "audit_metadata": {
+    "updated_for": "Complete selected task inventory including DIL chatbot",
+    "as_of_utc": "2026-11-01",
+    "source_of_evidence": "Cloud Shell outputs supplied in conversation; not a fresh direct runtime test",
+    "status_rules": "Staging/synthetic/structure/export verified do not mean full task complete",
+    "production_release": "NOT_READY",
+    "real_financial_execution": "RESTRICTED",
+    "total_selected_tasks": 50
+  }
 }
