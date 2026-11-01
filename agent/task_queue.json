@@ -237,9 +237,10 @@
       "category": "C — Database Backup & Recovery",
       "title": "Protected restoration preview and approval",
       "user_checklist": "checked",
-      "verification": "not_verified",
-      "execution": "pending",
-      "approval_gate": "standard"
+      "verification": "isolated_restore_verified",
+      "execution": "in_progress",
+      "approval_gate": "standard",
+      "evidence": "Cloud Shell Batch 3 (2026-11-01): restored Firestore export into temporary named database; dashboard_report_datasets sample 1; import receipts sample 1; invoice rows sample 0; test DB deleted; original default database unchanged. Full record totals, security rules/index recovery and production restore not yet verified."
     },
     {
       "id": "C09",
