@@ -92,21 +92,28 @@ else:
         # Make a private isolated bundle. Only copy bounded application source;
         # skip secrets, keys, environment files and internal work artifacts.
         if DEST.exists():
-            raise ValueError("Destination already exists; no overwrite")
-        ignore_patterns=shutil.ignore_patterns(
-            "__pycache__","*.pyc",".git",".env",".env.*",
-            "*.pem","*.p12","*.pfx","*.key","credentials*","service-account*",
-            "*secret*","*private_key*","*.sqlite","*.db","*.log","*.xlsx",
-            "*.csv","*.zip","*.tar","*.json")
-        DEST.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
-        shutil.copytree(ROOT,DEST,ignore=ignore_patterns)
-        (DEST/"production_gateway.py").write_text(candidate,encoding="utf-8")
-        (DEST/"sbi_credit_report_auth_bridge.py").write_text(bridge,encoding="utf-8")
-        (DEST/"sbi_credit_report_auth.py").write_text(feat,encoding="utf-8")
-        for f in DEST.rglob("*"):
-            if f.is_file(): f.chmod(0o600)
-            elif f.is_dir():f.chmod(0o700)
-        DEST.chmod(0o700)
+            existing_app=DEST/"production_gateway.py"
+            existing_bridge=DEST/"sbi_credit_report_auth_bridge.py"
+            if (not existing_app.is_file() or not existing_bridge.is_file()
+                or existing_app.read_text(encoding="utf-8")!=candidate
+                or existing_bridge.read_text(encoding="utf-8")!=bridge):
+                raise ValueError("Existing candidate differs; no overwrite")
+            res["isolated_app_candidate"]="PREPARED_AUTH_ROUTE_MOUNTED_OFFLINE"
+        else:
+            ignore_patterns=shutil.ignore_patterns(
+                "__pycache__","*.pyc",".git",".env",".env.*",
+                "*.pem","*.p12","*.pfx","*.key","credentials*","service-account*",
+                "*secret*","*private_key*","*.sqlite","*.db","*.log","*.xlsx",
+                "*.csv","*.zip","*.tar","*.json")
+            DEST.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
+            shutil.copytree(ROOT,DEST,ignore=ignore_patterns)
+            (DEST/"production_gateway.py").write_text(candidate,encoding="utf-8")
+            (DEST/"sbi_credit_report_auth_bridge.py").write_text(bridge,encoding="utf-8")
+            (DEST/"sbi_credit_report_auth.py").write_text(feat,encoding="utf-8")
+            for f in DEST.rglob("*"):
+                if f.is_file(): f.chmod(0o600)
+                elif f.is_dir():f.chmod(0o700)
+            DEST.chmod(0o700)
         # Ensure candidate entrypoint syntax, runtime wiring and report scope.
         ast.parse((DEST/"production_gateway.py").read_text(encoding="utf-8"))
         res["isolated_app_candidate"]="PREPARED_AUTH_ROUTE_MOUNTED_OFFLINE"
