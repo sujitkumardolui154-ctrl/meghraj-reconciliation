@@ -18,6 +18,64 @@ _ALLOWED_BUCKET = "meghraj-sbi-reports-private-109590290120"
 _EXPECTED_HEADER_COUNT = 18
 
 
+
+def _validate_snapshot_counts(raw, manifest):
+    """Verify report financial-status counts without relying on manifest totals.
+
+    Only the original Invoice No and the derived CREDIT NOTE marker are read.
+    Every mismatch fails closed. This is integrity checking, not settlement.
+    """
+    if not isinstance(manifest, dict):
+        raise ValueError("Invalid report manifest")
+    try:
+        text = raw.decode("utf-8-sig")
+    except (UnicodeError, AttributeError) as exc:
+        raise ValueError("Invalid report encoding") from exc
+    reader = csv.reader(io.StringIO(text, newline=""))
+    header = next(reader, [])
+    if len(header) != _EXPECTED_HEADER_COUNT or header[8] != "Invoice No":
+        raise ValueError("Invalid report header")
+    if not header[16].strip().lower().startswith("payment received"):
+        raise ValueError("Column U position not verified")
+    if header[17] != "Credi note":
+        raise ValueError("Column R header mismatch")
+
+    invoice_states = {}
+    marked = set()
+    row_count = 0
+    for row in reader:
+        if len(row) != _EXPECTED_HEADER_COUNT:
+            raise ValueError("Report row has unexpected column width")
+        row_count += 1
+        invoice = row[8].strip()
+        marker = row[17]
+        if marker not in ("", "CREDIT NOTE"):
+            raise ValueError("Unknown CREDIT NOTE marker")
+        if not invoice:
+            continue  # blank invoice numbers are counted, not invented
+        state = marker == "CREDIT NOTE"
+        invoice_states.setdefault(invoice, set()).add(state)
+        if state:
+            marked.add(invoice)
+
+    conflicted = {
+        invoice for invoice, states in invoice_states.items()
+        if len(states) > 1
+    }
+    actual = {
+        "all_invoice_rows": row_count,
+        "credit_note_unique_invoices": len(marked),
+        "credit_note_confirmed_unique_invoices": len(marked - conflicted),
+        "conflicting_duplicate_invoice_numbers": len(conflicted),
+    }
+    for name, value in actual.items():
+        expected = manifest.get(name)
+        if type(expected) is not int or expected != value:
+            raise ValueError("CREDIT NOTE manifest mismatch: " + name)
+    if manifest.get("release_status") != "REVIEW_REQUIRED":
+        raise ValueError("Unexpected release classification")
+    return actual
+
 def _read_snapshot():
     from google.cloud import storage
     uri = os.environ.get("SBI_CREDIT_GCS_PREFIX", "")
@@ -36,27 +94,13 @@ def _read_snapshot():
         raise ValueError("CREDIT NOTE snapshot hash mismatch")
     if man.get("release_status") != "REVIEW_REQUIRED":
         raise ValueError("Unexpected release classification")
-    rows = csv.reader(io.StringIO(raw.decode("utf-8-sig"), newline=""))
-    header = next(rows, [])
-    if len(header) != _EXPECTED_HEADER_COUNT:
-        raise ValueError("Invalid report column width")
-    if header[16].strip().lower().startswith("payment received") is False:
-        raise ValueError("Column U position not verified")
-    if header[17] != "Credi note":
-        raise ValueError("Column R header mismatch")
-    count = 0
-    for line in rows:
-        if len(line) != _EXPECTED_HEADER_COUNT:
-            raise ValueError("Report row has unexpected column width")
-        count += 1
-    if count != man.get("all_invoice_rows"):
-        raise ValueError("Manifest row count mismatch")
-    if not (isinstance(man.get("credit_note_unique_invoices"), int)
-            and isinstance(man.get("credit_note_confirmed_unique_invoices"), int)
-            and isinstance(man.get("conflicting_duplicate_invoice_numbers"), int)):
-        raise ValueError("Missing verified report counts")
-    if man["credit_note_confirmed_unique_invoices"] > man["credit_note_unique_invoices"]:
-        raise ValueError("Conflicting report totals")
+    _validate_snapshot_counts(raw, man)
+    # If a future snapshot has a signed conflict-file digest, enforce it.
+    # Older snapshots are reviewed for count consistency separately; they
+    # are not falsely presented as fully artifact-integrity-certified.
+    if "conflicts_sha256" in man:
+        if hashlib.sha256(conflicts).hexdigest() != man["conflicts_sha256"]:
+            raise ValueError("CREDIT NOTE conflict-review hash mismatch")
     return man, raw, conflicts
 
 
