@@ -18,8 +18,8 @@ def main():
     data = json.loads(QUEUE.read_text(encoding="utf-8"))
     tasks = data["tasks"]
     ids = [task["id"] for task in tasks]
-    if len(tasks) != 42 or len(ids) != len(set(ids)):
-        raise ValueError("Task queue failed unique-ID and size validation")
+    if len(tasks) != 50 or len(ids) != len(set(ids)):
+        raise ValueError("Task queue failed 50-item unique-ID validation")
     policy = data["policy"]
     if (policy["live_database_writes"] != "disabled"
             or policy["financial_execution"] != "restricted"
