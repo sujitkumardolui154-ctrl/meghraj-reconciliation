@@ -62,10 +62,10 @@
       "category": "A — Reports Development",
       "title": "CREDIT NOTE: approved 18-column report and count",
       "user_checklist": "checked",
-      "verification": "real_export_review_required",
+      "verification": "real_export_checksum_verified_review_required",
       "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "2026-11-01 actual Firestore CREDIT NOTE export: 14,374 baseline invoice rows, 0 completed imports read, 1,009 observed unique CREDIT NOTE invoice numbers, 1,004 unambiguous, five invoice-number conflicts: MXP/2025-2026-04 (report rows 10873/10469), MXP10092 (4723/4724), MXP10565 (5139/5137), MXP10566 (5138/5140), MXP9014 (3797/3785). Original database unchanged; release_status REVIEW_REQUIRED. Approved Column U substring matching CREDIT NOTE or CREDIT NORTE incl extra dates/remarks, output Column R per row.",
+      "evidence": "2026-11-01 real all-invoice CREDIT NOTE export: 14,374 rows; 1,009 observed unique CREDIT NOTE invoices, 1,004 unambiguous; 5 invoice-ID conflicts. Private review CSV created at reports/credit_note/CREDIT_NOTE_CONFLICT_REVIEW_20261101T095733Z.csv; report SHA256 verified PASS; database unchanged, financial execution restricted. Approved phrase matching CREDIT NOTE/CREDIT NORTE incl date suffixes; report Column R per original U. Live authenticated dashboard report integration and completed-import completeness still pending.",
       "requirement": {
         "scope": "ALL invoices in the approved original 53-column invoice database plus completed legitimate imports",
         "source": "Original payment received field Column U (index 20) named Payment Received ( If With GST or Excluding GST)",
@@ -105,7 +105,8 @@
           "unambiguous_unique_credit_note": 1004,
           "conflicts": 5,
           "completed_import_rows": 0
-        }
+        },
+        "conflict_review_csv": "reports/credit_note/CREDIT_NOTE_CONFLICT_REVIEW_20261101T095733Z.csv"
       }
     },
     {
