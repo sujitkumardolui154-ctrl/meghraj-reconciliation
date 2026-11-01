@@ -62,7 +62,7 @@
       "category": "A — Reports Development",
       "title": "CREDIT NOTE: approved 18-column report and count",
       "user_checklist": "checked",
-      "verification": "real_export_checksum_verified_review_required",
+      "verification": "user_accepted_report_review_only",
       "execution": "in_progress",
       "approval_gate": "standard",
       "evidence": "2026-11-01 real all-invoice CREDIT NOTE export: 14,374 rows; 1,009 observed unique CREDIT NOTE invoices, 1,004 unambiguous; 5 invoice-ID conflicts. Private review CSV created at reports/credit_note/CREDIT_NOTE_CONFLICT_REVIEW_20261101T095733Z.csv; report SHA256 verified PASS; database unchanged, financial execution restricted. Approved phrase matching CREDIT NOTE/CREDIT NORTE incl date suffixes; report Column R per original U. Live authenticated dashboard report integration and completed-import completeness still pending.",
@@ -107,6 +107,17 @@
           "completed_import_rows": 0
         },
         "conflict_review_csv": "reports/credit_note/CREDIT_NOTE_CONFLICT_REVIEW_20261101T095733Z.csv"
+      },
+      "user_acceptance": {
+        "status": "approved_report_test",
+        "date": "2026-11-01",
+        "scope": "18-column all-invoice CREDIT NOTE output, approved matching and verified 14374-row checksum report",
+        "not_waived": [
+          "Five invoice-number conflicts",
+          "Completed import completeness",
+          "Authenticated live dashboard integration",
+          "Financial execution release"
+        ]
       }
     },
     {
