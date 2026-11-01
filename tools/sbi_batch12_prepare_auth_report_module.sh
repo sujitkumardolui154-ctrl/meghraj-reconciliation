@@ -179,19 +179,19 @@ paths = ["/reports/credit-note/summary",
          "/reports/credit-note.csv",
          "/reports/credit-note/conflicts.csv",
          "/reports/credit-note/ui"]
-denied = Flask("auth_denied")
+denied = Flask(__name__)
 denied.register_blueprint(feature.create_credit_note_blueprint(lambda: False))
 with denied.test_client() as c:
     for p in paths:
         assert c.get(p).status_code == 403, p
-exceptions = Flask("auth_exception")
+exceptions = Flask(__name__)
 def broken_auth():
     raise ValueError("missing session")
 exceptions.register_blueprint(feature.create_credit_note_blueprint(broken_auth))
 with exceptions.test_client() as c:
     for p in paths:
         assert c.get(p).status_code == 403, p
-allowed = Flask("auth_approved")
+allowed = Flask(__name__)
 allowed.register_blueprint(feature.create_credit_note_blueprint(lambda: True))
 sample = {"all_invoice_rows":14374, "credit_note_unique_invoices":1009,
           "credit_note_confirmed_unique_invoices":1004,
