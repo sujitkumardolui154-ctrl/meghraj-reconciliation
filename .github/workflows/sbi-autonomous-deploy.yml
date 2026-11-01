@@ -37,6 +37,8 @@ jobs:
           PY
       - name: Run recovered-source financial contract tests
         run: python -m unittest discover -s tests -p 'test_financial_contract.py' -v
+      - name: Verify completed-import receipt ledger gate (synthetic, read-only)
+        run: python -m unittest discover -s tests -p 'test_import_receipt_audit.py' -v
       - name: Install reporting authentication test dependencies
         run: python -m pip install -r dashboard_source/requirements.txt
       - name: Verify CREDIT NOTE Firebase session and read-only report permissions
