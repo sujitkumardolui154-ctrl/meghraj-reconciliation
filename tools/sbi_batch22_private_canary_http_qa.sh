@@ -137,14 +137,29 @@ else:
   # Cloud Run may list tagged 0%-traffic canary as tag-only entries.
   active=[t for t in traffic if (t.get("percent",0) or 0)>0]
   result["zero_traffic"]="YES" if not active else "NO"
-  if active:
-    add("CANARY_TRAFFIC_IS_NOT_ZERO")
+  # A newly created, separate private canary may have 100% traffic on its
+  # own service. That is NOT production dashboard traffic. Record it, and
+  # check the actual main-dashboard traffic baseline before any HTTP probes.
+  result["canary_service_traffic_percent"]=sum((t.get("percent",0) or 0) for t in active)
+  main_code,main_json=cli(["gcloud","run","services","describe","sbi-dashboard",
+                           "--project",PROJECT,"--region",REGION,"--format=json"])
+  baseline={}
+  try:
+    baseline=json.loads((ROOT/"batch20_private_canary.json").read_text(encoding="utf-8"))
+    main=json.loads(main_json) if main_code==0 else {}
+    main_now=[{k:t.get(k) for k in ("revisionName","percent","tag") if k in t}
+              for t in main.get("status",{}).get("traffic",[])]
+    result["main_dashboard_traffic_verified_unchanged"]=(
+      bool(main) and "main_traffic_before" in baseline and
+      baseline.get("main_traffic_before")==main_now)
+  except (OSError,ValueError,TypeError):
+    result["main_dashboard_traffic_verified_unchanged"]=False
+  if not result["main_dashboard_traffic_verified_unchanged"]:
+    add("MAIN_DASHBOARD_TRAFFIC_BASELINE_NOT_VERIFIED")
   tagged=[t.get("url","") for t in traffic if t.get("tag")=="b20" and t.get("url")]
-  # Some Cloud Run services are created with an initial 100%-traffic service
-  # even with --no-traffic; preserve safety and fail rather than assert zero.
   if len(tagged)!=1:
     add("UNIQUE_CANARY_TAG_URL_NOT_VERIFIED")
-  elif result["iam_private"]=="NO_PUBLIC_MEMBERS" and result["zero_traffic"]=="YES":
+  elif result["iam_private"]=="NO_PUBLIC_MEMBERS" and result["main_dashboard_traffic_verified_unchanged"]:
     url=tagged[0].rstrip("/")
     parsed=urllib.parse.urlsplit(url)
     if parsed.scheme!="https" or not parsed.hostname or not (
@@ -174,8 +189,7 @@ else:
           else:
             result["cloud_run_invocation"]="IAM_GRANTED_APP_DENIED_ANONYMOUS_SESSION"
       # All token material is kept in memory and never saved to the report.
-  elif result["zero_traffic"]=="NO":
-    add("CANARY_NOT_ZERO_TRAFFIC")
+
 # Never allow a pass without actual role-allowed and role-denied signed-in tests.
 add("REAL_FIREBASE_ROLE_ALLOWED_AND_DENIED_HTTP_TEST_PENDING")
 result["reporting_release"]="BLOCKED_REAL_SIGNED_IN_AND_IMPORT_GATES"
