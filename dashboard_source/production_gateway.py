@@ -372,3 +372,27 @@ install_sessions(app)
 install_login_pages(app)
 install_user_management(app)
 install_account_pages(app)
+
+# Read-only CREDIT NOTE reporting v1 — use the existing Firebase session guard.
+# install_sessions(app) runs before this blueprint and populates g.dil_user
+# only after revocation-checked Firebase cookie validation.
+from flask import g
+from sbi_credit_report_auth import create_credit_note_blueprint
+
+
+def _authorize_credit_note_report():
+    """Allow only an authenticated, enabled, explicitly entitled viewer."""
+    user = getattr(g, "dil_user", None)
+    identity = getattr(g, "dil_identity", None)
+    if user is None or not isinstance(identity, dict):
+        return False
+    if user.disabled or user.uid != identity.get("uid"):
+        return False
+    claims = user.custom_claims or {}
+    return (
+        claims.get("dil_dashboard") is True
+        and claims.get("sbi_credit_report_viewer") is True
+    )
+
+
+app.register_blueprint(create_credit_note_blueprint(_authorize_credit_note_report))
