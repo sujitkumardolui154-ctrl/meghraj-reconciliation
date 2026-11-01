@@ -5,7 +5,7 @@ set -Eeuo pipefail
 umask 077
 cd "$HOME/meghraj-reconciliation"
 mkdir -p reports/credit_note/batch17_candidate
-python3 - <<'PY'
+PYTHONPATH="backend_source${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
 from pathlib import Path
 from collections import Counter
 from datetime import datetime, timezone
@@ -44,7 +44,7 @@ else:
 # non-applied statuses. Do not silently treat an unfamiliar receipt as a non-import.
 try:
     from google.cloud import firestore
-    from backend_source.report_api import completed_import_rows
+    from report_api import completed_import_rows
     db=firestore.Client(project="meghraj-reconciliation")
     def pages(collection,cap=20000):
         cursor=None
