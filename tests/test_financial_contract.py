@@ -23,7 +23,14 @@ class FinancialSourceContractTests(unittest.TestCase):
         self.assertTrue(contract.is_file(), "Missing authoritative 53-header invoice import contract")
         data = json.loads(contract.read_text(encoding="utf-8"))
         self.assertEqual(len(data["headers"]), 53)
-        self.assertEqual(len(set(data["headers"])), 53)
+        # The approved original 53-column invoice sheet has duplicate labels.
+        # Preserve them by position rather than inventing unique headings.
+        self.assertEqual(data["headers"][0], "Client Name")
+        self.assertEqual(data["headers"][7], "Client Name")
+        self.assertEqual(data["headers"][6], "Branch Code")
+        self.assertEqual(data["headers"][10], "Branch Code")
+        self.assertEqual(data["headers"][12], "Invoice No")
+        self.assertIn("Payment Received", data["headers"][20])
 
     def test_reporting_classification_and_no_mutation(self):
         # Test recovered classification independently while the official
