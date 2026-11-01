@@ -62,10 +62,10 @@
       "category": "A — Reports Development",
       "title": "CREDIT NOTE: approved 18-column report and count",
       "user_checklist": "checked",
-      "verification": "private_real_report_staging_passed",
+      "verification": "private_staging_passed_auth_module_prepared",
       "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "User confirmed Batch 11 Cloud Shell final result (2026-11-01): PRIVATE REAL CREDIT NOTE STAGING PASS, private storage security PASS, 14,374 report rows, observed 1,009 CREDIT NOTE invoices, five conflicts preserved REVIEW_REQUIRED. Main dashboard unchanged, staging tagged candidate only, traffic unchanged; authenticated main dashboard integration pending; financial execution restricted. Batch 12 authenticated main-dashboard CREDIT NOTE blueprint preparation script added to GitHub at tools/sbi_batch12_prepare_auth_report_module.sh; script includes fail-closed explicit per-request auth callback, no production deployment. User has not executed Batch 12; cannot mark main auth verified.",
+      "evidence": "User confirmed Batch 11 Cloud Shell final result (2026-11-01): PRIVATE REAL CREDIT NOTE STAGING PASS, private storage security PASS, 14,374 report rows, observed 1,009 CREDIT NOTE invoices, five conflicts preserved REVIEW_REQUIRED. Main dashboard unchanged, staging tagged candidate only, traffic unchanged; authenticated main dashboard integration pending; financial execution restricted. Batch 12 authenticated main-dashboard CREDIT NOTE blueprint preparation script added to GitHub at tools/sbi_batch12_prepare_auth_report_module.sh; script includes fail-closed explicit per-request auth callback, no production deployment. User has not executed Batch 12; cannot mark main auth verified. Owner Cloud Shell confirmed Batch12: AUTH-REQUIRED REPORT MODULE PREPARED; anonymous and missing session denied in synthetic test; main app route attachment pending auth callback verification; no main dashboard or production traffic change; financial execution restricted. Current status is source prepared, not authenticated main release.",
       "requirement": {
         "scope": "ALL invoices in the approved original 53-column invoice database plus completed legitimate imports",
         "source": "Original payment received field Column U (index 20) named Payment Received ( If With GST or Excluding GST)",
@@ -403,10 +403,10 @@
       "category": "E — Deployment & Operations",
       "title": "Secure application access and role permissions",
       "user_checklist": "checked",
-      "verification": "partial_verified",
+      "verification": "partial_verified_auth_module_synthetic_denial_passed",
       "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "Step 18 staging public invoker False; application-level auth/role checks for dashboard not verified Batch 11 only authenticated private staging, main dashboard login/session/role integration still pending. Fail-closed report auth module source published, application login/session wiring not yet run or verified."
+      "evidence": "Step 18 staging public invoker False; application-level auth/role checks for dashboard not verified Batch 11 only authenticated private staging, main dashboard login/session/role integration still pending. Fail-closed report auth module source published, application login/session wiring not yet run or verified. Owner Cloud Shell confirmed Batch12: AUTH-REQUIRED REPORT MODULE PREPARED; anonymous and missing session denied in synthetic test; main app route attachment pending auth callback verification; no main dashboard or production traffic change; financial execution restricted. Current status is source prepared, not authenticated main release."
     },
     {
       "id": "E04",
@@ -454,7 +454,7 @@
       "verification": "private_real_credit_note_staging_verified",
       "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "Batch 11 private staging completed, real report API passed, tagged candidate no traffic shift; main dashboard unchanged and authenticated integration not verified. Five conflicts remain REVIEW_REQUIRED."
+      "evidence": "Batch 11 private staging completed, real report API passed, tagged candidate no traffic shift; main dashboard unchanged and authenticated integration not verified. Five conflicts remain REVIEW_REQUIRED. Owner Cloud Shell confirmed Batch12: AUTH-REQUIRED REPORT MODULE PREPARED; anonymous and missing session denied in synthetic test; main app route attachment pending auth callback verification; no main dashboard or production traffic change; financial execution restricted. Current status is source prepared, not authenticated main release."
     },
     {
       "id": "F01",
