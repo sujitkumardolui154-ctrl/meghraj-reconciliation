@@ -26,7 +26,7 @@ new='''def is_credit(value):
     # DIL_CREDIT_REMARK_MATCH_V2
     text = str(value or "").upper()
     return re.search(
-        r"(?<![A-Z0-9])CREDIT[\\s._/:-]+NOR?TE(?![A-Z])",
+        r"(?<![A-Z0-9])CREDIT[\s._/:-]+NOR?TE(?![A-Z])",
         text,
     ) is not None
 '''
