@@ -76,9 +76,16 @@ else:
             raise ValueError("unknown role permission condition")
         ast.parse(hardened,filename="sbi_credit_report_auth_bridge.py")
         ast.parse(original_app,filename="production_gateway_candidate.py")
-        reviewed=candidate/"sbi_credit_report_auth_bridge_strict.py"
-        reviewed.write_text(hardened,encoding="utf-8")
-        reviewed.chmod(0o600)
+        # The production_gateway_candidate imports the original bridge module
+        # name; harden that isolated file, not a disconnected sidecar.
+        if original_bridge != hardened:
+            backup=candidate/"sbi_credit_report_auth_bridge.pre_strict.bak"
+            if not backup.exists():
+                backup.write_text(original_bridge,encoding="utf-8")
+                backup.chmod(0o600)
+            bridge.write_text(hardened,encoding="utf-8")
+        bridge.chmod(0o600)
+        reviewed=bridge
         result["private_auth_candidate"]="STRICT_ROLE_CANDIDATE_READY"
         # Assess login cookie contract via AST only; never output cookie values.
         t=ast.parse(sessions_file.read_text(encoding="utf-8"))
