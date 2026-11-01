@@ -4,8 +4,6 @@ These validate recovered reporting behavior only. They deliberately do NOT
 certify settlement/allocation or the v2.51 financial engine.
 """
 import importlib
-import types
-from unittest.mock import patch
 import json
 import sys
 import unittest
@@ -33,15 +31,7 @@ class FinancialSourceContractTests(unittest.TestCase):
         self.assertIn("Payment Received", data["headers"][20])
 
     def test_reporting_classification_and_no_mutation(self):
-        # Test recovered classification independently while the official
-        # invoice-header contract is missing; do not invent its 53 headers.
-        stub = types.ModuleType("invoice_source_schema")
-        stub.row_layout = lambda row: (_ for _ in ()).throw(
-            AssertionError("row_layout must not be called by classify_payment")
-        )
-        with patch.dict(sys.modules, {"invoice_source_schema": stub}):
-            sys.modules.pop("payment_report_rules", None)
-            module = importlib.import_module("payment_report_rules")
+        module = importlib.import_module("payment_report_rules")
         cases = [
             ("", "s", "unpaid"),
             ("0", "n", "unpaid"),
@@ -57,6 +47,29 @@ class FinancialSourceContractTests(unittest.TestCase):
                 self.assertEqual(module.classify_payment(value, cell_type), expected)
         with self.assertRaises(ValueError):
             module.classify_payment(100, "n")
+
+    def test_both_supported_invoice_source_layouts(self):
+        schema = importlib.import_module("invoice_source_schema")
+        reporting = importlib.import_module("payment_report_rules")
+        for width, payment_index, headers in (
+            (53, 20, schema.HEADERS_53),
+            (34, 17, schema.HEADERS_34),
+        ):
+            with self.subTest(width=width):
+                values = [""] * width
+                values[payment_index] = "123.45"
+                row = {
+                    "original_values": list(values),
+                    "original_headers": headers,
+                    "original_cell_types": ["s"] * width,
+                }
+                self.assertEqual(schema.row_layout(row)[2], payment_index)
+                self.assertEqual(reporting.payment_report_kind(row), "ok")
+                self.assertEqual(row["original_values"], values)
+                bad = dict(row)
+                bad["original_headers"] = ["WRONG"] * width
+                with self.assertRaises(ValueError):
+                    schema.row_layout(bad)
 
     def test_tds_reference_rounding_only(self):
         for taxable, rate, expected in [
