@@ -414,20 +414,20 @@
       "category": "F — Intelligent Chatbot",
       "title": "Integrate chatbot API with existing application authentication and roles",
       "user_checklist": "newly_selected",
-      "verification": "not_verified",
-      "execution": "pending",
+      "verification": "partial_verified",
+      "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "Private Cloud Run service passed; application auth scope not verified"
+      "evidence": "Step 18 authenticated Cloud Run invocation returned HTTP 200; dashboard application session/role authorization is not verified"
     },
     {
       "id": "F03",
       "category": "F — Intelligent Chatbot",
       "title": "Verify live Vertex AI model invocation and model permissions",
       "user_checklist": "newly_selected",
-      "verification": "not_verified",
-      "execution": "pending",
+      "verification": "partial_verified",
+      "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "Chatbot HTTP 200 and nonempty response; model/provider path not independently verified"
+      "evidence": "Step 18 /assistant/chat returned HTTP 200 and a nonempty answer; actual Gemini model and permission chain still requires independent verification"
     },
     {
       "id": "F04",
@@ -474,10 +474,10 @@
       "category": "F — Intelligent Chatbot",
       "title": "Consolidated chatbot regression QA, monitoring, staging-to-main integration and separate release review",
       "user_checklist": "newly_selected",
-      "verification": "not_verified",
-      "execution": "pending",
+      "verification": "partial_verified",
+      "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "Staging smoke test passed; live integration pending"
+      "evidence": "Step 18 synthetic chatbot and CREDIT NOTE private staging smoke checks passed; full regression, main app integration and release review pending"
     }
   ],
   "audit_metadata": {
