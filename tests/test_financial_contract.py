@@ -4,6 +4,8 @@ These validate recovered reporting behavior only. They deliberately do NOT
 certify settlement/allocation or the v2.51 financial engine.
 """
 import importlib
+import types
+from unittest.mock import patch
 import json
 import sys
 import unittest
@@ -24,7 +26,7 @@ class FinancialSourceContractTests(unittest.TestCase):
         self.assertEqual(len(set(data["headers"])), 53)
 
     def test_reporting_classification_and_no_mutation(self):
-        module = importlib.import_module("payment_report_rules")
+        # Test recovered classification independently while the official\n        # invoice-header contract is missing; do not invent its 53 headers.\n        stub = types.ModuleType("invoice_source_schema")\n        stub.row_layout = lambda row: (_ for _ in ()).throw(\n            AssertionError("row_layout must not be called by classify_payment")\n        )\n        with patch.dict(sys.modules, {"invoice_source_schema": stub}):\n            sys.modules.pop("payment_report_rules", None)\n            module = importlib.import_module("payment_report_rules")
         cases = [
             ("", "s", "unpaid"),
             ("0", "n", "unpaid"),
