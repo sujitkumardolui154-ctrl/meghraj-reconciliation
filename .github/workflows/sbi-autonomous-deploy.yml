@@ -1,70 +1,68 @@
 name: SBI Autonomous Staging Deployment
 on:
+  pull_request:
+    branches: [automation/sbi-deployment-agent-v1]
   push:
     branches: [main]
   workflow_dispatch:
+
 permissions:
   contents: read
   id-token: write
+
 concurrency:
-  group: sbi-staging-cloud-run
+  group: sbi-staging-${{ github.ref }}
   cancel-in-progress: false
+
 jobs:
-  audit:
+  consolidated-source-qa:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
-      source_ready: ${{ steps.source.outputs.ready }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check complete deployable source
-        id: source
-        shell: bash
-        run: |
-          if [[ -f deployment/staging/Dockerfile && -f deployment/staging/requirements.txt && -d deployment/staging/tests && -f deployment/staging/tests/test_financial_contract.py ]]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Complete financial service source and contract tests are not committed; deployment skipped."
-          fi
-      - name: Python syntax and tracked secrets check
-        shell: bash
-        run: |
-          python - <<'PY'
-          import ast, pathlib, subprocess, sys
-          files=subprocess.check_output(["git","ls-files","-z"]).decode().split("\0")
-          errors=[]
-          for name in files:
-              if not name.endswith(".py") or not pathlib.Path(name).is_file(): continue
-              try: ast.parse(pathlib.Path(name).read_text(encoding="utf-8-sig"),filename=name)
-              except Exception as exc: errors.append(f"{name}: {type(exc).__name__}: {exc}")
-          for error in errors: print(error)
-          sys.exit(1 if errors else 0)
-          PY
-  candidate:
-    needs: audit
-    if: needs.audit.outputs.source_ready == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    environment: staging
+      deploy_ready: ${{ steps.readiness.outputs.ready }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install staging test dependencies
-        run: python -m pip install -r deployment/staging/requirements.txt
-      - name: Run integrated financial contract tests
-        run: python -m pytest -q deployment/staging/tests/test_financial_contract.py
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v3
+      - name: Verify tracked Python syntax
+        shell: bash
+        run: |
+          python - <<'PY'
+          import ast, pathlib, subprocess
+          for name in filter(None, subprocess.check_output(["git","ls-files","-z"]).decode().split("\0")):
+              p = pathlib.Path(name)
+              if p.suffix == ".py" and p.is_file():
+                  ast.parse(p.read_text(encoding="utf-8-sig"), filename=name)
+          PY
+      - name: Run recovered-source financial contract tests
+        run: python -m unittest discover -s tests -p 'test_financial_contract.py' -v
+      - name: Check candidate prerequisites
+        id: readiness
+        shell: bash
+        run: |
+          if [[ -f deployment/staging/Dockerfile && -f deployment/staging/requirements.txt && -f deployment/staging/financial_engine_certification.json ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Container build and independent financial certification are missing: zero-traffic deployment remains disabled."
+          fi
+
+  zero-traffic-candidate:
+    needs: consolidated-source-qa
+    if: github.event_name != 'pull_request' && needs.consolidated-source-qa.outputs.deploy_ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v3
         with:
           project_id: meghraj-reconciliation
           workload_identity_provider: projects/109590290120/locations/global/workloadIdentityPools/sbi-github-pool/providers/github-oidc
           service_account: sbi-staging-agent@meghraj-reconciliation.iam.gserviceaccount.com
       - uses: google-github-actions/setup-gcloud@v3
-      - name: Deploy candidate without traffic
-        shell: bash
+      - name: Build and deploy candidate with no traffic
         run: |
           gcloud run deploy sbi-reconciliation-api \
             --project meghraj-reconciliation \
@@ -72,8 +70,5 @@ jobs:
             --source deployment/staging \
             --no-traffic \
             --quiet
-          echo "CANDIDATE_DEPLOYED_ZERO_TRAFFIC=true"
-      - name: Release policy
-        run: |
-          echo "Candidate deployed without traffic promotion."
-          echo "Financial source correctness, auth E2E, and rollback must be independently certified before production promotion."
+      - name: Declare traffic policy
+        run: echo "No traffic promotion or financial data mutation authorized by this workflow."
