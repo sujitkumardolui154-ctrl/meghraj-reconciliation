@@ -65,11 +65,11 @@
       "verification": "partial_verified",
       "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "Step 14 53-column to 18-column mapping passed synthetic QA; Step 18 private staging CSV and count HTTP 200; real Firestore report remains disconnected Batch4 on 2026-11-01: strict read-only Firestore adapter installed and synthetic QA passed; live row shape not safely mapped, staging intentionally unchanged. Real Firestore integration remains blocked by live_row_format_requires_exact_adapter. Confirmed Firestore structure on 2026-11-01: dataset metadata original_headers length 53; nested report rows contain original_values length 53 and original_cell_types length 53. Real full export still awaits row-count/import completeness and direct read-only execution.",
+      "evidence": "Step 14 53-column to 18-column mapping passed synthetic QA; Step 18 private staging CSV and count HTTP 200; real Firestore report remains disconnected Batch4 on 2026-11-01: strict read-only Firestore adapter installed and synthetic QA passed; live row shape not safely mapped, staging intentionally unchanged. Real Firestore integration remains blocked by live_row_format_requires_exact_adapter. Confirmed Firestore structure on 2026-11-01: dataset metadata original_headers length 53; nested report rows contain original_values length 53 and original_cell_types length 53. Real full export still awaits row-count/import completeness and direct read-only execution. Rule expanded by owner to substring phrases CREDIT NOTE and CREDIT NORTE, including date suffix @ 30/11/2024; real report needs regeneration and recount.",
       "requirement": {
         "scope": "ALL invoices in the approved original 53-column invoice database plus completed legitimate imports",
         "source": "Original payment received field Column U (index 20) named Payment Received ( If With GST or Excluding GST)",
-        "condition": "case-insensitive, collapse whitespace; match CREDIT NOTE only",
+        "condition": "Case-insensitive token matching anywhere in original Column U: CREDIT NOTE or CREDIT NORTE; allow additional trailing or preceding text, dates, references, punctuation, and remarks. Do not require exact equality; avoid matching unrelated words such as CREDIT NOTEBOOK.",
         "output": "18-column report with columns A-Q preserved exact source values; output Column R (Credi note) CREDIT NOTE for qualifying rows, otherwise empty",
         "count": "Unique qualifying Invoice No; duplicate conflicting source rows require review",
         "source_positions": {
@@ -79,7 +79,25 @@
           "Payment Received": "U index 20"
         },
         "safety": "Do not modify 53-column original source, derive from Creit Note Ammount, or reinterpret financial values",
-        "confirmed_by_owner": true
+        "confirmed_by_owner": true,
+        "examples": [
+          {
+            "original_column_u": "CREDIT NOTE @ 30/11/2024",
+            "report_column_r": "CREDIT NOTE"
+          },
+          {
+            "original_column_u": "CREDIT NORTE @ 30/11/2024",
+            "report_column_r": "CREDIT NOTE"
+          },
+          {
+            "original_column_u": "Credit Note Against Invoice MXP",
+            "report_column_r": "CREDIT NOTE"
+          },
+          {
+            "original_column_u": "PAID",
+            "report_column_r": ""
+          }
+        ]
       }
     },
     {
