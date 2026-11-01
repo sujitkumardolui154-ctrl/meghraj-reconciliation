@@ -1,0 +1,135 @@
+name: SBI Reporting-Only Automatic Production Deployment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'dashboard_source/**'
+      - 'backend_source/**'
+      - 'tests/**'
+      - 'tools/sbi_reporting_production_gate.py'
+      - 'tools/sbi_reporting_production_promote.sh'
+      - '.github/workflows/sbi-reporting-production.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: sbi-reporting-prod-release
+  cancel-in-progress: false
+
+jobs:
+  verify-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      source_ready: ${{ steps.source.outputs.source_ready }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify production release verifier
+        run: python -m unittest discover -s tests -p 'test_sbi_reporting_production_gate.py' -v
+      - name: Verify reporting app source has reached main
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "source_ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          for filename in dashboard_source/production_gateway.py dashboard_source/sbi_credit_report_auth.py dashboard_source/dashboard_sessions.py dashboard_source/requirements.txt backend_source/report_api.py backend_source/import_receipt_audit.py backend_source/invoice_import_contract.json tests/test_financial_contract.py tests/test_credit_note_auth_contract.py tests/test_credit_note_snapshot_integrity.py tests/test_import_receipt_audit.py; do
+            if [[ ! -f "$filename" ]]; then
+              echo "::notice::BLOCKED_SOURCE_NOT_MERGED: $filename"
+              echo "source_ready=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          echo "source_ready=true" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@v5
+        if: steps.source.outputs.source_ready == 'true'
+        with:
+          python-version: '3.11'
+      - name: Install reporting QA dependencies
+        if: steps.source.outputs.source_ready == 'true'
+        run: python -m pip install -r dashboard_source/requirements.txt
+      - name: Run consolidated reporting contract tests
+        if: steps.source.outputs.source_ready == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p 'test_financial_contract.py' -v
+          python -m unittest discover -s tests -p 'test_credit_note_auth_contract.py' -v
+          python -m unittest discover -s tests -p 'test_credit_note_snapshot_integrity.py' -v
+          python -m unittest discover -s tests -p 'test_import_receipt_audit.py' -v
+
+  promote-verified-reporting:
+    name: Automatically promote approved reporting canary only
+    needs: verify-source
+    if: needs.verify-source.outputs.source_ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: sbi-production
+    env:
+      DEPLOY_SA: ${{ vars.SBI_PRODUCTION_DEPLOY_SA }}
+      RELEASE_URI: ${{ vars.SBI_REPORTING_RELEASE_EVIDENCE_URI }}
+      APPROVED_EVIDENCE_SHA: ${{ vars.SBI_REPORTING_RELEASE_EVIDENCE_SHA256 }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require protected production identity and SHA-bound independent approval
+        id: config
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$DEPLOY_SA" || -z "$RELEASE_URI" || -z "$APPROVED_EVIDENCE_SHA" ]]; then
+            echo "::notice::AUTO_PROD_CONFIGURED_BUT_BLOCKED: missing production identity or external QA evidence"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "$DEPLOY_SA" != *@meghraj-reconciliation.iam.gserviceaccount.com ]]; then
+            echo "::error::Production deploy identity must be a scoped service account"
+            exit 1
+          fi
+          EXPECTED_URI="gs://meghraj-sbi-reports-private-109590290120/release-evidence/reporting-only/$GITHUB_SHA.json"
+          if [[ "$RELEASE_URI" != "$EXPECTED_URI" || ! "$APPROVED_EVIDENCE_SHA" =~ ^[a-f0-9]{64}$ ]]; then
+            echo "::notice::BLOCKED: release evidence does not match current source commit"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+      - name: Authenticate to Google Cloud using short-lived workload identity
+        if: steps.config.outputs.ready == 'true'
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: meghraj-reconciliation
+          workload_identity_provider: projects/109590290120/locations/global/workloadIdentityPools/sbi-github-pool/providers/github-oidc
+          service_account: ${{ vars.SBI_PRODUCTION_DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v3
+        if: steps.config.outputs.ready == 'true'
+      - name: Verify immutable independent QA evidence in private GCS
+        if: steps.config.outputs.ready == 'true'
+        id: evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE="$RUNNER_TEMP/sbi-private-release-evidence.json"
+          gcloud storage cat "$RELEASE_URI" > "$FILE"
+          python tools/sbi_reporting_production_gate.py \
+            --evidence "$FILE" \
+            --sha256 "$APPROVED_EVIDENCE_SHA" \
+            --commit "$GITHUB_SHA" \
+            --output "$GITHUB_OUTPUT"
+          rm -f "$FILE"
+      - name: Auto-promote independently certified candidate and rollback on error
+        if: steps.config.outputs.ready == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/sbi_reporting_production_promote.sh \
+            "${{ steps.evidence.outputs.candidate_revision }}" "$GITHUB_SHA"
+      - name: Final release policy
+        if: always()
+        run: |
+          echo "AUTO_PROD=CONDITIONAL_INDEPENDENT_QA"
+          echo "FINANCIAL_EXECUTION=RESTRICTED"
