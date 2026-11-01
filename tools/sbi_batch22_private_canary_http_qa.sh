@@ -201,7 +201,9 @@ fields=("cookie_static_proof","candidate_dependencies","import_completeness",
         "authenticated_iam_login_page","no_firebase_session_report_denial",
         "cloud_run_invocation","real_signed_in_report_e2e","reporting_release",
         "blockers","main_dashboard","financial_release")
-print("BATCH22_RESULT="+json.dumps({k:result[k] for k in fields},
+print("BATCH22_RESULT="+json.dumps({**{k:result[k] for k in fields},
+  "main_dashboard_traffic_verified_unchanged":result.get("main_dashboard_traffic_verified_unchanged"),
+  "canary_service_traffic_percent":result.get("canary_service_traffic_percent")},
                                  separators=(",",":"),ensure_ascii=False))
 print("QA RECEIPT:",out)
 print("NO MAIN DASHBOARD DEPLOYMENT OR TRAFFIC CHANGE BY BATCH22")
