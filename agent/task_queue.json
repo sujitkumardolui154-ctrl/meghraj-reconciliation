@@ -62,10 +62,10 @@
       "category": "A — Reports Development",
       "title": "CREDIT NOTE: approved 18-column report and count",
       "user_checklist": "checked",
-      "verification": "staging_verified",
+      "verification": "partial_verified",
       "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "Step 14 53-column to 18-column mapping passed synthetic QA; Step 18 private staging CSV and count HTTP 200; real Firestore report remains disconnected Batch4 on 2026-11-01: strict read-only Firestore adapter installed and synthetic QA passed; live row shape not safely mapped, staging intentionally unchanged. Real Firestore integration remains blocked by live_row_format_requires_exact_adapter.",
+      "evidence": "Step 14 53-column to 18-column mapping passed synthetic QA; Step 18 private staging CSV and count HTTP 200; real Firestore report remains disconnected Batch4 on 2026-11-01: strict read-only Firestore adapter installed and synthetic QA passed; live row shape not safely mapped, staging intentionally unchanged. Real Firestore integration remains blocked by live_row_format_requires_exact_adapter. Confirmed Firestore structure on 2026-11-01: dataset metadata original_headers length 53; nested report rows contain original_values length 53 and original_cell_types length 53. Real full export still awaits row-count/import completeness and direct read-only execution.",
       "requirement": {
         "scope": "ALL invoices in the approved original 53-column invoice database plus completed legitimate imports",
         "source": "Original payment received field Column U (index 20) named Payment Received ( If With GST or Excluding GST)",
