@@ -62,10 +62,10 @@
       "category": "A — Reports Development",
       "title": "CREDIT NOTE: approved 18-column report and count",
       "user_checklist": "checked",
-      "verification": "partial_verified",
+      "verification": "real_export_review_required",
       "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "Step 14 53-column to 18-column mapping passed synthetic QA; Step 18 private staging CSV and count HTTP 200; real Firestore report remains disconnected Batch4 on 2026-11-01: strict read-only Firestore adapter installed and synthetic QA passed; live row shape not safely mapped, staging intentionally unchanged. Real Firestore integration remains blocked by live_row_format_requires_exact_adapter. Confirmed Firestore structure on 2026-11-01: dataset metadata original_headers length 53; nested report rows contain original_values length 53 and original_cell_types length 53. Real full export still awaits row-count/import completeness and direct read-only execution. Rule expanded by owner to substring phrases CREDIT NOTE and CREDIT NORTE, including date suffix @ 30/11/2024; real report needs regeneration and recount. User Cloud Shell result 2026-11-01: updated CREDIT NOTE / CREDIT NORTE date-suffix matching synthetic QA passed; latest real export manifest SBI_CREDIT_NOTE_ALL_INVOICES_20261101T095332180884Z.json exists, RELEASE_STATUS=REVIEW_REQUIRED. Updated counts and conflicting rows not yet provided; do not label production-ready.",
+      "evidence": "2026-11-01 actual Firestore CREDIT NOTE export: 14,374 baseline invoice rows, 0 completed imports read, 1,009 observed unique CREDIT NOTE invoice numbers, 1,004 unambiguous, five invoice-number conflicts: MXP/2025-2026-04 (report rows 10873/10469), MXP10092 (4723/4724), MXP10565 (5139/5137), MXP10566 (5138/5140), MXP9014 (3797/3785). Original database unchanged; release_status REVIEW_REQUIRED. Approved Column U substring matching CREDIT NOTE or CREDIT NORTE incl extra dates/remarks, output Column R per row.",
       "requirement": {
         "scope": "ALL invoices in the approved original 53-column invoice database plus completed legitimate imports",
         "source": "Original payment received field Column U (index 20) named Payment Received ( If With GST or Excluding GST)",
@@ -97,7 +97,15 @@
             "original_column_u": "PAID",
             "report_column_r": ""
           }
-        ]
+        ],
+        "real_report_manifest": "reports/credit_note/SBI_CREDIT_NOTE_ALL_INVOICES_20261101T095332180884Z.json",
+        "last_verified_counts": {
+          "all_rows": 14374,
+          "observed_unique_credit_note": 1009,
+          "unambiguous_unique_credit_note": 1004,
+          "conflicts": 5,
+          "completed_import_rows": 0
+        }
       }
     },
     {
