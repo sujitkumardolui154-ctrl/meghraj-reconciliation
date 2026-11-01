@@ -1,0 +1,25 @@
+name: SBI Agent Connection Test
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  verify-connection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: meghraj-reconciliation
+          workload_identity_provider: projects/109590290120/locations/global/workloadIdentityPools/sbi-github-pool/providers/github-oidc
+          service_account: sbi-staging-agent@meghraj-reconciliation.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: Verify keyless identity only
+        run: |
+          gcloud auth print-access-token > /dev/null
+          echo "GITHUB_CLOUD_CONNECTION=PASS"
+          echo "FINANCIAL_EXECUTION=RESTRICTED"
+          echo "DEPLOYMENT=NOT_REQUESTED"
