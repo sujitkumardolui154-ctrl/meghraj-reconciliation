@@ -75,6 +75,26 @@ class AWSStagingReleaseContractTests(unittest.TestCase):
         self.assertIn('ROLLBACK_RESULT=FAIL', script)
         self.assertIn('127.0.0.1:18082:8080', script)
 
+    def test_executor_version_handshake_is_read_only(self):
+        executor = AWS / "sbi_stage_deploy_root.sh"
+        proc = subprocess.run(
+            ["bash", str(executor)], input="status\n",
+            capture_output=True, text=True, check=False, timeout=5,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("SBI_STAGE_EXECUTOR=PREVIEW_AUTH_V1", proc.stdout)
+        self.assertIn("FINANCIAL_WRITES=DISABLED", proc.stdout)
+        self.assertNotIn("REQUESTED_RELEASE_SHA", proc.stdout)
+        handler = (AWS / "sbi_stage_request.sh").read_text(encoding="utf-8")
+        self.assertIn('"status-auth-v1"', handler)
+        self.assertIn("printf 'status\\n' | sudo -n /usr/local/sbin/sbi-stage-deploy", handler)
+
+    def test_workflow_blocks_old_executor_before_release(self):
+        workflow = (ROOT / ".github/workflows/sbi-aws-staging-release-request.yml").read_text()
+        self.assertIn("status-auth-v1", workflow)
+        self.assertIn("SBI_STAGE_EXECUTOR=PREVIEW_AUTH_V1", workflow)
+        self.assertLess(workflow.index("status-auth-v1"), workflow.index('"deploy $SHA"'))
+
     def test_auth_env_helper_allows_only_existing_preview_login(self):
         helper = AWS / "preview_auth_env.py"
         ast.parse(helper.read_text(encoding="utf-8"))
