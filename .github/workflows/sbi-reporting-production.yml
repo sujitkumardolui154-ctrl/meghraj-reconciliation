@@ -63,6 +63,7 @@ jobs:
           python -m unittest discover -s tests -p 'test_credit_note_auth_contract.py' -v
           python -m unittest discover -s tests -p 'test_credit_note_snapshot_integrity.py' -v
           python -m unittest discover -s tests -p 'test_import_receipt_audit.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_r2_read_only_audit.py' -v
 
   promote-verified-reporting:
     name: Automatically promote approved reporting canary only
