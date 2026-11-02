@@ -87,7 +87,7 @@ class AWSStagingReleaseContractTests(unittest.TestCase):
         self.assertNotIn("REQUESTED_RELEASE_SHA", proc.stdout)
         handler = (AWS / "sbi_stage_request.sh").read_text(encoding="utf-8")
         self.assertIn('"status-auth-v1"', handler)
-        self.assertIn("printf 'status\\n' | sudo -n /usr/local/sbin/sbi-stage-deploy", handler)
+        self.assertIn("printf 'status\n' | sudo -n /usr/local/sbin/sbi-stage-deploy", handler)
 
     def test_workflow_blocks_old_executor_before_release(self):
         workflow = (ROOT / ".github/workflows/sbi-aws-staging-release-request.yml").read_text()
