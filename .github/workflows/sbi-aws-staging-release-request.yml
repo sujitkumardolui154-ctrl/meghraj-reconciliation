@@ -13,8 +13,9 @@ concurrency:
   cancel-in-progress: false
 jobs:
   request-staging:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     environment: sbi-staging
     steps:
       - name: Validate release SHA and restricted deployment prerequisites
@@ -38,4 +39,4 @@ jobs:
           ssh -i "$HOME/.ssh/stage_key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
             -o IdentitiesOnly=yes -o ConnectTimeout=10 \
             "sbi-deployer@$DEPLOY_HOST" "deploy $SHA"
-          echo 'STAGING_RELEASE_REQUEST_SENT=PASS'
+          echo 'STAGING_RELEASE_REMOTE_EXIT=PASS'
