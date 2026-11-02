@@ -117,18 +117,29 @@ def audit_import_receipts(receipts, imported_rows, report_manifest):
 
 
 def audit_firestore_v140(db, report_manifest):
-    """Read-only full receipt collection + strict source row reader.
+    """Read raw receipts and ALL raw import rows, not report-filtered rows.
 
-    Raises on Firestore failures rather than manufacturing a PASS.
-    Application code must not swallow partial/failed reads.
+    Completed-import readers intentionally omit nonfinal receipt rows. Using
+    that filtered projection here could hide orphaned or partly applied rows
+    and incorrectly certify an empty import ledger. Read both collections
+    directly, bounded and without writes. Values/identifiers never leave
+    this function; the downstream verifier receives receipt IDs only.
     """
-    from report_api import completed_import_rows
-
-    docs = db.collection("dashboard_import_receipts_v140").get(
+    receipt_docs = db.collection("dashboard_import_receipts_v140").get(
         timeout=60, retry=None
     )
-    if len(docs) > 20000:
-        raise ValueError("Import receipt audit review limit exceeded")
-    receipts = [(doc.id, doc.to_dict()) for doc in docs]
-    imported_rows = completed_import_rows(db)
+    raw_import_docs = db.collection("dashboard_invoice_rows_v140").get(
+        timeout=60, retry=None
+    )
+    if len(receipt_docs) > 20000 or len(raw_import_docs) > 20000:
+        raise ValueError("Import audit collection review limit exceeded")
+    receipts = [(doc.id, doc.to_dict()) for doc in receipt_docs]
+    imported_rows = []
+    for doc in raw_import_docs:
+        row = doc.to_dict()
+        imported_rows.append({
+            "import_receipt": (
+                row.get("import_receipt") if isinstance(row, dict) else None
+            ),
+        })
     return audit_import_receipts(receipts, imported_rows, report_manifest)
