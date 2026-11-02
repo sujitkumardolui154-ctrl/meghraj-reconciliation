@@ -1,0 +1,29 @@
+name: Private migration safety (synthetic only)
+on:
+  push:
+    branches: ['migration/**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check committed paths and suspicious content
+        shell: bash
+        run: |
+          python3 migration/check_public_tree.py
+      - name: Syntax-check migration scripts
+        shell: bash
+        run: |
+          python3 -m py_compile migration/check_public_tree.py
+      - name: Prohibit cloud credentials for CI
+        run: |
+          echo 'CI_MODE=SYNTHETIC_READ_ONLY'
+          echo 'FINANCIAL_EXECUTION=DISABLED'
+          echo 'GOOGLE_CLOUD_DEPLOYMENT=DISABLED'
