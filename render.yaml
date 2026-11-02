@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: sbi-reconciliation-preview
+    runtime: docker
+    branch: render/public-login-preview-20261102
+    rootDir: staging/railway_public
+    dockerfilePath: ./Dockerfile
+    plan: free
+    autoDeployTrigger: off
+    healthCheckPath: /healthz
+    envVars:
+      - key: PREVIEW_USERNAME
+        sync: false
+      - key: PREVIEW_PASSWORD
+        sync: false

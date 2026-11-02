@@ -1,0 +1,9 @@
+{$SITE_DOMAIN} {
+    encode gzip
+    reverse_proxy sbi-preview:8080
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        X-Frame-Options DENY
+    }
+}

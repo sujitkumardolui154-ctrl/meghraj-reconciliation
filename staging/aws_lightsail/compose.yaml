@@ -1,0 +1,30 @@
+services:
+  sbi-preview:
+    build:
+      context: ../railway_public
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    expose:
+      - "8080"
+    networks: [private_web]
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?Set SITE_DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [sbi-preview]
+    networks: [private_web]
+networks:
+  private_web:
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,24 @@
+name: Railway preview safety checks
+on:
+  push:
+    branches: ['railway/public-login-staging-20261102']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preview-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r staging/railway_public/requirements.txt
+      - run: python -m unittest -v test_app
+        working-directory: staging/railway_public
+      - name: Ensure no automatic external deployment
+        run: echo 'RAILWAY_DEPLOYMENT=MANUAL; GOOGLE_CLOUD_PRODUCTION=UNCHANGED'
