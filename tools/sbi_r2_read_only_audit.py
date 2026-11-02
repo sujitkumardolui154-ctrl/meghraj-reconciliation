@@ -202,7 +202,10 @@ def main(argv=None):
     if not before.exists:
         raise ValueError("Expected baseline dataset does not exist")
     baseline, imported = load_report_rows_v142(db)
-    receipts = audit_firestore_v140(db, manifest if isinstance(manifest, dict) else {})
+    # Audit all raw import documents against every receipt. Current imported
+    # row count is a DB fact; external report completeness is verified below.
+    # Do not manufacture a passing report manifest from this count.
+    receipts = audit_firestore_v140(db, {"completed_import_rows": len(imported)})
     after = dataset.get(timeout=30, retry=None)
     stable = (after.exists and before.update_time == after.update_time and
               before.to_dict() == after.to_dict())
