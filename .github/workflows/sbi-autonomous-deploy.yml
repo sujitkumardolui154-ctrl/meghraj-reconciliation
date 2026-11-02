@@ -1,7 +1,7 @@
 name: SBI Autonomous Staging Deployment
 on:
   pull_request:
-    branches: [automation/sbi-deployment-agent-v1]
+    branches: [main, automation/sbi-deployment-agent-v1]
   push:
     branches: [main]
   workflow_dispatch:
