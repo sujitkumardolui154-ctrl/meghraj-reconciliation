@@ -97,7 +97,7 @@ class AWSStagingReleaseContractTests(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(dest.stat().st_mode), 0o600)
             self.assertEqual(
                 dest.read_text(),
-                "PREVIEW_USERNAME=stage-reviewer\\nPREVIEW_PASSWORD=" + password + "\\n",
+                "PREVIEW_USERNAME=stage-reviewer\nPREVIEW_PASSWORD=" + password + "\n",
             )
             self.assertNotIn("synthetic-never-copy", dest.read_text())
             self.assertNotIn(password, proc.stdout + proc.stderr)
@@ -111,7 +111,7 @@ class AWSStagingReleaseContractTests(unittest.TestCase):
             ["PREVIEW_USERNAME=reviewer", "PREVIEW_PASSWORD=short"],
             ["PREVIEW_USERNAME=reviewer", "PREVIEW_USERNAME=other",
              "PREVIEW_PASSWORD=" + valid_password],
-            ["PREVIEW_USERNAME=reviewer", "PREVIEW_PASSWORD=" + valid_password + "\\nother"],
+            ["PREVIEW_USERNAME=reviewer", "PREVIEW_PASSWORD=" + valid_password + "\nother"],
             ["PREVIEW_USERNAME=bad:username", "PREVIEW_PASSWORD=" + valid_password],
         )
         with tempfile.TemporaryDirectory() as directory:
