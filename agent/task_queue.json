@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "project": "meghraj-reconciliation",
   "source": "Owner-submitted 42-item checklist; checklist ticks are not deployment evidence",
   "policy": {
@@ -536,6 +536,500 @@
       "execution": "in_progress",
       "approval_gate": "standard",
       "evidence": "Step 18 synthetic chatbot and CREDIT NOTE private staging smoke checks passed; full regression, main app integration and release review pending"
+    },
+    {
+      "id": "G01",
+      "category": "G — UI/UX Engineering",
+      "title": "Responsive mobile layout and accessibility",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E02"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "G02",
+      "category": "G — UI/UX Engineering",
+      "title": "Functional navigation and dashboard cards",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E02"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "G03",
+      "category": "G — UI/UX Engineering",
+      "title": "Account state, logout and error UX",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E02"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "G04",
+      "category": "G — UI/UX Engineering",
+      "title": "Read-only report UI and provenance",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E02"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "G05",
+      "category": "G — UI/UX Engineering",
+      "title": "Database preview disabled-state controls",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E02"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "H01",
+      "category": "H — AI Development Automation",
+      "title": "Improvement agent source delta checks and fixes",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "F07"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "H02",
+      "category": "H — AI Development Automation",
+      "title": "Agent state, pause controls and task deduplication",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "F07"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "H03",
+      "category": "H — AI Development Automation",
+      "title": "GitHub reviewed draft PR automation",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "F07"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "H04",
+      "category": "H — AI Development Automation",
+      "title": "Chatbot knowledge refresh and evaluation",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "F07"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "H05",
+      "category": "H — AI Development Automation",
+      "title": "Agent dashboard and checkpoints",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "F07"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "I01",
+      "category": "I — Performance & Caching",
+      "title": "Bounded concurrency and report job queues",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E05"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "I02",
+      "category": "I — Performance & Caching",
+      "title": "Idempotency, retry and rate limits",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E05"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "I03",
+      "category": "I — Performance & Caching",
+      "title": "Cache keys, invalidation and token efficiency",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E05"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "I04",
+      "category": "I — Performance & Caching",
+      "title": "Synthetic concurrency, p95 latency and memory QA",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E05"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "J01",
+      "category": "J — GitHub DevOps & CI/CD",
+      "title": "Source-to-deployment provenance and SHA",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E06"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "J02",
+      "category": "J — GitHub DevOps & CI/CD",
+      "title": "Change-scoped QA and CI reuse",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E06"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "J03",
+      "category": "J — GitHub DevOps & CI/CD",
+      "title": "Secrets and branch protection checks",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E06"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "J04",
+      "category": "J — GitHub DevOps & CI/CD",
+      "title": "Release manifest, rollback and evidence",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E06"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "J05",
+      "category": "J — GitHub DevOps & CI/CD",
+      "title": "Stale image rollback correction",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E06"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "K01",
+      "category": "K — AWS Migration & Hosting",
+      "title": "Protected HTTPS and private containers",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E08"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "K02",
+      "category": "K — AWS Migration & Hosting",
+      "title": "Secure backend/read-only report integration",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E08"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "K03",
+      "category": "K — AWS Migration & Hosting",
+      "title": "Supervisor monitoring connection",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E08"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "K04",
+      "category": "K — AWS Migration & Hosting",
+      "title": "Migration inventory and cost controls",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E08"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "K05",
+      "category": "K — AWS Migration & Hosting",
+      "title": "Health, logs and rollback verification",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E08"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "L01",
+      "category": "L — Data Intelligence & Branch Matching",
+      "title": "SOL master aliases and collisions",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "D02"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "L02",
+      "category": "L — Data Intelligence & Branch Matching",
+      "title": "MXP GST matching audit",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "D02"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "L03",
+      "category": "L — Data Intelligence & Branch Matching",
+      "title": "Invoice keys and GST exception review",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "D02"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "L04",
+      "category": "L — Data Intelligence & Branch Matching",
+      "title": "53-column original source validation",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "D02"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "M01",
+      "category": "M — Audit, Compliance & Security",
+      "title": "Authenticated RBAC and session lifecycle",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E03"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "M02",
+      "category": "M — Audit, Compliance & Security",
+      "title": "Least-privileged backend access",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E03"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "M03",
+      "category": "M — Audit, Compliance & Security",
+      "title": "Immutable user/time change receipts",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E03"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "M04",
+      "category": "M — Audit, Compliance & Security",
+      "title": "Credential rotation and secrets checks",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E03"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "M05",
+      "category": "M — Audit, Compliance & Security",
+      "title": "Allowed/denied E2E and restore evidence",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "E03"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "N01",
+      "category": "N — Release Governance",
+      "title": "Unified A-N backlog with related A-F IDs",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "D08"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "N02",
+      "category": "N — Release Governance",
+      "title": "Requirement acceptance before coding",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "D08"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "N03",
+      "category": "N — Release Governance",
+      "title": "Deduplicate tasks and unchanged tests",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "D08"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "N04",
+      "category": "N — Release Governance",
+      "title": "Release A AWS, B reporting, C finance",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "D08"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "N05",
+      "category": "N — Release Governance",
+      "title": "Production label tied to certified evidence",
+      "user_checklist": "new_requirement",
+      "verification": "not_verified",
+      "execution": "pending",
+      "approval_gate": "standard",
+      "related_existing_tasks": [
+        "D08"
+      ],
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
     }
   ],
   "audit_metadata": {
@@ -546,5 +1040,12 @@
     "production_release": "NOT_READY",
     "real_financial_execution": "RESTRICTED",
     "total_selected_tasks": 50
+  },
+  "extension": {
+    "base_count": 50,
+    "added_count": 38,
+    "release_status": "DESIGN_PREPARED",
+    "finance_release": "RESTRICTED",
+    "test_policy": "reuse unchanged SHA-bound results; run relevant safety checks when changed"
   }
 }
