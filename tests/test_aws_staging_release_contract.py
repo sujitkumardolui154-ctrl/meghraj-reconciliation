@@ -21,6 +21,7 @@ SCRIPTS = (
     "install_stage_executor.sh",
     "configure_gh_stage_secrets.sh",
     "staging_release_guarded.sh",
+    "upgrade_stage_executor.sh",
 )
 
 
@@ -187,6 +188,31 @@ class AWSStagingReleaseContractTests(unittest.TestCase):
 
     def test_docs_only_does_not_trigger_redundant_full_qa(self):
         self.assertEqual(choose_tests(["docs/release-notes.md"], False), [])
+
+
+    def test_reviewed_executor_upgrade_requires_current_main_and_exact_source(self):
+        upgrade = (AWS / "upgrade_stage_executor.sh").read_text(encoding="utf-8")
+        self.assertIn('[[ "$(git -C "$ROOT" rev-parse HEAD)" == "$SHA" ]]', upgrade)
+        self.assertIn('git -C "$ROOT" ls-remote origin refs/heads/main', upgrade)
+        self.assertIn('[[ "$REMOTE_MAIN" == "$SHA" ]]', upgrade)
+        self.assertIn('git -C "$ROOT" show "$SHA:$rel" | cmp -s', upgrade)
+        self.assertIn('flock -n 9', upgrade)
+        self.assertIn('visudo -cf /etc/sudoers', upgrade)
+        self.assertIn('restrict,command="/usr/local/bin/sbi-stage-request"', upgrade)
+
+    def test_executor_upgrade_has_rollback_and_non_deploying_handshake(self):
+        upgrade = (AWS / "upgrade_stage_executor.sh").read_text(encoding="utf-8")
+        self.assertIn('trap finish EXIT', upgrade)
+        self.assertIn('UPGRADE_ROLLBACK=PASS', upgrade)
+        self.assertIn('UPGRADE_ROLLBACK=FAIL', upgrade)
+        self.assertIn('runuser -u sbi-deployer -- env SSH_ORIGINAL_COMMAND=status-auth-v1', upgrade)
+        self.assertIn('SBI_STAGE_EXECUTOR=PREVIEW_AUTH_V1', upgrade)
+        self.assertIn('DEPLOYMENT_TRIGGERED=NO', upgrade)
+        self.assertIn('BACKUP_PRESERVED=YES', upgrade)
+        for forbidden in ("docker run", "docker rm", "docker build",
+                          "gcloud run deploy", "gh secret set", "caddy reload"):
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, upgrade)
 
 
 if __name__ == "__main__":
