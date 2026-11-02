@@ -23,6 +23,7 @@ TESTS = (
     ("import_receipts", "test_import_receipt_audit.py"),
     ("credit_note_auth", "test_credit_note_auth_contract.py"),
     ("credit_note_snapshot", "test_credit_note_snapshot_integrity.py"),
+    ("aws_staging_contract", "test_aws_staging_release_contract.py"),
 )
 
 
@@ -67,7 +68,8 @@ def changed_files(base: str | None) -> list[str]:
 def choose_tests(files: list[str], force_full: bool) -> list[tuple[str, str]]:
     if force_full or not files:
         return list(TESTS)
-    if any(f.startswith(("agent/", ".github/", "deployment/")) for f in files):
+    # Deployment and staging changes affect the release boundary; never skip QA.
+    if any(f.startswith(("agent/", ".github/", "deployment/", "staging/", "migration/")) for f in files):
         return list(TESTS)
     selected = set()
     for file in files:
@@ -79,6 +81,9 @@ def choose_tests(files: list[str], force_full: bool) -> list[tuple[str, str]]:
             selected.add("credit_note_auth")
         if any(x in file for x in ("credit", "report", "snapshot")):
             selected.add("credit_note_snapshot")
+    if not selected and not all(f.startswith("docs/") or f.endswith(".md") for f in files):
+        # Unknown source paths are not proof that tests are unnecessary.
+        return list(TESTS)
     return [item for item in TESTS if item[0] in selected]
 
 
