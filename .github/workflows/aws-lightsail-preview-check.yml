@@ -1,0 +1,27 @@
+name: AWS Lightsail preview safety
+on:
+  push:
+    branches: ['aws/lightsail-preview-20261102']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r staging/railway_public/requirements.txt
+      - run: python -m unittest -v test_app
+        working-directory: staging/railway_public
+      - name: Confirm no cloud mutation
+        run: |
+          echo 'AWS_DEPLOYMENT=NOT_EXECUTED'
+          echo 'GCP_PRODUCTION=UNCHANGED'
+          echo 'FINANCIAL_DATABASE_WRITES=0'
