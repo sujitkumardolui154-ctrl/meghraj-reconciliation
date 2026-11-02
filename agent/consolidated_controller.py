@@ -87,6 +87,37 @@ def choose_tests(files: list[str], force_full: bool) -> list[tuple[str, str]]:
     return [item for item in TESTS if item[0] in selected]
 
 
+def run_contract_test(name: str, filename: str, timeout_seconds: int = 240) -> dict:
+    """Run a synthetic contract suite; always return auditable failure evidence.
+
+    A hung or unlaunchable suite must not prevent the controller from writing
+    the consolidated QA receipt or be mistaken for a successful release.
+    """
+    test_path = ROOT / "tests" / filename
+    if not test_path.is_file():
+        return {"name": name, "result": "MISSING", "exit_code": None,
+                "log_tail": "Required contract suite is missing"}
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-m", "unittest", "discover", "-s", "tests",
+             "-p", filename, "-v"],
+            cwd=ROOT, capture_output=True, text=True,
+            timeout=timeout_seconds, check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return {"name": name, "result": "TIMEOUT", "exit_code": 124,
+                "log_tail": f"Contract suite exceeded {timeout_seconds}s"}
+    except OSError as exc:
+        return {"name": name, "result": "ERROR", "exit_code": None,
+                "log_tail": f"Contract suite could not start ({type(exc).__name__})"}
+    return {
+        "name": name,
+        "result": "PASS" if proc.returncode == 0 else "FAIL",
+        "exit_code": proc.returncode,
+        "log_tail": (proc.stdout + proc.stderr)[-2500:],
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base", help="review base ref for change-scoped tests")
@@ -109,21 +140,7 @@ def main() -> int:
     })
     if args.run_tests:
         for name, filename in selected:
-            test_path = ROOT / "tests" / filename
-            if not test_path.is_file():
-                report["test_results"].append({"name": name, "result": "MISSING"})
-                continue
-            proc = subprocess.run(
-                [sys.executable, "-m", "unittest", "discover", "-s", "tests",
-                 "-p", filename, "-v"],
-                cwd=ROOT, capture_output=True, text=True, timeout=240,
-                check=False,
-            )
-            report["test_results"].append({
-                "name": name, "result": "PASS" if proc.returncode == 0 else "FAIL",
-                "exit_code": proc.returncode,
-                "log_tail": (proc.stdout + proc.stderr)[-2500:],
-            })
+            report["test_results"].append(run_contract_test(name, filename))
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n",
