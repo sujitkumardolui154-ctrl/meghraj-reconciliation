@@ -45,6 +45,8 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_credit_note_auth_contract.py' -v
       - name: Verify CREDIT NOTE snapshot count and conflict integrity
         run: python -m unittest discover -s tests -p 'test_credit_note_snapshot_integrity.py' -v
+      - name: Verify R2 dataset and report audit safety (synthetic, read-only)
+        run: python -m unittest discover -s tests -p 'test_sbi_r2_read_only_audit.py' -v
       - name: Check candidate prerequisites
         id: readiness
         shell: bash
