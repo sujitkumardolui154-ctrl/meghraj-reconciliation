@@ -27,10 +27,10 @@ class AgenticGateTests(unittest.TestCase):
         self.assertIn("credit_note_auth", names)
 
     def test_shared_agent_change_triggers_all(self):
-        self.assertEqual(len(choose_tests(["agent/task_queue.json"], False)), 4)
+        self.assertEqual(len(choose_tests(["agent/task_queue.json"], False)), 5)
 
     def test_no_fabricated_release(self):
-        self.assertEqual(len(choose_tests([], False)), 4)
+        self.assertEqual(len(choose_tests([], False)), 5)
 
 if __name__ == "__main__":
     unittest.main()
