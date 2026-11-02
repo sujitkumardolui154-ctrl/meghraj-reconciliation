@@ -75,6 +75,17 @@ class AWSStagingReleaseContractTests(unittest.TestCase):
         self.assertIn('ROLLBACK_RESULT=FAIL', script)
         self.assertIn('127.0.0.1:18082:8080', script)
 
+    def test_executor_rejects_unterminated_trailing_input(self):
+        executor = AWS / "sbi_stage_deploy_root.sh"
+        for request in ("status\nunexpected", "a" * 40 + "\nunexpected"):
+            with self.subTest(request=request[:8]):
+                result = subprocess.run(
+                    ["bash", str(executor)], input=request,
+                    capture_output=True, text=True, check=False, timeout=5,
+                )
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("ERROR: extra input rejected", result.stdout + result.stderr)
+
     def test_executor_version_handshake_is_read_only(self):
         executor = AWS / "sbi_stage_deploy_root.sh"
         proc = subprocess.run(
