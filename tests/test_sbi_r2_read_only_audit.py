@@ -48,7 +48,7 @@ def evidence():
         "dataset_id": DATASET, "source_sha256": SOURCE_SHA,
         "baseline_rows": 2, "completed_import_rows": 0,
         "all_invoice_rows": 2, "full_schema_columns": 53,
-        "report_columns": 18, "release_status": "READY",
+        "report_columns": 18, "release_status": "PASSED",
         "report_sha256": hashlib.sha256(data).hexdigest(),
     }
     receipts = {
