@@ -11,6 +11,13 @@ files = subprocess.check_output(
 ).decode("utf-8", errors="replace").split("\0")
 bad_suffix = (".xlsx", ".xls", ".csv", ".sqlite", ".db", ".pem", ".p12", ".key", ".env", ".zip", ".jsonl")
 bad_names = ("credentials", "service-account", "firebase-adminsdk", "firestore", "invoice_details", "payment_received", "private-audits")
+# Exact reviewed source filenames are not private exports; still scan content.
+REVIEWED_FIRESTORE_SOURCE = frozenset({
+    "backend_source/sbi_credit_firestore_all_v2.py",
+    "backend_source/sbi_firestore_contract_v5.py",
+    "backend_source/sbi_firestore_credit_live.py",
+    "tools/sbi_batch8_firestore_pagination.sh",
+})
 patterns = [
     re.compile(rb"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
     re.compile(rb"(?i)(?:api[_-]?key|client[_-]?secret|access[_-]?token)\s*[:=]\s*['\"][^'\"]{12,}"),
@@ -21,7 +28,7 @@ for rel in files:
         continue
     p = ROOT / rel
     lower = rel.lower()
-    if lower.endswith(bad_suffix) or any(x in lower for x in bad_names):
+    if lower.endswith(bad_suffix) or (any(x in lower for x in bad_names) and rel not in REVIEWED_FIRESTORE_SOURCE):
         issues.append((rel, "blocked filename or extension"))
         continue
     if not p.is_file() or p.stat().st_size > 2_000_000:
