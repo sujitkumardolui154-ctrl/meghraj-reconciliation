@@ -1,0 +1,43 @@
+name: SBI Consolidated Agent Controller
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */6 * * *'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: sbi-agent-controller-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  task-and-qa-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate agent controller
+        run: python -m unittest discover -s tests -p test_consolidated_controller.py -v
+      - name: Run consolidated safety contract tests
+        run: python agent/consolidated_controller.py --run-tests --full-tests --output /tmp/sbi-agentic-gate.json
+      - name: Publish auditable results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbi-agentic-gate
+          path: /tmp/sbi-agentic-gate.json
+          if-no-files-found: warn
+      - name: Financial release remains restricted
+        run: |
+          echo 'AUTONOMOUS_CODING=NOT_CONFIGURED'
+          echo 'FINANCIAL_WRITES=DISABLED'
+          echo 'TRAFFIC_PROMOTION=DISABLED'
