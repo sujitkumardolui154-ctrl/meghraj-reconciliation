@@ -120,7 +120,7 @@ def evaluate(baseline, imported, metadata, headers, receipt_audit, *,
         if any(type(report_manifest.get(key)) is not type(val) or
                report_manifest.get(key) != val for key, val in checks.items()):
             reject("PRIVATE_REPORT_MANIFEST_MISMATCH")
-        if report_manifest.get("release_status") != "READY":
+        if report_manifest.get("release_status") != "PASSED":
             reject("CREDIT_NOTE_REPORT_REQUIRES_REVIEW")
         expected_digest = report_manifest.get("report_sha256")
         if not isinstance(expected_digest, str) or not SHA_RE.fullmatch(expected_digest):
