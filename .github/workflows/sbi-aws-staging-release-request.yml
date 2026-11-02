@@ -36,6 +36,14 @@ jobs:
           chmod 600 "$HOME/.ssh/known_hosts"
           # The destination authorized_keys must force a single root-owned,
           # allowlisted staging-release request. Never execute arbitrary shell commands.
+          # Old installed executors do not preserve login credentials.
+          # Verify the new root executor via restricted SSH before deploying.
+          STATUS="$(ssh -i "$HOME/.ssh/stage_key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            -o IdentitiesOnly=yes -o ConnectTimeout=10 \
+            "sbi-deployer@$DEPLOY_HOST" "status-auth-v1")"
+          grep -Fxq 'SBI_STAGE_EXECUTOR=PREVIEW_AUTH_V1' <<< "$STATUS" || {
+            echo 'BLOCKED: AWS executor login-preservation upgrade not verified'; exit 2;
+          }
           ssh -i "$HOME/.ssh/stage_key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
             -o IdentitiesOnly=yes -o ConnectTimeout=10 \
             "sbi-deployer@$DEPLOY_HOST" "deploy $SHA"
