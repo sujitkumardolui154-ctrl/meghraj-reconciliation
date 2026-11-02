@@ -10,13 +10,15 @@ IFS= read -r SHA || { echo "ERROR: release SHA missing"; exit 2; }
 # Read-only capability handshake. The GitHub workflow refuses older executors
 # before attempting any staging replacement.
 if [[ "$SHA" == "status" ]]; then
-  if IFS= read -r extra; then echo "ERROR: extra input rejected"; exit 2; fi
+  extra=""
+  if IFS= read -r extra || [[ -n "$extra" ]]; then echo "ERROR: extra input rejected"; exit 2; fi
   echo "SBI_STAGE_EXECUTOR=PREVIEW_AUTH_V1"
   echo "FINANCIAL_WRITES=DISABLED"
   exit 0
 fi
 [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "ERROR: invalid release SHA"; exit 2; }
-if IFS= read -r extra; then
+extra=""
+if IFS= read -r extra || [[ -n "$extra" ]]; then
   echo "ERROR: extra input rejected"; exit 2
 fi
 exec 9>/run/lock/sbi-stage-release.lock
