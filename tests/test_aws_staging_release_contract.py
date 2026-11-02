@@ -106,6 +106,14 @@ class AWSStagingReleaseContractTests(unittest.TestCase):
         self.assertIn("SBI_STAGE_EXECUTOR=PREVIEW_AUTH_V1", workflow)
         self.assertLess(workflow.index("status-auth-v1"), workflow.index('"deploy $SHA"'))
 
+    def test_manual_release_reuses_single_version_gated_executor(self):
+        wrapper = (AWS / "staging_release_guarded.sh").read_text(encoding="utf-8")
+        self.assertIn("SBI_STAGE_EXECUTOR=PREVIEW_AUTH_V1", wrapper)
+        self.assertIn('sudo -n /usr/local/sbin/sbi-stage-deploy', wrapper)
+        self.assertNotIn("docker run", wrapper)
+        self.assertNotIn("docker rm", wrapper)
+        self.assertLess(wrapper.index("STATUS="), wrapper.index('echo "FINANCIAL_WRITES=DISABLED"'))
+
     def test_auth_env_helper_allows_only_existing_preview_login(self):
         helper = AWS / "preview_auth_env.py"
         ast.parse(helper.read_text(encoding="utf-8"))
