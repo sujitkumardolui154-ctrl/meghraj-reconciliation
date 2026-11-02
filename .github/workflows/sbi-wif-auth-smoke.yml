@@ -1,0 +1,56 @@
+name: SBI Production Identity Authentication Smoke (No Deployment)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: sbi-wif-auth-only
+  cancel-in-progress: false
+
+jobs:
+  verify-production-identity:
+    name: Check GitHub OIDC impersonation only
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.repository == 'sujitkumardolui154-ctrl/meghraj-reconciliation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: sbi-production
+
+    steps:
+      - name: Verify expected GitHub environment and identity
+        shell: bash
+        env:
+          DEPLOY_SA: ${{ vars.SBI_PRODUCTION_DEPLOY_SA }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "sujitkumardolui154-ctrl/meghraj-reconciliation"
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$GITHUB_EVENT_NAME" = "workflow_dispatch"
+          test "$DEPLOY_SA" = "sbi-reporting-deployer@meghraj-reconciliation.iam.gserviceaccount.com"
+          echo "IDENTITY_SCOPE=PASS"
+
+      - name: Authenticate with short-lived GCP token
+        id: gcp_auth
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: meghraj-reconciliation
+          workload_identity_provider: projects/109590290120/locations/global/workloadIdentityPools/sbi-github-pool/providers/github-oidc
+          service_account: ${{ vars.SBI_PRODUCTION_DEPLOY_SA }}
+          token_format: access_token
+          access_token_lifetime: 300s
+          create_credentials_file: false
+
+      - name: Verify token issuance without disclosing token
+        shell: bash
+        env:
+          ACCESS_TOKEN: ${{ steps.gcp_auth.outputs.access_token }}
+        run: |
+          set -euo pipefail
+          test -n "$ACCESS_TOKEN"
+          echo "GCP_WIF_IMPERSONATION=PASS"
+          echo "CLOUD_RUN_DEPLOYMENT=NOT_ATTEMPTED"
+          echo "PRODUCTION_TRAFFIC=UNCHANGED"
+          echo "FINANCIAL_EXECUTION=RESTRICTED"
