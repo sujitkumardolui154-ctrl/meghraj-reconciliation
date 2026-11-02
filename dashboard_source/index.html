@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DIL SBI Reconciliation Dashboard</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#0b1220;color:#eaf1ff}
+header{padding:24px;background:#15223a;border-bottom:1px solid #34435c}
+h1{margin:0;font-size:25px}
+header p{color:#a8b8d0}
+main{max-width:1200px;margin:auto;padding:24px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+.card{background:#17263f;border:1px solid #30445f;border-radius:14px;padding:22px}
+.card h2{font-size:17px;margin-top:0}
+.status{display:inline-block;padding:7px 12px;border-radius:20px;font-size:12px;background:#39465b}
+.good{background:#145c43;color:#a9f5d0}
+.warn{background:#765018;color:#ffe4a0}
+.bad{background:#702d37;color:#ffd1d6}
+a{color:#83c5ff}
+button{background:#2879d5;color:white;border:0;border-radius:8px;padding:11px 18px;cursor:pointer}
+button:hover{background:#3991f3}
+section{margin-top:24px}
+small{color:#9fb1cc}
+</style>
+</head>
+<body>
+<header>
+<h1>Meghraj _ SBI Reconciliation Control Center</h1>
+<p>Google Cloud Project: meghraj-reconciliation</p>
+</header>
+
+<!-- DIL Reports Tab v1.4.2 -->
+<style>
+[hidden]{display:none!important}
+.dil-nav{max-width:1200px;margin:auto;padding:20px 24px 0;display:flex;gap:12px}
+.dil-nav button[aria-pressed="true"]{outline:2px solid #a9d5ff}
+#dil-reports button:disabled{opacity:.5;cursor:not-allowed}
+#dil-report-message{white-space:pre-wrap}
+</style>
+<nav class="dil-nav" aria-label="Dashboard sections">
+<button type="button" id="dil-home-button"
+ aria-controls="dil-home" aria-pressed="true">Dashboard</button>
+<button type="button" id="dil-reports-button"
+ aria-controls="dil-reports" aria-pressed="false">Reports</button>
+
+<button type="button" id="dil-imports-button"
+ aria-controls="dil-imports" aria-pressed="false">Database Update</button>
+</nav>
+<main id="dil-home">
+
+<section class="grid">
+<div class="card">
+<h2>Supervisor</h2>
+<span class="status warn">STATIC BASELINE</span>
+<p>Monitoring API connected; live agent telemetry not connected.</p>
+</div>
+<div class="card">
+<h2>Independent QA</h2>
+<span class="status warn">PENDING</span>
+<p>Q218-D01 and SBISA_NEGATIVE require verification</p>
+</div>
+<div class="card">
+<h2>Builder Agent</h2>
+<span class="status">NOT CONNECTED</span>
+<p>Agent integration pending</p>
+</div>
+<div class="card">
+<h2>Financial Engine</h2>
+<span class="status bad">DISABLED</span>
+<p>Production reconciliation remains blocked</p>
+</div>
+</section>
+
+<section class="card">
+<h2>Backend API Reports</h2>
+<p><small>Protected monitoring reports — accessible through Google IAP authentication.</small></p>
+<div id="links"></div>
+</section>
+
+<section class="card">
+<h2>Dashboard Controls</h2>
+<button onclick="refreshDashboard()">Refresh Dashboard</button>
+<p id="updated">Awaiting refresh</p>
+<p><small>API monitoring refreshes every 30 seconds. Agent telemetry remains demonstration-only.</small></p>
+</section>
+
+<!-- DIL Excel Upload v1.3.0 -->
+<section class="card" id="excel-upload">
+  <h2>Excel Upload — Dashboard v1.3.0</h2>
+  <p>Select one Excel workbook (.xlsx or .xls), maximum 8 MiB.</p>
+  <form id="excel-upload-form">
+    <label for="excel-file">Browse Excel file</label>
+    <input id="excel-file" type="file" accept=".xlsx,.xls"
+           required style="display:block;margin:16px 0;max-width:100%">
+    <button id="excel-upload-button" type="submit">Upload Excel</button>
+  </form>
+  <p id="excel-upload-result" role="status" aria-live="polite">
+    No file uploaded.
+  </p>
+  <small>This upload stores the workbook for validation only. Use the Database Update tab to preview new monthly invoices. Payment reconciliation has not run.</small>
+</section>
+<script>
+(() => {
+  const form = document.getElementById("excel-upload-form");
+  const input = document.getElementById("excel-file");
+  const button = document.getElementById("excel-upload-button");
+  const status = document.getElementById("excel-upload-result");
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const file = input.files[0];
+
+    if (!file || !/\.(xlsx|xls)$/i.test(file.name)) {
+      status.textContent = "Choose an .xlsx or .xls Excel file.";
+      return;
+    }
+    if (!file.size || file.size > 8 * 1024 * 1024) {
+      status.textContent = "Choose a non-empty file up to 8 MiB.";
+      return;
+    }
+
+    button.disabled = true;
+    input.disabled = true;
+    status.textContent = "Uploading — please keep this page open.";
+
+    const body = new FormData();
+    body.append("file", file);
+
+    try {
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {"X-DIL-Upload": "1"},
+        body
+      });
+
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error(
+          "Unexpected server response. Check upload status before retrying."
+        );
+      }
+
+      const receipt = data.receipt ? " Receipt: " + data.receipt : "";
+      if (!response.ok) {
+        throw new Error((data.error || "Upload failed.") + receipt);
+      }
+      if (!data.ok || !data.receipt) {
+        throw new Error(
+          "Upload receipt was not confirmed. Check status before retrying."
+        );
+      }
+
+      status.textContent =
+        "Workbook received." + receipt +
+        " Status: " + data.status +
+        ". Reconciliation has not run.";
+      form.reset();
+    } catch (error) {
+      status.textContent = error instanceof TypeError
+        ? "Connection interrupted. Upload outcome is unknown; check status before retrying."
+        : error.message;
+    } finally {
+      button.disabled = false;
+      input.disabled = false;
+    }
+  });
+})();
+</script>
+
+</main>
+<script>
+const paths = ["health", "qa", "supervisor", "agents"];
+const links = document.getElementById("links");
+
+for (const path of paths) {
+  const row = document.createElement("p");
+  const link = document.createElement("a");
+  link.href = "/api/" + path;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.textContent = "/api/" + path;
+  row.appendChild(link);
+  links.appendChild(row);
+}
+
+async function refreshDashboard() {
+  const indicator = document.getElementById("updated");
+  indicator.textContent = "Requesting monitoring data...";
+  try {
+    await refreshMonitoring();
+    indicator.textContent =
+      "API requests finished: " + new Date().toLocaleString() +
+      " — check panels for endpoint errors";
+  } catch (error) {
+    indicator.textContent = "Refresh error: " + error.message;
+  }
+}
+</script>
+<script src="/dashboard.js" defer></script>
+
+<main id="dil-reports" hidden>
+<section class="card" id="dil-reconciliation-changes" aria-labelledby="dil-change-title">
+  <h2 id="dil-change-title">Reconciliation Changes — Upload Audit</h2>
+  <p>Read-only comparison of each uploaded invoice with its previous Payment Received value. No settlement or database replacement.</p>
+  <label for="dil-change-receipt">Upload receipt ID (32 lowercase hex characters)</label>
+  <input id="dil-change-receipt" maxlength="32" pattern="[a-f0-9]{32}" autocomplete="off" />
+  <button id="dil-change-fetch" type="button">Load change report</button>
+  <p id="dil-change-result" role="status" aria-live="polite">Enter a completed preview receipt.</p>
+  <a id="dil-change-download" hidden>Download detailed CSV</a>
+  <pre id="dil-change-counts" style="white-space:pre-wrap"></pre>
+</section>
+<script>
+(() => {
+  const input=document.getElementById('dil-change-receipt');
+  const msg=document.getElementById('dil-change-result');
+  const counts=document.getElementById('dil-change-counts');
+  const link=document.getElementById('dil-change-download');
+  document.getElementById('dil-change-fetch').addEventListener('click',async()=>{
+    const rid=input.value.trim();link.hidden=true;counts.textContent='';
+    if(!/^[a-f0-9]{32}$/.test(rid)){msg.textContent='Invalid receipt ID';return;}
+    msg.textContent='Loading audited counts…';
+    try {
+      const response=await fetch('/api/reports/reconciliation-changes?receipt='+encodeURIComponent(rid),{cache:'no-store',credentials:'same-origin'});
+      if(!response.ok)throw new Error('Report unavailable (HTTP '+response.status+')');
+      const result=await response.json();
+      if(!result.summary||!result.report_breakdown)throw new Error('Invalid report structure');
+      counts.textContent=JSON.stringify({total:result.total,summary:result.summary,by_existing_report:result.report_breakdown},null,2);
+      link.href='/api/reports/reconciliation-changes.csv?receipt='+encodeURIComponent(rid);
+      link.hidden=false;msg.textContent='Read-only audit loaded. Detailed CSV is available.';
+    } catch(e){msg.textContent=e.message;}
+  });
+})();
+</script>
+
+<h2>Reports <small>— Dashboard v1.4.2</small></h2>
+<p>Reports include the original database snapshot plus new invoices from completed imports. Preview uploads and unfinished imports are excluded. All 53 report headers remain in their original order; model fields absent from the source remain blank.</p>
+<p>Payment reports use the saved Payment Received value: blank or zero goes to Unpaid, non-zero numbers to OK, and invalid values to Error Value. OK does not confirm full payment. Reconciliation has not run.</p>
+<button type="button" id="dil-report-refresh">Refresh report availability</button>
+<p id="dil-report-message" role="status" aria-live="polite">
+Open Reports to check availability.</p>
+<section class="grid">
+<div class="card">
+<h2>Unpaid Invoice Report</h2>
+<p>Invoices where Payment Received (If With GST or Excluding GST) is blank or zero. Positive payments are excluded; invalid values require review.</p>
+<p id="dil-count-unpaid">Not checked</p>
+<button type="button" data-dil-report="unpaid" disabled>Download CSV</button>
+</div>
+<div class="card">
+<h2>OK Report</h2>
+<p>Invoices with a non-zero numeric Payment Received value, including positive or negative amounts. Zero and invalid values are excluded.</p>
+<p id="dil-count-ok">Not checked</p>
+<button type="button" data-dil-report="ok" disabled>Download CSV</button>
+</div>
+<div class="card">
+<h2>Error Value</h2>
+<p>Invoices whose Payment Received value contains alphabetic text,
+mixed letters and numbers, Excel errors or other invalid values.
+Excluded from Unpaid and OK. Download includes complete invoice details.</p>
+<p id="dil-count-error-value">Not checked</p>
+<button type="button" data-dil-report="error-value" disabled>Download CSV</button>
+</div>
+<div class="card">
+<h2>Balance Review Report</h2>
+<p>Missing or invalid saved balances requiring review.</p>
+<p id="dil-count-balance-review">Not checked</p>
+<button type="button" data-dil-report="balance-review" disabled>Download CSV</button>
+</div>
+<div class="card">
+<h2>Login Report</h2>
+<p>Unavailable — authenticated access event logging is not connected yet.</p>
+<button type="button" disabled>Download CSV — pending</button>
+</div>
+<div class="card">
+<h2>Failure Report</h2>
+<p>Unavailable — operational failure event logging is not connected yet.</p>
+<button type="button" disabled>Download CSV — pending</button>
+</div>
+</section>
+<p><small>When importing CSV into Excel, select Text for SOL IDs and invoice
+numbers to preserve leading zeros.</small></p>
+</main>
+
+<script>
+
+(() => {
+  const home = document.getElementById("dil-home");
+  const reports = document.getElementById("dil-reports");
+  const homeButton = document.getElementById("dil-home-button");
+  const reportsButton = document.getElementById("dil-reports-button");
+  const refresh = document.getElementById("dil-report-refresh");
+  const message = document.getElementById("dil-report-message");
+  const buttons = [...document.querySelectorAll("[data-dil-report]")];
+  let ready = new Set();
+  let busy = false;
+
+  function updateButtons() {
+    buttons.forEach(button => {
+      button.disabled = busy || !ready.has(button.dataset.dilReport);
+    });
+    refresh.disabled = busy;
+  }
+
+  async function requestReport(path, format) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 120000);
+    try {
+      const response = await fetch(path, {
+        credentials: "same-origin",
+        cache: "no-store",
+        redirect: "error",
+        signal: controller.signal
+      });
+      if (!response.ok) {
+        throw new Error("Report unavailable (HTTP " + response.status + ").");
+      }
+      const type = response.headers.get("Content-Type") || "";
+      if (!type.toLowerCase().includes(format)) {
+        throw new Error("Unexpected response. Sign in again and retry.");
+      }
+      return format === "application/json"
+        ? await response.json()
+        : await response.blob();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function loadReports() {
+    if (busy) return;
+    busy = true;
+    ready.clear();
+    updateButtons();
+    message.textContent = "Checking database reports...";
+    buttons.forEach(button => {
+      document.getElementById("dil-count-" + button.dataset.dilReport)
+        .textContent = "Checking...";
+    });
+    try {
+      const data = await requestReport("/api/reports", "application/json");
+      if (!data || !data.reports || data.version !== "1.4.2" ||
+          !Number.isSafeInteger(data.completed_import_rows) ||
+          data.completed_import_rows < 0 ||
+          data.reconciliation_executed !== false) {
+        throw new Error("Unexpected report metadata.");
+      }
+      buttons.forEach(button => {
+        const kind = button.dataset.dilReport;
+        const item = data.reports[kind];
+        const label = document.getElementById("dil-count-" + kind);
+        if (item && Number.isSafeInteger(item.rows) && item.rows >= 0) {
+          ready.add(kind);
+          label.textContent = item.rows.toLocaleString() + " rows";
+        } else {
+          label.textContent = "Unavailable";
+        }
+      });
+      message.textContent =
+        "Reports v1.4.2 available. Completed imported invoices: " + data.completed_import_rows.toLocaleString() + ". Reconciliation has not run.";
+    } catch (error) {
+      buttons.forEach(button => {
+        document.getElementById("dil-count-" + button.dataset.dilReport)
+          .textContent = "Unavailable";
+      });
+      message.textContent = error.name === "AbortError"
+        ? "Request timed out. Click Refresh to retry."
+        : error.message;
+    } finally {
+      busy = false;
+      updateButtons();
+    }
+  }
+
+  homeButton.addEventListener("click", () => {
+    home.hidden = false;
+    reports.hidden = true;
+    homeButton.setAttribute("aria-pressed", "true");
+    reportsButton.setAttribute("aria-pressed", "false");
+  });
+
+  reportsButton.addEventListener("click", () => {
+    home.hidden = true;
+    reports.hidden = false;
+    homeButton.setAttribute("aria-pressed", "false");
+    reportsButton.setAttribute("aria-pressed", "true");
+    loadReports();
+  });
+
+  refresh.addEventListener("click", loadReports);
+
+  buttons.forEach(button => button.addEventListener("click", async () => {
+    const kind = button.dataset.dilReport;
+    if (busy || !ready.has(kind)) return;
+    busy = true;
+    updateButtons();
+    message.textContent = "Preparing " + kind + " CSV from the database...";
+    try {
+      const blob = await requestReport("/api/reports/" + kind + ".csv", "text/csv");
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "sbi-" + kind + "-v1.4.2.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      message.textContent = "CSV prepared. Check your browser downloads.";
+    } catch (error) {
+      message.textContent = error.name === "AbortError"
+        ? "Download timed out. Please retry."
+        : error.message;
+    } finally {
+      busy = false;
+      updateButtons();
+    }
+  }));
+})();
+
+</script>
+
+<!-- DIL Database Update v1.4.0 -->
+<style>
+.dil-nav{flex-wrap:wrap}
+#dil-imports input{max-width:100%;padding:10px;margin:10px 0}
+#dil-imports button{margin:6px 6px 6px 0}
+#dil-imports button:disabled{opacity:.5;cursor:not-allowed}
+#dil-imports table{width:100%;border-collapse:collapse;text-align:left}
+#dil-imports th,#dil-imports td{padding:12px;border-bottom:1px solid #30445f}
+#dil-import-message,#dil-import-summary{white-space:pre-wrap;overflow-wrap:anywhere}
+</style>
+<main id="dil-imports" hidden>
+<h2>Database Update <small>— v1.4.0</small></h2>
+<p>Add new monthly invoices from Excel. Existing invoices are preserved.
+Existing invoice numbers and every repeated invoice number within the upload
+are rejected. Use the "Invoice Details." worksheet with its 34 original columns in their original order. The approved 53-column format is also supported. The PAYMNENT worksheet is not imported.</p>
+<section class="card">
+<h2>1. Preview an Excel workbook</h2>
+<p>Preview stores the source workbook and validation log; it does not add invoices.</p>
+<form id="dil-import-form">
+<label for="dil-import-file">Browse Excel file (.xlsx or .xls, up to 8 MiB)</label><br>
+<input id="dil-import-file" type="file" accept=".xlsx,.xls" required><br>
+<button type="submit" id="dil-import-preview">Upload and Preview</button>
+</form>
+</section>
+<section class="card">
+<h2>2. Review or recover an import</h2>
+<label for="dil-import-receipt">Receipt ID</label><br>
+<input id="dil-import-receipt" type="text" maxlength="32"
+ placeholder="Paste the 32-character receipt" autocomplete="off"
+ style="width:390px"><br>
+<button type="button" id="dil-import-load">Load / Refresh Receipt</button>
+<button type="button" id="dil-import-apply" disabled>Apply / Resume</button>
+<p id="dil-import-release">Apply is not enabled yet. Database transaction and concurrent-import verification are pending.</p>
+<p id="dil-import-summary">No receipt loaded.</p>
+<p id="dil-import-message" role="status" aria-live="polite"></p>
+</section>
+<section class="card">
+<h2>Rejection Log</h2>
+<p id="dil-import-log-count">Load a receipt to view its rejection log.</p>
+<button type="button" id="dil-import-download" disabled>Download Rejection CSV</button>
+<div style="overflow:auto;max-height:480px">
+<table>
+<thead><tr><th scope="col">Excel Row</th><th scope="col">Invoice No</th>
+<th scope="col">Rejection Reason</th></tr></thead>
+<tbody id="dil-import-log"></tbody>
+</table>
+</div>
+</section>
+<p><small>Database import does not run payment reconciliation.
+Reports include new invoices only after an import completes. Preview alone does not update reports.</small></p>
+</main>
+
+<script>
+
+(() => {
+  "use strict";
+  const APPLY_RELEASED = false;
+  const $ = id => document.getElementById(id);
+  const panel = $("dil-imports");
+  const tab = $("dil-imports-button");
+  const receiptInput = $("dil-import-receipt");
+  const message = $("dil-import-message");
+  const summary = $("dil-import-summary");
+  const applyButton = $("dil-import-apply");
+  const download = $("dil-import-download");
+  let busy = false, current = null, rejected = [], logReady = false;
+
+  tab.addEventListener("click", () => {
+    for (const name of ["home", "reports", "imports"]) {
+      $("dil-" + name).hidden = name !== "imports";
+      $("dil-" + name + "-button").setAttribute(
+        "aria-pressed", String(name === "imports"));
+    }
+  });
+  for (const name of ["home", "reports"]) {
+    $("dil-" + name + "-button").addEventListener("click", () => {
+      panel.hidden = true;
+      tab.setAttribute("aria-pressed", "false");
+    });
+  }
+
+  function controls() {
+    for (const id of ["dil-import-file", "dil-import-preview",
+                      "dil-import-load", "dil-import-receipt"]) {
+      $(id).disabled = busy;
+    }
+    applyButton.disabled = busy || !APPLY_RELEASED || !current ||
+      !["PREVIEW_READY", "APPLYING"].includes(current.status);
+    download.disabled = busy || !logReady;
+  }
+
+  function receiptID() {
+    const id = receiptInput.value.trim();
+    if (!/^[a-f0-9]{32}$/.test(id)) throw new Error("Enter a valid receipt ID.");
+    return id;
+  }
+
+  async function api(path, method = "GET", body) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 150000);
+    try {
+      const response = await fetch("/api/imports/" + path, {
+        method, body, credentials: "same-origin", cache: "no-store",
+        redirect: "error", signal: controller.signal,
+        headers: method === "POST" ? {"X-DIL-Import": "1"} : {}
+      });
+      if (!(response.headers.get("Content-Type") || "").includes("application/json"))
+        throw new Error("Unexpected response. Check sign-in and receipt status.");
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Request failed.");
+      return data;
+    } finally { clearTimeout(timer); }
+  }
+
+  function clearLog() {
+    rejected = [];
+    logReady = false;
+    $("dil-import-log").replaceChildren();
+    $("dil-import-log-count").textContent = "Rejection log not loaded.";
+  }
+
+  async function loadReceipt(id) {
+    current = null;
+    clearLog();
+    const data = await api(id);
+    for (const key of ["total_count", "added_count", "rejected_count", "processed_count"]) {
+      if (!Number.isSafeInteger(data[key]) || data[key] < 0)
+        throw new Error("Invalid receipt counts.");
+    }
+    if (data.processed_count > data.total_count ||
+        data.added_count + data.rejected_count !== data.processed_count)
+      throw new Error("Receipt counts are inconsistent.");
+    summary.textContent =
+      "Receipt: " + id + "\nFile: " + (data.filename || "") +
+      "\nStatus: " + data.status +
+      "\nTotal: " + data.total_count + " | Added: " + data.added_count +
+      " | Rejected: " + data.rejected_count +
+      " | Remaining: " + (data.total_count - data.processed_count);
+
+    const records = [];
+    let after = 0, complete = false;
+    for (let page = 0; page < 202; page++) {
+      const result = await api(id + "/rows?after=" + after);
+      if (!Array.isArray(result.rows)) throw new Error("Invalid row log.");
+      for (const row of result.rows) {
+        if (!Number.isSafeInteger(row.source_row) || row.source_row <= after ||
+            !Array.isArray(row.reasons))
+          throw new Error("Invalid row log ordering or reasons.");
+        after = row.source_row;
+        records.push(row);
+      }
+      if (result.next_after === null) { complete = true; break; }
+      if (!result.rows.length || result.next_after !== after)
+        throw new Error("Invalid log page cursor.");
+      message.textContent = "Loading log: " + records.length + " rows checked...";
+    }
+    if (!complete || records.length !== data.total_count)
+      throw new Error("Log is incomplete. Refresh the receipt before using it.");
+    const failures = records.filter(row => row.status === "REJECTED");
+    if (failures.length !== data.rejected_count ||
+        records.filter(row => row.status === "ADDED").length !== data.added_count)
+      throw new Error("Log changed while loading. Refresh the receipt.");
+
+    rejected = failures;
+    const fragment = document.createDocumentFragment();
+    for (const row of rejected) {
+      const tr = document.createElement("tr");
+      for (const value of [row.source_row, row.invoice_no || "", row.reasons.join("; ")]) {
+        const td = document.createElement("td");
+        td.textContent = String(value);
+        tr.appendChild(td);
+      }
+      fragment.appendChild(tr);
+    }
+    $("dil-import-log").replaceChildren(fragment);
+    $("dil-import-log-count").textContent =
+      rejected.length + " rejected rows. Full log loaded.";
+    current = {...data, receipt: id};
+    logReady = true;
+    try { localStorage.setItem("dil-import-receipt-v140", id); } catch {}
+  }
+
+  async function run(action) {
+    if (busy) return;
+    busy = true;
+    controls();
+    try { await action(); }
+    catch (error) {
+      current = null;
+      logReady = false;
+      message.textContent = ["AbortError", "TypeError"].includes(error.name)
+        ? "Connection interrupted or timed out. Outcome may be unknown. " +
+          "Load the saved receipt before retrying. If preview gave no receipt, check server logs."
+        : error.message;
+    } finally { busy = false; controls(); }
+  }
+
+  $("dil-import-form").addEventListener("submit", event => {
+    event.preventDefault();
+    run(async () => {
+      const file = $("dil-import-file").files[0];
+      if (!file || !/\.(xlsx|xls)$/i.test(file.name) ||
+          !file.size || file.size > 8 * 1024 * 1024)
+        throw new Error("Choose a non-empty .xlsx or .xls file up to 8 MiB.");
+      current = null;
+      clearLog();
+      summary.textContent = "Preparing a new preview...";
+      message.textContent = "Uploading and validating. Please keep this page open.";
+      const body = new FormData();
+      body.append("file", file);
+      const result = await api("preview", "POST", body);
+      if (!/^[a-f0-9]{32}$/.test(result.receipt || ""))
+        throw new Error("Preview receipt missing. Check server logs before retrying.");
+      receiptInput.value = result.receipt;
+      try { localStorage.setItem("dil-import-receipt-v140", result.receipt); } catch {}
+      await loadReceipt(result.receipt);
+      message.textContent = "Preview ready. No invoices have been added by preview.";
+    });
+  });
+
+  $("dil-import-load").addEventListener("click", () => run(async () => {
+    message.textContent = "Loading receipt and rejection log...";
+    await loadReceipt(receiptID());
+    message.textContent = "Receipt and rejection log refreshed.";
+  }));
+
+  applyButton.addEventListener("click", () => run(async () => {
+    if (!APPLY_RELEASED || !current) throw new Error("Apply is not enabled.");
+    const id = current.receipt;
+    let completed = false;
+    for (let batch = 0; batch < 2001; batch++) {
+      const result = await api(id + "/apply", "POST");
+      message.textContent = "Added: " + result.added +
+        " | Rejected: " + result.rejected + " | Remaining: " + result.remaining;
+      if (result.status === "COMPLETED") { completed = true; break; }
+      if (result.status !== "APPLYING") throw new Error("Unexpected apply status.");
+    }
+    await loadReceipt(id);
+    message.textContent = completed
+      ? "Import completed. Reconciliation has not run."
+      : "Batch limit reached. Review the receipt before resuming.";
+  }));
+
+  function csvCell(value) {
+    let text = String(value ?? "");
+    if (/^\s*[=+\-@]/.test(text) || /^[\t\r\n]/.test(text)) text = "'" + text;
+    return '"' + text.replace(/"/g, '""') + '"';
+  }
+  download.addEventListener("click", () => {
+    if (busy || !logReady || !current) return;
+    const rows = [["Receipt", "Excel Row", "Invoice No", "Rejection Reason"],
+      ...rejected.map(row => [
+        current.receipt, row.source_row, row.invoice_no, row.reasons.join("; ")
+      ])];
+    const blob = new Blob(
+      ["\ufeff" + rows.map(row => row.map(csvCell).join(",")).join("\r\n") + "\r\n"],
+      {type: "text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "sbi-import-rejections-" + current.receipt + "-v1.4.0.csv";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  });
+
+  try {
+    const saved = localStorage.getItem("dil-import-receipt-v140") || "";
+    if (/^[a-f0-9]{32}$/.test(saved)) receiptInput.value = saved;
+  } catch {}
+  controls();
+})();
+
+</script>
+<script src="/account.js" defer></script>
+</body>
+</html>
