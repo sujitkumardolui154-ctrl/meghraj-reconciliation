@@ -41,6 +41,16 @@ git -C "$SRC" clean -fdx
 
 ORIGINAL="$(docker inspect "$NAME" --format '{{.Image}}' 2>/dev/null)"
 docker image inspect "$ORIGINAL" >/dev/null
+# Reuse ONLY the existing preview Basic Auth variables. Never copy arbitrary
+# environment values (the existing container may hold unrelated credentials).
+# A missing/weak login must stop the release before any container is replaced.
+AUTH_ENV_FILE="$(mktemp /run/sbi-stage-preview-auth.XXXXXXXX)"
+cleanup_auth_file() { rm -f -- "$AUTH_ENV_FILE"; }
+trap cleanup_auth_file EXIT
+docker inspect "$NAME" --format '{{json .Config.Env}}' |
+  python3 "$SRC/staging/aws_lightsail/preview_auth_env.py" "$AUTH_ENV_FILE" || {
+    echo "BLOCKED: staging login preservation failed"; exit 2;
+  }
 ROLLBACK="sbi-stage-rollback:${SHA:0:12}"
 CANDIDATE="sbi-stage-candidate:${SHA:0:12}"
 docker tag "$ORIGINAL" "$ROLLBACK"
@@ -60,13 +70,14 @@ finished() {
     docker rm -f "$NAME" >/dev/null 2>&1 || true
     if docker run -d --name "$NAME" --restart unless-stopped --cap-drop ALL \
       --security-opt no-new-privileges --pids-limit 128 --memory 256m \
-      -p 127.0.0.1:18082:8080 -e PORT=8080 "$ROLLBACK" >/dev/null &&
-      wait_for_health 18082; then
+      -p 127.0.0.1:18082:8080 --env-file "$AUTH_ENV_FILE" -e PORT=8080 "$ROLLBACK" >/dev/null &&
+      wait_for_health 18082 && verify_authenticated "$NAME"; then
       echo "ROLLBACK_RESULT=PASS"
     else
       echo "ROLLBACK_RESULT=FAIL"
     fi
   fi
+  cleanup_auth_file
   exit "$code"
 }
 wait_for_health() {
@@ -82,19 +93,45 @@ wait_for_health() {
   done
   return 1
 }
+# Exercise a real authenticated HTTP request inside the candidate container,
+# keeping the secret out of process arguments and release logs on the host.
+verify_authenticated() {
+  docker exec "$1" python -c '
+import base64
+import os
+import urllib.error
+import urllib.request
+
+pair = (os.environ["PREVIEW_USERNAME"] + ":" + os.environ["PREVIEW_PASSWORD"]).encode()
+authorization = "Basic " + base64.b64encode(pair).decode("ascii")
+
+def status(path):
+    req = urllib.request.Request("http://127.0.0.1:8080" + path,
+                                 headers={"Authorization": authorization})
+    try:
+        with urllib.request.urlopen(req, timeout=5) as response:
+            return response.status
+    except urllib.error.HTTPError as error:
+        return error.code
+
+if status("/") != 200 or status("/api/upload") != 403:
+    raise SystemExit(1)
+'
+}
 trap finished EXIT
 docker run -d --name "$PROBE" --cap-drop ALL --security-opt no-new-privileges \
   --pids-limit 128 --memory 256m -p 127.0.0.1:18083:8080 \
-  -e PORT=8080 "$CANDIDATE" >/dev/null
-wait_for_health 18083 || { echo "PROBE_GATE=FAIL"; exit 1; }
+  --env-file "$AUTH_ENV_FILE" -e PORT=8080 "$CANDIDATE" >/dev/null
+wait_for_health 18083 && verify_authenticated "$PROBE" || { echo "PROBE_GATE=FAIL"; exit 1; }
 echo "PROBE_GATE=PASS"
 docker rm -f "$PROBE" >/dev/null
 MUTATED=1
 docker rm -f "$NAME" >/dev/null
 docker run -d --name "$NAME" --restart unless-stopped --cap-drop ALL \
   --security-opt no-new-privileges --pids-limit 128 --memory 256m \
-  -p 127.0.0.1:18082:8080 -e PORT=8080 "$CANDIDATE" >/dev/null
-wait_for_health 18082 || { echo "STAGING_HEALTH=FAIL"; exit 1; }
+  -p 127.0.0.1:18082:8080 --env-file "$AUTH_ENV_FILE" -e PORT=8080 "$CANDIDATE" >/dev/null
+wait_for_health 18082 && verify_authenticated "$NAME" || { echo "STAGING_HEALTH_OR_LOGIN=FAIL"; exit 1; }
+echo "AUTH_LOGIN=PASS"
 echo "STAGING_RELEASE=PASS"
 echo "FINANCIAL_PRODUCTION=UNMODIFIED"
 MUTATED=0
