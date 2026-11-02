@@ -49,7 +49,14 @@ sys.exit(0 if all(tests.values()) else 1)
 if [ "$fail" -gt 0 ]; then echo "RELEASE=BLOCKED_TESTS"; exit 1; fi
 if [ "${DEPLOY:-0}" = 1 ]; then
   previous="$(sudo docker inspect aws_lightsail-sbi-preview-1 --format '{{.Image}}' 2>/dev/null || true)"
-  if [ -n "$previous" ]; then sudo docker image tag "$previous" sbi-preview:pre-consolidated-rollback; fi
+  if [ -n "$previous" ] && sudo docker image inspect "$previous" >/dev/null 2>&1; then
+    sudo docker image tag "$previous" sbi-preview:pre-consolidated-rollback
+    rollback_ready=1
+  else
+    rollback_ready=0
+    echo "ROLLBACK_IMAGE=UNAVAILABLE_DEPLOY_BLOCKED" | tee -a "$REPORT"
+    exit 1
+  fi
   sudo docker compose up -d --no-deps --force-recreate sbi-preview
   echo "DEPLOY_ACTION=EXECUTED" | tee -a "$REPORT"
 else
@@ -60,7 +67,7 @@ home="$(curl --silent --show-error --max-time 15 --output /dev/null --write-out 
 health="$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' "$URL/healthz" || true)"
 [ "$home" = 401 ] && record HTTPS_LOGIN_REQUIRED PASS || record HTTPS_LOGIN_REQUIRED FAIL
 [ "$health" = 200 ] && record HTTPS_HEALTH PASS || record HTTPS_HEALTH FAIL
-if [ "$fail" -gt 0 ] && [ "${DEPLOY:-0}" = 1 ] && [ -n "${previous:-}" ]; then
+if [ "$fail" -gt 0 ] && [ "${DEPLOY:-0}" = 1 ] && [ "${rollback_ready:-0}" = 1 ]; then
   echo "ROLLBACK_REQUIRED=YES" | tee -a "$REPORT"
   sudo docker image tag sbi-preview:pre-consolidated-rollback "$IMAGE"
   sudo docker compose up -d --no-deps --force-recreate sbi-preview
