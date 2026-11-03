@@ -39,6 +39,12 @@ class ImportPermissionsTests(unittest.TestCase):
     def test_explicit_import_claim_allowed(self):
         self.assertTrue(can_import_invoice(self.user(), {"uid": "user-1"}))
 
+    def test_import_claim_does_not_override_missing_dashboard_entitlement(self):
+        self.assertFalse(can_import_invoice(self.user(dil_dashboard=False), {"uid": "user-1"}))
+
+    def test_non_boolean_import_claim_denied(self):
+        self.assertFalse(can_import_invoice(self.user(sbi_invoice_importer="true"), {"uid": "user-1"}))
+
     def test_missing_claims_denied(self):
         user = self.user()
         user.custom_claims = None
@@ -78,6 +84,14 @@ class BackendServiceIdentityTests(unittest.TestCase):
     def test_unverified_email_denied(self):
         self.assertFalse(self.check(verifier=lambda t, a: {
             **self.verifier(t, a), "email_verified": False}))
+
+    def test_claimed_email_must_match_exactly(self):
+        self.assertFalse(self.check(verifier=lambda t, a: {
+            **self.verifier(t, a), "email": "other@example.iam.gserviceaccount.com"}))
+
+    def test_non_boolean_email_verified_denied(self):
+        self.assertFalse(self.check(verifier=lambda t, a: {
+            **self.verifier(t, a), "email_verified": "true"}))
 
     def test_wrong_caller_denied(self):
         self.assertFalse(self.check(caller_email="other@example.iam.gserviceaccount.com"))
