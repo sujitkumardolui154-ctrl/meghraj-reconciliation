@@ -152,7 +152,7 @@ class PreviewTests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("sbi_preview_rotation_contract", script)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        original = "SITE_DOMAIN=example.com\\nPREVIEW_USERNAME=reviewer\\nPREVIEW_PASSWORD=short\\n"
+        original = "SITE_DOMAIN=example.com\nPREVIEW_USERNAME=reviewer\nPREVIEW_PASSWORD=short\n"
         revised = module.replace_password(original, "safe-secret-string-1234567890")
         self.assertIn("SITE_DOMAIN=example.com", revised)
         self.assertIn("PREVIEW_USERNAME=reviewer", revised)
@@ -161,7 +161,7 @@ class PreviewTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             module.replace_password(original, "short")
         with self.assertRaises(ValueError):
-            module.replace_password(original + "PREVIEW_PASSWORD=duplicate\\n", "safe-secret-string-1234567890")
+            module.replace_password(original + "PREVIEW_PASSWORD=duplicate\n", "safe-secret-string-1234567890")
         with self.assertRaises(ValueError):
             module.replace_password(original, "not safe with spaces 1234567890")
         source = script.read_text(encoding="utf-8")
