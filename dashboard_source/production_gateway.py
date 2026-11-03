@@ -1,7 +1,8 @@
 import os
 import requests
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, send_from_directory, g
 from cloud_auth import get_backend_token
+from sbi_report_access import can_view_report
 
 app = Flask(__name__, static_folder=None)
 BACKEND = "https://sbi-supervisor-backend-109590290120.asia-south1.run.app"
@@ -128,20 +129,26 @@ from flask import Response
 REPORT_DOWNLOADS = {"unpaid", "ok", "error-value", "balance-review"}
 
 def forward_database_report(kind=None):
+    # Firebase authentication is installed globally below; these sensitive
+    # report routes additionally require a dedicated explicit reader claim.
+    if not can_view_report(getattr(g, "dil_user", None),
+                           getattr(g, "dil_identity", None)):
+        return jsonify(error="Report viewer permission required"), 403
     if kind is not None and kind not in REPORT_DOWNLOADS:
         return jsonify(error="Unknown report"), 404
 
     path = "/reports" if kind is None else "/reports/" + kind + ".csv"
 
+    target = os.environ.get("REPORT_BACKEND", BACKEND).rstrip("/")
     try:
-        token = get_backend_token(BACKEND)
+        token = get_backend_token(target)
     except Exception:
         app.logger.exception("Report backend authentication failed")
         return jsonify(error="Backend authentication unavailable"), 503
 
     try:
         upstream = requests.get(
-            os.environ.get("REPORT_BACKEND", BACKEND).rstrip("/") + path,
+            target + path,
             headers={"Authorization": "Bearer " + token},
             timeout=(10, 90),
             allow_redirects=False,
@@ -193,6 +200,10 @@ def forward_database_report(kind=None):
 @app.get("/api/reports/reconciliation-changes")
 @app.get("/api/reports/reconciliation-changes.csv")
 def reconciliation_change_gateway():
+    # Old/new invoice amounts require a stronger claim than ordinary reports.
+    if not can_view_report(getattr(g, "dil_user", None),
+                           getattr(g, "dil_identity", None), change_report=True):
+        return jsonify(error="Reconciliation change viewer permission required"), 403
     from flask import request
     import re
     receipt = request.args.get("receipt", "")
@@ -376,7 +387,6 @@ install_account_pages(app)
 # Read-only CREDIT NOTE reporting v1 — use the existing Firebase session guard.
 # install_sessions(app) runs before this blueprint and populates g.dil_user
 # only after revocation-checked Firebase cookie validation.
-from flask import g
 from sbi_credit_report_auth import create_credit_note_blueprint
 
 

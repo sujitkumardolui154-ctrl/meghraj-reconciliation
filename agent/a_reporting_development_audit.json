@@ -16,19 +16,22 @@
     "tools/sbi_approved_report_bundle.py",
     "backend_source/reconciliation_changes_offline.py",
     "tools/sbi_report_headers_audit.py",
-    "backend_source/credit_note_report.py::generate_credit_note_report_from_53"
+    "backend_source/credit_note_report.py::generate_credit_note_report_from_53",
+    "dashboard_source/sbi_report_access.py",
+    "tests/test_sbi_a01_report_access.py",
+    "tests/test_sbi_a02_payment_classification.py"
   ],
   "tasks": [
     {
       "id": "A01",
-      "state": "SOURCE_AUDIT_IN_PROGRESS",
-      "finding": "Report metadata/download handlers exist in report_api.py and production_gateway.py. Existing gateway uses backend service identity; independent real-user Firebase session and role authorization on main app not verified.",
+      "state": "EXPLICIT_REPORT_ROLE_SOURCE_IMPLEMENTED_E2E_PENDING",
+      "finding": "Report metadata/download handlers exist in report_api.py and production_gateway.py. Existing gateway uses backend service identity; independent real-user Firebase session and role authorization on main app not verified. Correction requires a verified Firebase session, sbi_report_viewer custom claim for report index/CSV, plus sbi_reconciliation_change_viewer for old/new payment changes. Existing credit-note viewer claim remains separate. Backend token now minted for REPORT_BACKEND audience; grant/role provisioning and real HTTP E2E pending.",
       "release_gate": "AUTHENTICATED_ROLE_E2E_AND_SOURCE_CONTRACT"
     },
     {
       "id": "A02",
-      "state": "SOURCE_AUDIT_IN_PROGRESS",
-      "finding": "Current report source categorizes original payment data as unpaid, ok, error-value, and balance-review with the 53-column schema. No approved Suspense report implementation proven.",
+      "state": "NEGATIVE_PAYMENT_SOURCE_REVIEW_CORRECTION_IMPLEMENTED",
+      "finding": "Current report source categorizes original payment data as unpaid, ok, error-value, and balance-review with the 53-column schema. No approved Suspense report implementation proven. Corrected classifier so negative source payments are error-value, not OK; existing 53/34 positional fields and source raw strings preserved. Suspense still not inferred and requires an independently approved settlement rulebook.",
       "release_gate": "APPROVED_SUSPENSE_POLICY_AND_GOLDEN_ROWSET"
     },
     {
@@ -73,6 +76,6 @@
     "fully_released": 0,
     "financial_release": "RESTRICTED",
     "database_writes": "DISABLED",
-    "recommended_next": "Provide independent approved original 53-header JSON, approved v2.18 header JSON and actual private v2.18 CSV for read-only positional audit. Review private credit-note duplicate groups and authenticated gateway before release."
+    "recommended_next": "Provision and verify explicit reporting viewer claims in isolated Firebase test session; collect signed-in vs denied role E2E and source/header evidence; independently approve Suspense policy before report implementation."
   }
 }
