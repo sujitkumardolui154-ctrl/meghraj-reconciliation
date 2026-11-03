@@ -724,14 +724,14 @@
       "category": "J — GitHub DevOps & CI/CD",
       "title": "Source-to-deployment provenance and SHA",
       "user_checklist": "new_requirement",
-      "verification": "aws_public_preview_source_to_image_pass_other_services_pending",
+      "verification": "aws_source_to_running_image_and_https_version_pass_other_services_pending",
       "execution": "in_progress",
       "approval_gate": "standard",
       "related_existing_tasks": [
         "E06"
       ],
       "note": "Design and consolidate with referenced A-F task; no duplicate implementations",
-      "evidence": "Owner executed versioned read-only AWS attestor merged via PR #25: PUBLIC_RELEASE_ATTESTATION=PASS; RELEASE_VERSION=git-653a54f5bcef; exact source SHA 653a54f5bcef8e686f5a17e8c56725e4a1a5de48; RUNNING_IMAGE=sha256:3046f5e4e7fe1a9998c21961deec30578efecffb43eea25be4f3ca578aa51a81; AUTHENTICATION=PASS; FINANCIAL_API_DENIAL=PASS; RECEIPT_HASH=PASS; ROLLBACK_IMAGE=PASS; HOST_MUTATIONS=0; VERIFY_EXIT=0. Attestation output provided in project chat on 2026-11-03. Validates public-preview host only, not Cloud Run/finance. No Cloud Run finance/report deployment attestation implied."
+      "evidence": "Owner-executed external HTTPS probe on 2026-11-03 reports: HTTPS_ANONYMOUS=PASS HTTP=401; HTTPS_HEALTH=PASS HTTP=200; HTTPS_DASHBOARD_LOGIN=PASS HTTP=200; HTTPS_VERSION=PASS HTTP=200 with expected SHA 653a54f5bcef8e686f5a17e8c56725e4a1a5de48 and channel aws-public-preview; HTTPS_TASK_STATUS=PASS HTTP=200; HTTPS_HISTORY_CSV=PASS HTTP=200; HTTPS_FINANCIAL_DENIAL=PASS HTTP=403; EXTERNAL_RELEASE_VERIFICATION=PASS. This output was supplied by owner from AWS shell and does not alone validate content accuracy of history rows, role-based Cloud Run gateway, or actual rollback restore. Combined with owner-run host attestation PR #25, AWS public preview provenance is verified; reporting/financial Cloud Run provenance is separately pending."
     },
     {
       "id": "J02",
@@ -791,14 +791,14 @@
       "category": "K — AWS Migration & Hosting",
       "title": "Protected HTTPS and private containers",
       "user_checklist": "new_requirement",
-      "verification": "aws_app_auth_probe_pass_external_https_pending",
+      "verification": "owner_executed_external_https_auth_pass_private_network_review_pending",
       "execution": "in_progress",
       "approval_gate": "standard",
       "related_existing_tasks": [
         "E08"
       ],
       "note": "Design and consolidate with referenced A-F task; no duplicate implementations",
-      "evidence": "Owner executed versioned read-only AWS attestor merged via PR #25: PUBLIC_RELEASE_ATTESTATION=PASS; RELEASE_VERSION=git-653a54f5bcef; exact source SHA 653a54f5bcef8e686f5a17e8c56725e4a1a5de48; RUNNING_IMAGE=sha256:3046f5e4e7fe1a9998c21961deec30578efecffb43eea25be4f3ca578aa51a81; AUTHENTICATION=PASS; FINANCIAL_API_DENIAL=PASS; RECEIPT_HASH=PASS; ROLLBACK_IMAGE=PASS; HOST_MUTATIONS=0; VERIFY_EXIT=0. Attestation output provided in project chat on 2026-11-03. Validates public-preview host only, not Cloud Run/finance. In-container HTTP passes authentication controls; public HTTPS/TLS and proxy routing remain separately untested by this script."
+      "evidence": "Owner-executed external HTTPS probe on 2026-11-03 reports: HTTPS_ANONYMOUS=PASS HTTP=401; HTTPS_HEALTH=PASS HTTP=200; HTTPS_DASHBOARD_LOGIN=PASS HTTP=200; HTTPS_VERSION=PASS HTTP=200 with expected SHA 653a54f5bcef8e686f5a17e8c56725e4a1a5de48 and channel aws-public-preview; HTTPS_TASK_STATUS=PASS HTTP=200; HTTPS_HISTORY_CSV=PASS HTTP=200; HTTPS_FINANCIAL_DENIAL=PASS HTTP=403; EXTERNAL_RELEASE_VERIFICATION=PASS. This output was supplied by owner from AWS shell and does not alone validate content accuracy of history rows, role-based Cloud Run gateway, or actual rollback restore. HTTPS endpoint probes succeeded. Private container network/firewall exposure review still pending."
     },
     {
       "id": "K02",
@@ -844,14 +844,14 @@
       "category": "K — AWS Migration & Hosting",
       "title": "Health, logs and rollback verification",
       "user_checklist": "new_requirement",
-      "verification": "aws_health_receipt_hash_rollback_image_pass_restore_drill_pending",
+      "verification": "host_integrity_and_external_health_pass_restore_drill_pending",
       "execution": "in_progress",
       "approval_gate": "standard",
       "related_existing_tasks": [
         "E08"
       ],
       "note": "Design and consolidate with referenced A-F task; no duplicate implementations",
-      "evidence": "Owner executed versioned read-only AWS attestor merged via PR #25: PUBLIC_RELEASE_ATTESTATION=PASS; RELEASE_VERSION=git-653a54f5bcef; exact source SHA 653a54f5bcef8e686f5a17e8c56725e4a1a5de48; RUNNING_IMAGE=sha256:3046f5e4e7fe1a9998c21961deec30578efecffb43eea25be4f3ca578aa51a81; AUTHENTICATION=PASS; FINANCIAL_API_DENIAL=PASS; RECEIPT_HASH=PASS; ROLLBACK_IMAGE=PASS; HOST_MUTATIONS=0; VERIFY_EXIT=0. Attestation output provided in project chat on 2026-11-03. Validates public-preview host only, not Cloud Run/finance. No destructive rollback restore drill carried out; receipt integrity and image availability verified."
+      "evidence": "Owner-executed external HTTPS probe on 2026-11-03 reports: HTTPS_ANONYMOUS=PASS HTTP=401; HTTPS_HEALTH=PASS HTTP=200; HTTPS_DASHBOARD_LOGIN=PASS HTTP=200; HTTPS_VERSION=PASS HTTP=200 with expected SHA 653a54f5bcef8e686f5a17e8c56725e4a1a5de48 and channel aws-public-preview; HTTPS_TASK_STATUS=PASS HTTP=200; HTTPS_HISTORY_CSV=PASS HTTP=200; HTTPS_FINANCIAL_DENIAL=PASS HTTP=403; EXTERNAL_RELEASE_VERIFICATION=PASS. This output was supplied by owner from AWS shell and does not alone validate content accuracy of history rows, role-based Cloud Run gateway, or actual rollback restore. Earlier receipt hash and rollback tag passed, no actual restore rehearsal."
     },
     {
       "id": "L01",
@@ -1050,9 +1050,9 @@
       "category": "N — Release Governance",
       "title": "Display versioned code changes and staging deployment attempts with timestamp, outcome and GitHub evidence links",
       "execution": "in_progress",
-      "verification": "source_and_ci_passed_history_ui_e2e_pending",
+      "verification": "history_endpoint_authenticated_https_pass_payload_review_pending",
       "approval_gate": "standard",
-      "evidence": "PR #19/#20 versioned history source and CI PASS; owner-executed PR #25 runtime attestation verifies app version but does not exercise history.csv or GitHub history UI. Further E2E required."
+      "evidence": "Owner-executed external HTTPS probe on 2026-11-03 reports: HTTPS_ANONYMOUS=PASS HTTP=401; HTTPS_HEALTH=PASS HTTP=200; HTTPS_DASHBOARD_LOGIN=PASS HTTP=200; HTTPS_VERSION=PASS HTTP=200 with expected SHA 653a54f5bcef8e686f5a17e8c56725e4a1a5de48 and channel aws-public-preview; HTTPS_TASK_STATUS=PASS HTTP=200; HTTPS_HISTORY_CSV=PASS HTTP=200; HTTPS_FINANCIAL_DENIAL=PASS HTTP=403; EXTERNAL_RELEASE_VERIFICATION=PASS. This output was supplied by owner from AWS shell and does not alone validate content accuracy of history rows, role-based Cloud Run gateway, or actual rollback restore. Authenticated history CSV endpoint returned HTTP 200; timestamp, outcome, GitHub links, and rendered UI not independently compared to source, so work stays in progress."
     },
     {
       "id": "N08",
@@ -1068,16 +1068,16 @@
       "category": "N — Release Governance",
       "title": "Verify source-to-image version match and deployment change history end to end; final release receipt",
       "execution": "in_progress",
-      "verification": "aws_host_attestation_pass_change_history_e2e_pending",
+      "verification": "host_and_external_https_e2e_pass_release_history_review_pending",
       "approval_gate": "mandatory_release",
-      "evidence": "Owner executed versioned read-only AWS attestor merged via PR #25: PUBLIC_RELEASE_ATTESTATION=PASS; RELEASE_VERSION=git-653a54f5bcef; exact source SHA 653a54f5bcef8e686f5a17e8c56725e4a1a5de48; RUNNING_IMAGE=sha256:3046f5e4e7fe1a9998c21961deec30578efecffb43eea25be4f3ca578aa51a81; AUTHENTICATION=PASS; FINANCIAL_API_DENIAL=PASS; RECEIPT_HASH=PASS; ROLLBACK_IMAGE=PASS; HOST_MUTATIONS=0; VERIFY_EXIT=0. Attestation output provided in project chat on 2026-11-03. Validates public-preview host only, not Cloud Run/finance. Pending authenticated real end-to-end versioned code/change-history UI and final release review; do not conflate host local probe with public external browser."
+      "evidence": "Owner-executed external HTTPS probe on 2026-11-03 reports: HTTPS_ANONYMOUS=PASS HTTP=401; HTTPS_HEALTH=PASS HTTP=200; HTTPS_DASHBOARD_LOGIN=PASS HTTP=200; HTTPS_VERSION=PASS HTTP=200 with expected SHA 653a54f5bcef8e686f5a17e8c56725e4a1a5de48 and channel aws-public-preview; HTTPS_TASK_STATUS=PASS HTTP=200; HTTPS_HISTORY_CSV=PASS HTTP=200; HTTPS_FINANCIAL_DENIAL=PASS HTTP=403; EXTERNAL_RELEASE_VERIFICATION=PASS. This output was supplied by owner from AWS shell and does not alone validate content accuracy of history rows, role-based Cloud Run gateway, or actual rollback restore. Together with previously verified receipt hash and exact running image, AWS public release identity/auth endpoints pass. Final release-history content validation and formal release review remain."
     }
   ],
   "audit_metadata": {
-    "updated_for": "Evidence sync after user-executed read-only AWS host attestor; 92-task register with exact source SHA and explicit remaining release gates",
+    "updated_for": "Record owner-executed AWS public external HTTPS 7/7 probes after host attestation; preserve release and finance gates",
     "as_of_utc": "2026-11-03",
-    "source_of_evidence": "User-provided AWS Lightsail output of PR #25 read-only attestor on 2026-11-03; PASS for local public preview only, not direct independent remote inspection",
-    "status_rules": "Only N06 AWS preview build/version stamping verified complete by host attestor; N07-N09/other services remain subject to external HTTP, change-history and release review gates.",
+    "source_of_evidence": "Owner-provided exact AWS server command output on 2026-11-03; seven HTTP expectations passed; version SHA/channel validated; not independently fetched in this run",
+    "status_rules": "AWS external endpoint statuses verified by owner-supplied HTTPS probe; history payload contents and browser UI require separate validation; do not certify finance, report roles, or actual rollback restore.",
     "production_release": "NOT_READY",
     "real_financial_execution": "RESTRICTED",
     "total_selected_tasks": 50,
@@ -1095,8 +1095,14 @@
       "rollback_image_available": "PASS",
       "authenticated_app": "PASS",
       "financial_api_denial": "PASS",
-      "external_https_e2e": "PENDING",
-      "release_review": "PENDING"
+      "external_https_e2e": "PASS_7_OF_7_OWNER_EXECUTED",
+      "release_review": "PENDING",
+      "history_csv_https": "PASS_HTTP_200_PAYLOAD_NOT_VALIDATED",
+      "anonymous_https": "PASS_HTTP_401",
+      "health_https": "PASS_HTTP_200",
+      "authenticated_https": "PASS_HTTP_200",
+      "version_https": "PASS_SHA_AND_CHANNEL",
+      "financial_api_denial_https": "PASS_HTTP_403"
     }
   },
   "extension": {
