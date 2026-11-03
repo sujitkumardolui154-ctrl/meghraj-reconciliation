@@ -47,6 +47,28 @@ for k,v in tests.items(): print("TEST_"+k.upper()+"="+("PASS" if v else "FAIL"))
 sys.exit(0 if all(tests.values()) else 1)
 '; then record CONTAINER_INTEGRATION_TESTS PASS; else record CONTAINER_INTEGRATION_TESTS FAIL; fi
 if [ "$fail" -gt 0 ]; then echo "RELEASE=BLOCKED_TESTS"; exit 1; fi
+# A failed compose operation must not bypass rollback under set -e.
+# Rollback is only reported verified after both unauthenticated HTTPS checks pass.
+rollback_preview() {
+  echo "ROLLBACK_REQUIRED=YES" | tee -a "$REPORT"
+  if ! sudo docker image tag sbi-preview:pre-consolidated-rollback "$IMAGE"; then
+    echo "ROLLBACK_RESULT=FAILED_IMAGE_RESTORE" | tee -a "$REPORT"
+    return 1
+  fi
+  if ! sudo docker compose up -d --no-deps --force-recreate sbi-preview; then
+    echo "ROLLBACK_RESULT=FAILED_COMPOSE" | tee -a "$REPORT"
+    return 1
+  fi
+  local restored_home restored_health
+  restored_home="$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' "$URL/" || true)"
+  restored_health="$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' "$URL/healthz" || true)"
+  if [ "$restored_home" = 401 ] && [ "$restored_health" = 200 ]; then
+    echo "ROLLBACK_RESULT=HOST_HTTP_VERIFIED" | tee -a "$REPORT"
+    return 0
+  fi
+  echo "ROLLBACK_RESULT=UNVERIFIED_HTTP" | tee -a "$REPORT"
+  return 1
+}
 if [ "${DEPLOY:-0}" = 1 ]; then
   previous="$(sudo docker inspect aws_lightsail-sbi-preview-1 --format '{{.Image}}' 2>/dev/null || true)"
   if [ -n "$previous" ] && sudo docker image inspect "$previous" >/dev/null 2>&1; then
@@ -57,7 +79,12 @@ if [ "${DEPLOY:-0}" = 1 ]; then
     echo "ROLLBACK_IMAGE=UNAVAILABLE_DEPLOY_BLOCKED" | tee -a "$REPORT"
     exit 1
   fi
-  sudo docker compose up -d --no-deps --force-recreate sbi-preview
+  if ! sudo docker compose up -d --no-deps --force-recreate sbi-preview; then
+    echo "DEPLOY_ACTION=FAILED_COMPOSE" | tee -a "$REPORT"
+    rollback_preview || true
+    echo "RELEASE=BLOCKED_DEPLOY_FAILURE" | tee -a "$REPORT"
+    exit 1
+  fi
   echo "DEPLOY_ACTION=EXECUTED" | tee -a "$REPORT"
 else
   echo "DEPLOY_ACTION=SKIPPED_SET_DEPLOY_1" | tee -a "$REPORT"
@@ -68,10 +95,9 @@ health="$(curl --silent --show-error --max-time 15 --output /dev/null --write-ou
 [ "$home" = 401 ] && record HTTPS_LOGIN_REQUIRED PASS || record HTTPS_LOGIN_REQUIRED FAIL
 [ "$health" = 200 ] && record HTTPS_HEALTH PASS || record HTTPS_HEALTH FAIL
 if [ "$fail" -gt 0 ] && [ "${DEPLOY:-0}" = 1 ] && [ "${rollback_ready:-0}" = 1 ]; then
-  echo "ROLLBACK_REQUIRED=YES" | tee -a "$REPORT"
-  sudo docker image tag sbi-preview:pre-consolidated-rollback "$IMAGE"
-  sudo docker compose up -d --no-deps --force-recreate sbi-preview
-  echo "ROLLBACK_ATTEMPTED=YES" | tee -a "$REPORT"
+  rollback_preview || true
+  echo "RELEASE=BLOCKED_SMOKE_FAILURE" | tee -a "$REPORT"
+  exit 1
 fi
 echo "CHECKS_PASSED=$pass CHECKS_FAILED=$fail"
 echo "FINANCIAL_BACKEND=NOT_CONNECTED"
