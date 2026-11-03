@@ -1,0 +1,40 @@
+name: SBI Independent Report Value QA (synthetic only)
+on:
+  pull_request:
+    paths:
+      - tools/sbi_credit_note_value_parity.py
+      - tests/test_sbi_credit_note_value_parity_independent.py
+      - tools/sbi_financial_report_parity.py
+      - tests/test_sbi_financial_report_parity.py
+      - backend_source/invoice_import_contract.json
+      - .github/workflows/sbi-independent-report-values-qa.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  independent-value-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate Python source syntax
+        run: |
+          python -m py_compile tools/sbi_credit_note_value_parity.py tools/sbi_financial_report_parity.py
+      - name: Validate source-to-53-column primary report value parity (synthetic only)
+        run: |
+          python -m unittest discover -s tests -p test_sbi_financial_report_parity.py -v
+      - name: Validate exact 53-to-18 Credit Note source value parity (synthetic only)
+        run: |
+          python -m unittest discover -s tests -p test_sbi_credit_note_value_parity_independent.py -v
+      - name: Confirm absence of cloud and financial execution in CI
+        run: |
+          echo "LIVE_FINANCIAL_DATA_READ=NOT_ATTEMPTED"
+          echo "INDEPENDENT_SOURCE_DIGESTS=NOT_AVAILABLE_IN_CI"
+          echo "FINANCIAL_EXECUTION=RESTRICTED"
+          echo "FINANCIAL_WRITES=0"
+          echo "PRODUCTION_RELEASE=NOT_APPROVED"
