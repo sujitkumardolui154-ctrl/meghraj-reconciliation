@@ -11,7 +11,7 @@ class AgenticGateTests(unittest.TestCase):
     def test_master_queue(self):
         data = json.loads((ROOT / "agent/task_queue.json").read_text())
         result = evaluate(data)
-        self.assertEqual(result["task_total"], 88)
+        self.assertEqual(result["task_total"], 92)
         self.assertFalse(result["financial_write_permitted"])
         self.assertFalse(result["traffic_promotion_permitted"])
         self.assertFalse(result["coding_agent_configured"])

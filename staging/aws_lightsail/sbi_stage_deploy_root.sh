@@ -68,7 +68,7 @@ docker image inspect "$ROLLBACK" >/dev/null
 echo "ROLLBACK_IMAGE=$ORIGINAL"
 
 # Limit candidate runtime privileges. No private volumes, financial credentials or AWS IAM.
-docker build --pull -t "$CANDIDATE" "$SRC/staging/railway_public"
+docker build --pull --build-arg SBI_SOURCE_SHA="$SHA" --build-arg SBI_RELEASE_CHANNEL=aws-staging -t "$CANDIDATE" "$SRC/staging/railway_public"
 PROBE="sbi-stage-probe-${SHA:0:12}"
 MUTATED=0
 finished() {
@@ -142,6 +142,7 @@ docker run -d --name "$NAME" --restart unless-stopped --cap-drop ALL \
   -p 127.0.0.1:18082:8080 --env-file "$AUTH_ENV_FILE" -e PORT=8080 "$CANDIDATE" >/dev/null
 wait_for_health 18082 && verify_authenticated "$NAME" || { echo "STAGING_HEALTH_OR_LOGIN=FAIL"; exit 1; }
 echo "AUTH_LOGIN=PASS"
+echo "STAGING_RELEASE_VERSION=git-${SHA:0:12}"
 echo "STAGING_RELEASE=PASS"
 echo "FINANCIAL_PRODUCTION=UNMODIFIED"
 MUTATED=0
