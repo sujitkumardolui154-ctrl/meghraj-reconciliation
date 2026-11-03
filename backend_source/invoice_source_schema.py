@@ -10,6 +10,9 @@ if len(HEADERS_53) != 53:
 
 # Original source has no inserted model identity columns or model audit columns.
 HEADERS_34 = HEADERS_53[:8] + HEADERS_53[11:37]
+# Admin-approved original: an additional Branch Code at zero-based index 8.
+# Keep both identity columns and their values; never silently drop one.
+HEADERS_35 = HEADERS_34[:8] + ["Branch Code"] + HEADERS_34[8:]
 
 
 def sheet_layout(name, headers):
@@ -17,6 +20,8 @@ def sheet_layout(name, headers):
         return 53, 12
     if name == "Invoice Details." and headers == HEADERS_34:
         return 34, 9
+    if name == "Invoice Details." and headers == HEADERS_35:
+        return 35, 10
     return None
 
 
@@ -25,7 +30,11 @@ def row_layout(row):
     if not isinstance(values, list):
         raise ValueError("Invalid source values")
     width = len(values)
-    if width == 34:
+    if width == 35:
+        expected, invoice, payment, balance = HEADERS_35, 10, 18, 25
+        if row.get("original_headers") != expected:
+            raise ValueError("Missing or incorrect approved 35-column source headers")
+    elif width == 34:
         expected, invoice, payment, balance = HEADERS_34, 9, 17, 24
         if row.get("original_headers") != expected:
             raise ValueError("Missing or incorrect 34-column source headers")
