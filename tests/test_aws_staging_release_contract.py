@@ -22,6 +22,7 @@ SCRIPTS = (
     "configure_gh_stage_secrets.sh",
     "staging_release_guarded.sh",
     "upgrade_stage_executor.sh",
+    "isolated_rollback_drill.sh",
 )
 
 
@@ -228,6 +229,27 @@ class AWSStagingReleaseContractTests(unittest.TestCase):
             with self.subTest(forbidden=forbidden):
                 self.assertNotIn(forbidden, upgrade)
 
+
+
+    def test_isolated_rollback_drill_never_changes_live_staging(self):
+        script = (AWS / "isolated_rollback_drill.sh").read_text(encoding="utf-8")
+        self.assertIn('refs/heads/main', script)
+        self.assertIn('flock -n 9', script)
+        self.assertIn('CLONE="sbi-stage-rollback-drill"', script)
+        self.assertIn('PORT=18084', script)
+        self.assertIn('LIVE="sbi-agent-stage"', script)
+        self.assertIn('LIVE_STAGE_IMAGE' if False else 'LIVE_IMAGE=', script)
+        self.assertIn('start_clone -e PREVIEW_PASSWORD=invalid', script)
+        self.assertIn('FAULT_DETECTION=PASS', script)
+        self.assertIn('CLONE_ROLLBACK=PASS', script)
+        self.assertIn('LIVE_STAGING_UNCHANGED=PASS', script)
+        self.assertIn('LIVE_EXECUTOR_ROLLBACK=NOT_TESTED', script)
+        self.assertIn('actual_live_executor_rollback_drilled":False', script)
+        for forbidden in ('docker stop "$LIVE"', 'docker rm -f "$LIVE"',
+                          'docker rename "$LIVE"', 'docker run -d --name "$LIVE"',
+                          'gcloud run deploy', 'firestore', 'gh secret set'):
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, script)
 
 if __name__ == "__main__":
     unittest.main()
