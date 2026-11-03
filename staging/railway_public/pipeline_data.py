@@ -22,7 +22,7 @@ _LAST_AT = 0.0
 _LAST = None
 
 
-def _fetch_json(url: str) -> dict:
+def _fetch_payload(url: str):
     req = Request(url, headers={
         "Accept": "application/vnd.github+json",
         "User-Agent": "SBI-ReadOnly-Pipeline-Dashboard/1.0",
@@ -31,7 +31,11 @@ def _fetch_json(url: str) -> dict:
         body = result.read(450_000)
         if len(body) >= 450_000:
             raise ValueError("GitHub response exceeds limit")
-    data = json.loads(body)
+    return json.loads(body)
+
+
+def _fetch_json(url: str) -> dict:
+    data = _fetch_payload(url)
     if not isinstance(data, dict):
         raise ValueError("Unexpected GitHub document shape")
     return data
@@ -57,6 +61,81 @@ def _workflow(name: str) -> dict:
             "created_at": str(run.get("created_at") or ""),
             "updated_at": str(run.get("updated_at") or ""),
         }
+    }
+
+
+
+def _recent_changes() -> list[dict]:
+    """Code changes only, not proof that code is deployed."""
+    commits = _fetch_payload(API + "/commits?per_page=12&sha=main")
+    if not isinstance(commits, list) or len(commits) > 12:
+        raise ValueError("Invalid GitHub commit history")
+    events = []
+    for item in commits:
+        if not isinstance(item, dict):
+            raise ValueError("Invalid commit entry")
+        commit = item.get("commit") or {}
+        if not isinstance(commit, dict):
+            raise ValueError("Invalid commit metadata")
+        details = commit.get("committer") or {}
+        if not isinstance(details, dict):
+            details = {}
+        sha = str(item.get("sha") or "")
+        if len(sha) != 40:
+            continue
+        events.append({
+            "kind": "code_change",
+            "sha": sha,
+            "version": "git-" + sha[:12],
+            "title": str(commit.get("message") or "").splitlines()[0][:160],
+            "timestamp": str(details.get("date") or ""),
+            "status": "source_only",
+            "url": str(item.get("html_url") or ""),
+        })
+    return events
+
+
+def _deployment_history() -> list[dict]:
+    """Staging Actions runs; a completed run is not a public-preview deployment."""
+    data = _fetch_json(API + "/actions/workflows/sbi-aws-staging-release-request.yml/runs?per_page=12&branch=main")
+    runs = data.get("workflow_runs")
+    if not isinstance(runs, list) or len(runs) > 12:
+        raise ValueError("Invalid staging workflow history")
+    events = []
+    for item in runs:
+        if not isinstance(item, dict):
+            raise ValueError("Invalid staging workflow entry")
+        sha = str(item.get("head_sha") or "")
+        status = str(item.get("status") or "unknown")
+        conclusion = str(item.get("conclusion") or "")
+        events.append({
+            "kind": "staging_release",
+            "sha": sha[:40] if len(sha) == 40 else "",
+            "version": "git-" + sha[:12] if len(sha) == 40 else "unverified",
+            "title": "AWS staging release",
+            "timestamp": str(item.get("updated_at") or item.get("created_at") or ""),
+            "status": conclusion if status == "completed" else status,
+            "url": str(item.get("html_url") or ""),
+            "run_id": item.get("id") if isinstance(item.get("id"), int) else None,
+        })
+    return events
+
+
+def _activity() -> dict:
+    events = []
+    sources = {}
+    for key, loader in (("code_changes", _recent_changes), ("staging_releases", _deployment_history)):
+        try:
+            events.extend(loader())
+            sources[key] = "available"
+        except (HTTPError, URLError, TimeoutError, ValueError, TypeError,
+                KeyError, json.JSONDecodeError, OSError):
+            sources[key] = "unavailable"
+    return {
+        "available": all(v == "available" for v in sources.values()),
+        "sources": sources,
+        "events": sorted(events, key=lambda item: item["timestamp"], reverse=True)[:24],
+        "note": "Code commits are source changes, not deployment proof. Staging Actions runs are not public preview releases.",
     }
 
 
@@ -121,6 +200,9 @@ def _collect() -> dict:
         result["register"] = {"available": False, "total": None,
                               "counts": {}, "categories": [], "tasks": []}
         result["sources"]["task_register"] = "unavailable"
+    activity = _activity()
+    result["activity"] = activity
+    result["sources"]["release_history"] = ("available" if activity["available"] else "partial")
     for key, filename in (
         ("staging", "sbi-aws-staging-release-request.yml"),
         ("qa", "sbi-consolidated-controller.yml"),
