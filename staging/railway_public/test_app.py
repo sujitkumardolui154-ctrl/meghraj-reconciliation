@@ -13,7 +13,7 @@ class PreviewTests(unittest.TestCase):
         self.client = app.test_client()
         self.env = patch.dict(os.environ, {
             "PREVIEW_USERNAME": "tester",
-            "PREVIEW_PASSWORD": "a-very-long-test-only-password",
+            "PREVIEW_PASSWORD": "A7b9C2d4E6f8G0h",
         })
         self.env.start()
 
@@ -21,8 +21,31 @@ class PreviewTests(unittest.TestCase):
         self.env.stop()
 
     def auth(self):
-        token = base64.b64encode(b"tester:a-very-long-test-only-password").decode()
+        token = base64.b64encode(b"tester:A7b9C2d4E6f8G0h").decode()
         return {"Authorization": "Basic " + token}
+
+    def test_preview_login_length_and_allowed_chars(self):
+        import app
+        with patch.dict(os.environ, {"PREVIEW_PASSWORD": "Ab9_cd-123"}):
+            self.assertEqual(self.client.get("/", headers={"Authorization": "Basic " +
+                base64.b64encode(b"tester:Ab9_cd-123").decode()}).status_code, 200)
+        for password in ("Ab9_cd-12", "Ab9_cd-1234567890", "BadPassword123!", "1234567890123456"):
+            with self.subTest(length=len(password), special=password[-1]):
+                with patch.dict(os.environ, {"PREVIEW_PASSWORD": password}):
+                    auth = "Basic " + base64.b64encode(("tester:" + password).encode()).decode()
+                    self.assertEqual(self.client.get("/", headers={"Authorization": auth}).status_code, 401)
+
+    def test_preview_environment_policy_matches_dashboard(self):
+        path = Path(__file__).resolve().parents[1] / "aws_lightsail" / "preview_auth_env.py"
+        spec = importlib.util.spec_from_file_location("sbi_preview_env_contract", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        for password in ("Ab9_cd-123", "A7b9C2d4E6f8G0h"):
+            self.assertEqual(mod.approved_preview_env(["PREVIEW_USERNAME=tester", "PREVIEW_PASSWORD=" + password])["PREVIEW_PASSWORD"], password)
+        for password in ("Ab9_cd-12", "A7b9C2d4E6f8G0hZ", "Password123!"):
+            with self.subTest(password_length=len(password)):
+                with self.assertRaises(ValueError):
+                    mod.approved_preview_env(["PREVIEW_USERNAME=tester", "PREVIEW_PASSWORD=" + password])
 
     def test_login_required(self):
         self.assertEqual(self.client.get("/").status_code, 401)
@@ -153,25 +176,33 @@ class PreviewTests(unittest.TestCase):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         original = "SITE_DOMAIN=example.com\nPREVIEW_USERNAME=reviewer\nPREVIEW_PASSWORD=short\n"
-        revised = module.replace_password(original, "safe-secret-string-1234567890")
+        revised = module.replace_password(original, "X7b8C9d0E1f2G3h")
         self.assertIn("SITE_DOMAIN=example.com", revised)
         self.assertIn("PREVIEW_USERNAME=reviewer", revised)
-        self.assertIn("PREVIEW_PASSWORD=safe-secret-string-1234567890", revised)
+        self.assertIn("PREVIEW_PASSWORD=X7b8C9d0E1f2G3h", revised)
         self.assertNotIn("PREVIEW_PASSWORD=short", revised)
         with self.assertRaises(ValueError):
             module.replace_password(original, "short")
         with self.assertRaises(ValueError):
-            module.replace_password(original + "PREVIEW_PASSWORD=duplicate\n", "safe-secret-string-1234567890")
+            module.replace_password(original + "PREVIEW_PASSWORD=duplicate\n", "X7b8C9d0E1f2G3h")
         with self.assertRaises(ValueError):
             module.replace_password(original, "not safe with spaces 1234567890")
         source = script.read_text(encoding="utf-8")
         self.assertIn("getpass.getpass", source)
         for expected in ("ROTATION_BLOCK_STAGE=", "ENV_ASSIGNMENT_FORMAT",
                          "PASSWORD_CONFIRMATION", "PASSWORD_POLICY",
-                         "PASSWORD_REUSE", "BACKUP_PREPARATION", "UPDATE_OR_RESTART"):
+                         "PASSWORD_REUSE", "BACKUP_PREPARATION", "VERIFY_SAME_IMAGE_AND_LOGIN"):
             self.assertIn(expected, source)
         self.assertNotIn('print(str(error))', source)
-        self.assertIn("AUTH_ROTATION_ROLLBACK=ATTEMPTED", source)
+        self.assertIn('PASSWORD_PATTERN = re.compile(r"[A-Za-z0-9._~-]{10,15}\\Z")', source)
+        self.assertIn('assert code("/api/upload", True) in (403,404)', source)
+        self.assertIn("for attempt in range(20):", source)
+        self.assertIn("time.sleep(1)", source)
+        with self.assertRaises(ValueError):
+            module.replace_password(original, "123456789")
+        with self.assertRaises(ValueError):
+            module.replace_password(original, "1234567890123456")
+                self.assertIn("AUTH_ROTATION_ROLLBACK=ATTEMPTED", source)
         self.assertIn("PUBLIC_IMAGE_UNCHANGED=PASS", source)
         self.assertIn("FINANCIAL_WRITES=DISABLED", source)
         for forbidden in ("docker compose down", "docker system prune", "gcloud run deploy",
