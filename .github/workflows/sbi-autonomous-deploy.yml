@@ -47,6 +47,11 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_credit_note_snapshot_integrity.py' -v
       - name: Verify R2 dataset and report audit safety (synthetic, read-only)
         run: python -m unittest discover -s tests -p 'test_sbi_r2_read_only_audit.py' -v
+      - name: Verify private reporting canary contract (synthetic only)
+        run: |
+          python -m unittest discover -s tests -p 'test_reporting_staging_approval.py' -v
+          python -m unittest discover -s tests -p 'test_reporting_canary_package.py' -v
+          python -m unittest discover -s tests -p 'test_private_reporting_evidence.py' -v
       - name: Check candidate prerequisites
         id: readiness
         shell: bash
@@ -61,21 +66,7 @@ jobs:
           if [[ -f "$candidate/Dockerfile" &&
                 -f "$candidate/requirements.txt" &&
                 -n "$REPORTING_APPROVAL_JSON" ]]; then
-            python - <<'PY'
-          import json, os, re, sys
-          approval = json.loads(os.environ["REPORTING_APPROVAL_JSON"])
-          required = (
-              approval.get("release_scope") == "reporting_only"
-              and approval.get("decision") == "APPROVED_FOR_PRIVATE_STAGING"
-              and approval.get("source_sha") == os.environ["GITHUB_SHA"]
-              and bool(re.fullmatch(r"[0-9a-f]{64}", str(approval.get("dataset_sha256", ""))))
-              and bool(approval.get("reviewer"))
-              and approval.get("private_evidence_verified") is True
-              and approval.get("financial_execution") == "RESTRICTED"
-          )
-          if not required:
-              sys.exit("Reporting-only independent release evidence is incomplete")
-          PY
+            python tools/verify_reporting_staging_approval.py
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
@@ -98,11 +89,14 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v3
       - name: Build and deploy candidate with no traffic
         run: |
-          gcloud run deploy sbi-reconciliation-api \
+          cp dashboard_source/dashboard_sessions.py deployment/reporting_staging/dashboard_sessions.py
+          cp dashboard_source/sbi_credit_report_auth.py deployment/reporting_staging/sbi_credit_report_auth.py
+          gcloud run deploy sbi-reporting-canary-v1 \
             --project meghraj-reconciliation \
             --region asia-south1 \
-            --source deployment/staging \
+            --source deployment/reporting_staging \
             --no-traffic \
+            --no-allow-unauthenticated \
             --quiet
       - name: Declare traffic policy
         run: echo "No traffic promotion or financial data mutation authorized by this workflow."
