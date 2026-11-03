@@ -81,6 +81,24 @@ class BackendServiceIdentityTests(unittest.TestCase):
             with self.subTest(token=repr(token)):
                 self.assertFalse(self.check(request=self.req(token), verifier=forbidden))
 
+    def test_oversized_bearer_rejected_before_verification(self):
+        def forbidden(*args):
+            raise AssertionError("Oversized token reached verifier")
+        self.assertFalse(self.check(request=self.req("x" * 12000), verifier=forbidden))
+
+    def test_invalid_backend_identity_configuration_denied_before_verification(self):
+        def forbidden(*args):
+            raise AssertionError("Invalid configuration reached verifier")
+        for audience, email in (
+            ("http://private-backend.example.run.app", EMAIL),
+            (AUD, "person@example.com"),
+            ("", EMAIL),
+            (AUD, ""),
+        ):
+            with self.subTest(audience=audience, email=email):
+                self.assertFalse(self.check(
+                    audience=audience, caller_email=email, verifier=forbidden))
+
     def test_exact_service_identity_allows(self):
         self.assertTrue(self.check())
 
