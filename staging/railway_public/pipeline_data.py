@@ -16,7 +16,7 @@ import json
 REPO = "sujitkumardolui154-ctrl/meghraj-reconciliation"
 API = "https://api.github.com/repos/" + REPO
 RAW_TASKS = "https://raw.githubusercontent.com/" + REPO + "/main/agent/task_queue.json"
-TTL_SECONDS = 120
+TTL_SECONDS = 300
 _LOCK = Lock()
 _LAST_AT = 0.0
 _LAST = None
