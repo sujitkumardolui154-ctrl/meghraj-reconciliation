@@ -70,11 +70,25 @@ command -v runuser >/dev/null
 visudo -cf /etc/sudoers >/dev/null
 bash -n "$ROOT/staging/aws_lightsail/sbi_stage_deploy_root.sh" \
   "$ROOT/staging/aws_lightsail/sbi_stage_request.sh"
+# Verify the restricted SSH account can actually invoke the installed executor.
+# Idempotent upgrades must not report success merely because bytes match.
+check_restricted_handshake() {
+  local status
+  status="$(runuser -u sbi-deployer -- env SSH_ORIGINAL_COMMAND=status-auth-v1 "$HANDLER")" || {
+    echo "BLOCKED: restricted staging handshake failed"; return 2;
+  }
+  if ! grep -Fxq 'SBI_STAGE_EXECUTOR=PREVIEW_AUTH_V1' <<< "$status" ||
+     ! grep -Fxq 'FINANCIAL_WRITES=DISABLED' <<< "$status"; then
+    echo "BLOCKED: restricted staging handshake failed"
+    return 2
+  fi
+}
 # Refuse concurrent deployments or upgrades. This is the same lock as the executor.
 exec 9>/run/lock/sbi-stage-release.lock
 flock -n 9 || { echo "BLOCKED: staging release/upgrade already running"; exit 2; }
 if cmp -s "$EXEC" "$ROOT/staging/aws_lightsail/sbi_stage_deploy_root.sh" &&
    cmp -s "$HANDLER" "$ROOT/staging/aws_lightsail/sbi_stage_request.sh"; then
+  check_restricted_handshake
   echo "UPGRADE_ALREADY_APPLIED=YES"
   echo "DEPLOYMENT_TRIGGERED=NO"
   exit 0
@@ -118,11 +132,7 @@ CHANGED=1
 mv -f "$TMP_EXEC" "$EXEC"
 mv -f "$TMP_HANDLER" "$HANDLER"
 # A read-only capability handshake as the restricted SSH account is mandatory.
-STATUS="$(runuser -u sbi-deployer -- env SSH_ORIGINAL_COMMAND=status-auth-v1 "$HANDLER")"
-grep -Fxq 'SBI_STAGE_EXECUTOR=PREVIEW_AUTH_V1' <<< "$STATUS" &&
-  grep -Fxq 'FINANCIAL_WRITES=DISABLED' <<< "$STATUS" || {
-  echo "BLOCKED: restricted staging handshake failed"; exit 2;
-}
+check_restricted_handshake
 cmp -s "$EXEC" "$ROOT/staging/aws_lightsail/sbi_stage_deploy_root.sh"
 cmp -s "$HANDLER" "$ROOT/staging/aws_lightsail/sbi_stage_request.sh"
 CHANGED=0
