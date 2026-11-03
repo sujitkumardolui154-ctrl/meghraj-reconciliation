@@ -47,6 +47,14 @@ jobs:
         run: |
           python -m unittest discover -s tests -p test_sbi_a01_report_access.py -v
           python -m unittest discover -s tests -p test_sbi_a02_payment_classification.py -v
+      - name: Verify A02 Suspense status and A08 53-column financial report parity
+        run: |
+          python -m unittest discover -s tests -p test_sbi_suspense_report_contract.py -v
+          python -m unittest discover -s tests -p test_sbi_financial_report_parity.py -v
+      - name: Verify reporting role provisioning and signed-in E2E safety
+        run: |
+          python -m unittest discover -s tests -p test_sbi_reporting_role_provision.py -v
+          python -m unittest discover -s tests -p test_sbi_reporting_signed_in_e2e.py -v
       - name: Run consolidated safety contract tests
         run: python agent/consolidated_controller.py --run-tests --full-tests --output /tmp/sbi-agentic-gate.json
       - name: Publish auditable results
