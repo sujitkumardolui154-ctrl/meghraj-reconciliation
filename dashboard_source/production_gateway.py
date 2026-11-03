@@ -1,6 +1,6 @@
 import os
 import requests
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, send_from_directory, g
 from cloud_auth import get_backend_token
 from sbi_report_access import can_view_report
 
@@ -387,7 +387,6 @@ install_account_pages(app)
 # Read-only CREDIT NOTE reporting v1 — use the existing Firebase session guard.
 # install_sessions(app) runs before this blueprint and populates g.dil_user
 # only after revocation-checked Firebase cookie validation.
-from flask import g
 from sbi_credit_report_auth import create_credit_note_blueprint
 
 
