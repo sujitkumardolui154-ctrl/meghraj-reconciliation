@@ -19,19 +19,24 @@
     "backend_source/credit_note_report.py::generate_credit_note_report_from_53",
     "dashboard_source/sbi_report_access.py",
     "tests/test_sbi_a01_report_access.py",
-    "tests/test_sbi_a02_payment_classification.py"
+    "tests/test_sbi_a02_payment_classification.py",
+    "backend_source/suspense_report_contract.py",
+    "tools/sbi_financial_report_parity.py",
+    "tools/sbi_reporting_role_provision.py",
+    "tools/sbi_reporting_signed_in_e2e.py",
+    "agent/a_reporting_release_gate.json"
   ],
   "tasks": [
     {
       "id": "A01",
-      "state": "EXPLICIT_REPORT_ROLE_SOURCE_IMPLEMENTED_E2E_PENDING",
-      "finding": "Report metadata/download handlers exist in report_api.py and production_gateway.py. Existing gateway uses backend service identity; independent real-user Firebase session and role authorization on main app not verified. Correction requires a verified Firebase session, sbi_report_viewer custom claim for report index/CSV, plus sbi_reconciliation_change_viewer for old/new payment changes. Existing credit-note viewer claim remains separate. Backend token now minted for REPORT_BACKEND audience; grant/role provisioning and real HTTP E2E pending.",
+      "state": "ROLE_PROVISIONING_AND_LIVE_E2E_SOURCE_PREPARED",
+      "finding": "Report metadata/download handlers exist in report_api.py and production_gateway.py. Existing gateway uses backend service identity; independent real-user Firebase session and role authorization on main app not verified. Correction requires a verified Firebase session, sbi_report_viewer custom claim for report index/CSV, plus sbi_reconciliation_change_viewer for old/new payment changes. Existing credit-note viewer claim remains separate. Backend token now minted for REPORT_BACKEND audience; grant/role provisioning and real HTTP E2E pending. Role provisioning script requires explicit approved access ticket and interactive confirmed target claims SHA; not executed. Live signed-in HTTPS probe script requires private test cookies and real authorized+denied sessions; none supplied or tested.",
       "release_gate": "AUTHENTICATED_ROLE_E2E_AND_SOURCE_CONTRACT"
     },
     {
       "id": "A02",
-      "state": "NEGATIVE_PAYMENT_SOURCE_REVIEW_CORRECTION_IMPLEMENTED",
-      "finding": "Current report source categorizes original payment data as unpaid, ok, error-value, and balance-review with the 53-column schema. No approved Suspense report implementation proven. Corrected classifier so negative source payments are error-value, not OK; existing 53/34 positional fields and source raw strings preserved. Suspense still not inferred and requires an independently approved settlement rulebook.",
+      "state": "APPROVED_V218_PRECLASSIFIED_SUSPENSE_REPORT_SOURCE_PREPARED",
+      "finding": "Current report source categorizes original payment data as unpaid, ok, error-value, and balance-review with the 53-column schema. No approved Suspense report implementation proven. Corrected classifier so negative source payments are error-value, not OK; existing 53/34 positional fields and source raw strings preserved. Suspense still not inferred and requires an independently approved settlement rulebook. Exact owner-approved PAYMNENT M status enum and Credit I; no SUSPENSE from invoice payment text or from historical 163 target. Correctly distinguishes previously classified bank SUSPENSE from Unpaid/Error Value/Balance Review invoice-source categories.",
       "release_gate": "APPROVED_SUSPENSE_POLICY_AND_GOLDEN_ROWSET"
     },
     {
@@ -66,8 +71,8 @@
     },
     {
       "id": "A08",
-      "state": "PARTIAL_SOURCE_VERIFICATION",
-      "finding": "Report API can export CSV preserving original 53 values and has formula-injection guard; full Excel output, cross-report financial totals and restored data-source verification are not certified.",
+      "state": "PRIVATE_REAL_SOURCE_FINANCIAL_PARITY_VERIFIER_PREPARED",
+      "finding": "Report API can export CSV preserving original 53 values and has formula-injection guard; full Excel output, cross-report financial totals and restored data-source verification are not certified. Offline SHA-bound original 53-column source-vs-report CSV equality, three disjoint report partitions plus optional Balance Review subset and GST sum diagnostic; real data not yet compared; known exceptions remain REVIEW_REQUIRED.",
       "release_gate": "EXACT_EXCEL_CSV_TOTALS_AGAINST_INDEPENDENT_SOURCES"
     }
   ],
@@ -76,6 +81,6 @@
     "fully_released": 0,
     "financial_release": "RESTRICTED",
     "database_writes": "DISABLED",
-    "recommended_next": "Provision and verify explicit reporting viewer claims in isolated Firebase test session; collect signed-in vs denied role E2E and source/header evidence; independently approve Suspense policy before report implementation."
+    "recommended_next": "Run synthetic CI; next obtain independently approved original source and report hashes, verified account/grant ticket, signed-in/denied role sessions, private zero-traffic canary and independent financial exception review. Financial release remains restricted."
   }
 }

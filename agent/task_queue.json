@@ -16,20 +16,20 @@
       "category": "A — Reports Development",
       "title": "Verify existing report APIs and handlers",
       "user_checklist": "checked",
-      "verification": "source_correction_and_synthetic_tests_under_review",
+      "verification": "role_readiness_source_and_synthetic_tests_pending",
       "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "Existing report handler and Firestore import functions inspected; production contract not fully verified\n2026-11-03 report-source audit: backend_source/report_api.py exposes report handlers; dashboard_source/production_gateway.py forwards reports by backend identity. Real signed-in app session/strict role gate remains unverified and release blocked.\n2026-11-03 reviewed source correction under test: production_gateway.py now explicitly gates general report index/CSV on revocation-checked Firebase session user identity plus sbi_report_viewer=True and reconciliation change-report routes on an additional sbi_reconciliation_change_viewer=True; dashboard login/admin claim alone does not grant report access. Backend token audience now uses configured REPORT_BACKEND rather than hardcoded supervisor URL. New pure helper dashboard_source/sbi_report_access.py and synthetic permission tests. Actual signed-in Firebase HTTP E2E, custom-claim provisioning and Cloud Run zero-traffic candidate remain pending. No deployment performed."
+      "evidence": "Existing report handler and Firestore import functions inspected; production contract not fully verified\n2026-11-03 report-source audit: backend_source/report_api.py exposes report handlers; dashboard_source/production_gateway.py forwards reports by backend identity. Real signed-in app session/strict role gate remains unverified and release blocked.\n2026-11-03 reviewed source correction under test: production_gateway.py now explicitly gates general report index/CSV on revocation-checked Firebase session user identity plus sbi_report_viewer=True and reconciliation change-report routes on an additional sbi_reconciliation_change_viewer=True; dashboard login/admin claim alone does not grant report access. Backend token audience now uses configured REPORT_BACKEND rather than hardcoded supervisor URL. New pure helper dashboard_source/sbi_report_access.py and synthetic permission tests. Actual signed-in Firebase HTTP E2E, custom-claim provisioning and Cloud Run zero-traffic candidate remain pending. No deployment performed.\n2026-11-03: Created guarded Firebase role provisioning utility (dry-run default; exact UID/email, existing claims hash, approved ticket and interactive confirmation required before claim grant), plus read-only live signed-in E2E role probe requiring distinct viewer/denied sessions on Cloud Run. No roles actually provisioned, no real signed-in tests executed, no deployment. Existing role guard in production_gateway.py from PR #33 remains in source only."
     },
     {
       "id": "A02",
       "category": "A — Reports Development",
       "title": "Unpaid / OK / Balance Review / Suspense reports",
       "user_checklist": "checked",
-      "verification": "source_correction_and_synthetic_tests_under_review",
+      "verification": "approved_v218_suspense_report_source_and_synthetic_tests_pending",
       "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "2026-11-03 source audit: backend_source/payment_report_rules.py classifies unpaid/ok/error-value; report_api.py adds balance-review. No approved Suspense report contract or real row count proof yet; no changes to financial classifications.\n2026-11-03 reviewed source correction under test: payment_report_rules.classify_payment() no longer treats negative Payment Received cells as OK. Negative, malformed, nonnumeric and credit-note narration sources remain error-value exceptions; exact zero/blank unpaid and positive numeric OK. Supports both 34- and 53-column source layout, preserves raw cells. No inference of SUSPENSE or reconciliation settlement. Synthetic regression added. Real payment/Balance Review/Suspense approved rowset certification pending."
+      "evidence": "2026-11-03 source audit: backend_source/payment_report_rules.py classifies unpaid/ok/error-value; report_api.py adds balance-review. No approved Suspense report contract or real row count proof yet; no changes to financial classifications.\n2026-11-03 reviewed source correction under test: payment_report_rules.classify_payment() no longer treats negative Payment Received cells as OK. Negative, malformed, nonnumeric and credit-note narration sources remain error-value exceptions; exact zero/blank unpaid and positive numeric OK. Supports both 34- and 53-column source layout, preserves raw cells. No inference of SUSPENSE or reconciliation settlement. Synthetic regression added. Real payment/Balance Review/Suspense approved rowset certification pending.\n2026-11-03: Recovered owner-approved OUT-SCHEMA-V218-001 (2026-10-28). PAYMNENT original A-L protected, Credit I, existing status M exactly OK/SUSPENSE/Duplicate Payment, remarks N. Read-only offline SUSPENSE CSV filter in backend_source/suspense_report_contract.py based solely on already-classified Column M, no new matching or allocation. Prior v2.18 163 SUSPENSE vs bounded v2.51 audit 435 with 272 historical provisional differences; differences not auto-reclassified. Independent same-source hashes and full rulebook integration pending."
     },
     {
       "id": "A03",
@@ -142,10 +142,10 @@
       "category": "A — Reports Development",
       "title": "Excel/CSV exports and financial totals validation",
       "user_checklist": "checked",
-      "verification": "source_audit_or_synthetic_implementation_under_review",
+      "verification": "independent_53_column_report_parity_source_and_synthetic_tests_pending",
       "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "Step 18 18-column CREDIT NOTE CSV passed; all financial exports and totals not verified\n2026-11-03 source audit: report_api.py writes 53-column CSV with formula protection; full Excel writer and exact reconciled financial totals remain unverified without approved external source and private ledger."
+      "evidence": "Step 18 18-column CREDIT NOTE CSV passed; all financial exports and totals not verified\n2026-11-03 source audit: report_api.py writes 53-column CSV with formula protection; full Excel writer and exact reconciled financial totals remain unverified without approved external source and private ledger.\n2026-11-03: Added offline SHA-bound original 53-column CSV vs Unpaid/OK/Error Value partitions and optional Balance Review source-subset validator; flags rowset/total mismatches, duplicate invoice groups and GST taxable+CGST+SGST vs gross anomalies without changing values. Known 4 GST arithmetic exceptions, 9 duplicate/missing invoice groups and 5 credit-note conflicts remain manual review. Independent private source digest and report manifest not yet supplied to/run by tool; financial totals not certified."
     },
     {
       "id": "B01",
@@ -1083,10 +1083,10 @@
     }
   ],
   "audit_metadata": {
-    "updated_for": "A01 explicit per-report role gate and correct backend token audience; A02 conservative negative-payment error classification; source-only CI pending",
+    "updated_for": "A02 approved v2.18 Suspense status-only report source; A08 independent 53-column partition/GST diagnostic tool; A01 role grant readiness and live signed-in test harness",
     "as_of_utc": "2026-11-03",
-    "source_of_evidence": "GitHub source inspection and synthetic regressions, not live account session/data verification",
-    "status_rules": "No A01/A02 production approval; reporting viewer claims must be provisioned and verified independently; SUSPENSE remains rulebook-gated.",
+    "source_of_evidence": "Approved owner OUT-SCHEMA-V218-001 Drive documents and GitHub code under reviewed PR; actual private financial/real-auth evidence still required",
+    "status_rules": "No SUSPENSE auto-restoration from 163/435 historical counts; no inferred settlement, no report role grants made, no real financial certified values.",
     "production_release": "NOT_READY",
     "real_financial_execution": "RESTRICTED",
     "total_selected_tasks": 50,

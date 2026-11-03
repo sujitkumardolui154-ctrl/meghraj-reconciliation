@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "workstream": "A — Reports Development",
+  "date": "2026-11-03",
+  "authoritative_historical_contract": {
+    "source": "Owner-approved OUT-SCHEMA-V218-001 (2026-10-28)",
+    "schema_drive_url": "https://drive.google.com/file/d/1qMpPUWPh8SGOMSFjxBHxctB_ak7J_PwV/view",
+    "approved_addendum_url": "https://drive.google.com/file/d/1Bz4wDXuRIp0MG21WPFnuPqeLxyPU_3Mw/view",
+    "suspense_delta_url": "https://drive.google.com/file/d/1BvUjOIohjJ0U3qi0bgHkEc_GUhlobFq3/view",
+    "approval_scope": "Schema/layout and historical comparison diagnostics only, NOT financial release or new matching authority",
+    "payment_sheet": "PAYMNENT",
+    "original_columns": "A:L",
+    "bank_credit_column": "I",
+    "status_column": "M",
+    "remarks_column": "N",
+    "status_enum": [
+      "OK",
+      "SUSPENSE",
+      "Duplicate Payment"
+    ],
+    "reference_source_sha256": "c40030e30c94fbc204eab99d91f42e655d559366d37791115029450acf369e97",
+    "historical_reference_rows": 14898,
+    "historical_reference_statuses": {
+      "OK": 14733,
+      "SUSPENSE": 163,
+      "Duplicate Payment": 2
+    },
+    "bounded_v251_audit": {
+      "OK": 14461,
+      "SUSPENSE": 435,
+      "Duplicate Payment": 2
+    },
+    "suspense_delta_count": 272,
+    "suspense_delta_groups": {
+      "DNM_01_PROVISIONAL": 193,
+      "SERVICE_PERIOD_MODELED_AMOUNT": 48,
+      "MXP_REFERENCE_AMOUNT": 31
+    },
+    "source_byte_equivalence_of_baseline_and_bounded_audit": "NOT_VERIFIED",
+    "automatic_status_reclassification": "FORBIDDEN",
+    "finance_rulebook": "Master v2.51 / Matrix v2.39"
+  },
+  "source_corrections": {
+    "A02": "Read-only already-classified PAYMNENT SUSPENSE filter using exact M status and approved A:W header; no status assignment or forced count",
+    "A08": "Offline exact source-vs-three-primary-reports partition and optional Balance Review overlap audit, independent caller-supplied file hashes, duplicate-invoice groups and GST diagnostic exceptions",
+    "A01": "Guarded Firebase role-provisioning CLI (dry-run default) and signed-in role E2E HTTPS probe; no claims modified in this source batch"
+  },
+  "release_gates": [
+    {
+      "id": "RG1",
+      "status": "SOURCE_IMPLEMENTED_TEST_PENDING",
+      "description": "Synthetic v2.18 original header/status enum and SUSPENSE-only report QA"
+    },
+    {
+      "id": "RG2",
+      "status": "REAL_DATA_EVIDENCE_PENDING",
+      "description": "Independent authenticated original 53-column source snapshot SHA, 3 partition CSV hashes, output contract and rowset parity"
+    },
+    {
+      "id": "RG3",
+      "status": "EXCEPTION_REVIEW_REQUIRED",
+      "description": "Resolve known GST arithmetic exceptions, invoice duplicate groups and five credit-note conflicts, without auto-fixing values"
+    },
+    {
+      "id": "RG4",
+      "status": "ROLE_GRANT_NOT_EXECUTED",
+      "description": "Confirm real authorized viewer UID/email and approved ticket; run dry-run role plan and explicitly approved interactive grant"
+    },
+    {
+      "id": "RG5",
+      "status": "REAL_AUTH_E2E_NOT_RUN",
+      "description": "Fresh signed-in report viewer and denied user session cookies, HTTPS auth index/CSV and separate change receipt role test"
+    },
+    {
+      "id": "RG6",
+      "status": "ZERO_TRAFFIC_DEPLOYMENT_NOT_EXECUTED",
+      "description": "Signed-in authenticated private canary rehearsal, rollback and correct report backend audience"
+    },
+    {
+      "id": "RG7",
+      "status": "FINANCIAL_RELEASE_RESTRICTED",
+      "description": "Separate independent Finance QA/signoff for payment status changes; not unlocked by reporting release"
+    }
+  ],
+  "financial_database_writes": false,
+  "public_preview_traffic_changed": false,
+  "release_status": "REVIEW_REQUIRED"
+}
