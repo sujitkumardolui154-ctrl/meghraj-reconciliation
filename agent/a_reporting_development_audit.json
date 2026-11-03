@@ -14,7 +14,9 @@
     "backend_source/credit_note_report.py",
     "dashboard_source/production_gateway.py",
     "tools/sbi_approved_report_bundle.py",
-    "backend_source/reconciliation_changes_offline.py"
+    "backend_source/reconciliation_changes_offline.py",
+    "tools/sbi_report_headers_audit.py",
+    "backend_source/credit_note_report.py::generate_credit_note_report_from_53"
   ],
   "tasks": [
     {
@@ -31,8 +33,8 @@
     },
     {
       "id": "A03",
-      "state": "SOURCE_FORMAT_AUDIT_IN_PROGRESS",
-      "finding": "Current source includes the 53-column original header list including duplicate labels; independently approved v2.18 output headers and exact writer contract are not available in this source audit.",
+      "state": "SOURCE_HEADER_CHECKER_IMPLEMENTED_REVIEW_PENDING",
+      "finding": "Current source includes the 53-column original header list including duplicate labels; independently approved v2.18 output headers and exact writer contract are not available in this source audit. Added explicit local-only reference comparator for approved 53 original positions, approved v2.18 header order, source CSV header and widths. No independent private reference supplied to GitHub; no financial amounts compared.",
       "release_gate": "EXTERNAL_APPROVED_V2_18_HEADER_AND_GOLDEN_EXPORT"
     },
     {
@@ -49,8 +51,8 @@
     },
     {
       "id": "A06",
-      "state": "SOURCE_CORRECTION_UNDER_REVIEW",
-      "finding": "Legacy 18-column builder matched CREDIT NOTE by exact equality rather than approved embedded CREDIT NOTE/NORTE narrations; corrected token matching and grouped duplicate-invoice conflict review with synthetic tests. Current private staging observation of five conflicts is not independently reproduced by this source change.",
+      "state": "POSITIONAL_ADAPTER_SOURCE_IMPLEMENTED_REVIEW_PENDING",
+      "finding": "Legacy 18-column builder matched CREDIT NOTE by exact equality rather than approved embedded CREDIT NOTE/NORTE narrations; corrected token matching and grouped duplicate-invoice conflict review with synthetic tests. Current private staging observation of five conflicts is not independently reproduced by this source change. Added 53-source positional projection for A-Q preserving duplicate-header original values. Synthetic source tests only, private conflict count still requires independent recheck.",
       "release_gate": "PRIVATE_APPROVED_SOURCE_AND_AUTH_REPORT_QA"
     },
     {
@@ -71,6 +73,6 @@
     "fully_released": 0,
     "financial_release": "RESTRICTED",
     "database_writes": "DISABLED",
-    "recommended_next": "Obtain independently approved v2.18 header and private manifest; verify authenticated reporting gateway and financial totals before main release"
+    "recommended_next": "Provide independent approved original 53-header JSON, approved v2.18 header JSON and actual private v2.18 CSV for read-only positional audit. Review private credit-note duplicate groups and authenticated gateway before release."
   }
 }
