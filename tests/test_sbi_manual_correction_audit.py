@@ -25,7 +25,12 @@ class ManualCorrectionTests(unittest.TestCase):
         result = self.check()
         self.assertEqual(result["status"], "PASS", result["errors"])
         self.assertEqual(result["total"], 92)
-        self.assertEqual(result["pending_triaged"], 69)
+        self.assertEqual(result["baseline_triaged"], 69)
+        self.assertEqual(
+            result["pending_triaged"],
+            sum(t["execution"] == "pending" for t in QUEUE["tasks"]),
+        )
+        self.assertEqual(result["pending_triaged"] + result["advanced_from_baseline"], 69)
         self.assertEqual(result["financial_execution"], "RESTRICTED")
         self.assertEqual(result["database_writes"], "DISABLED")
         self.assertEqual(result["source_changes"], 0)
@@ -72,8 +77,8 @@ class ManualCorrectionTests(unittest.TestCase):
         target["evidence"] = "Scoped implementation with test evidence awaiting private review"
         updated = self.check(queue=queue)
         self.assertEqual(updated["status"], "PASS", updated["errors"])
-        self.assertEqual(updated["advanced_from_baseline"], 1)
-        self.assertEqual(updated["pending_triaged"], 68)
+        self.assertEqual(updated["advanced_from_baseline"], self.check()["advanced_from_baseline"] + 1)
+        self.assertEqual(updated["pending_triaged"], self.check()["pending_triaged"] - 1)
 
     def test_task_cannot_be_marked_done_without_verification(self):
         queue = deepcopy(QUEUE)
