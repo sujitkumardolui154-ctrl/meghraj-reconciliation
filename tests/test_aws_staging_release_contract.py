@@ -200,6 +200,20 @@ class AWSStagingReleaseContractTests(unittest.TestCase):
         self.assertIn('visudo -cf /etc/sudoers', upgrade)
         self.assertIn('restrict,command="/usr/local/bin/sbi-stage-request"', upgrade)
 
+    def test_idempotent_executor_upgrade_requires_restricted_handshake(self):
+        upgrade = (AWS / "upgrade_stage_executor.sh").read_text(encoding="utf-8")
+        self.assertIn("check_restricted_handshake() {", upgrade)
+        self.assertIn('runuser -u sbi-deployer -- env SSH_ORIGINAL_COMMAND=status-auth-v1', upgrade)
+        # A byte-identical executor is not proof that the restricted sudo path works.
+        before_already, after_already = upgrade.split('echo "UPGRADE_ALREADY_APPLIED=YES"', 1)
+        self.assertTrue(before_already.rstrip().endswith("check_restricted_handshake"))
+        self.assertIn("check_restricted_handshake\ncmp -s \"$EXEC\"", after_already)
+        self.assertLess(
+            after_already.index("check_restricted_handshake"),
+            after_already.index('echo "STAGING_EXECUTOR_UPGRADE=PASS"'),
+        )
+        self.assertIn('BLOCKED: restricted staging handshake failed', upgrade)
+
     def test_executor_upgrade_has_rollback_and_non_deploying_handshake(self):
         upgrade = (AWS / "upgrade_stage_executor.sh").read_text(encoding="utf-8")
         self.assertIn('trap finish EXIT', upgrade)
