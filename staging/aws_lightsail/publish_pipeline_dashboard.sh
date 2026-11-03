@@ -35,6 +35,41 @@ PROBE="sbi-public-pipeline-probe"
 AUTHFILE="$(mktemp /run/sbi-public-auth.XXXXXXXX)"
 docker inspect "$NAME" --format '{{json .Config.Env}}' | python3 "$ROOT/staging/aws_lightsail/preview_auth_env.py" "$AUTHFILE" || { rm -f "$AUTHFILE"; echo "BLOCKED: existing login unavailable"; exit 2; }
 CHANGED=0
+RELEASE_AUDIT_DIR="/var/log/sbi-public-dashboard"
+install -d -o root -g root -m 0700 "$RELEASE_AUDIT_DIR"
+RELEASE_AUDIT="$RELEASE_AUDIT_DIR/$(date -u +%Y%m%dT%H%M%SZ)-$SHORT-$.json"
+NEW_IMAGE=""
+ROLLBACK_RESULT="not_needed"
+write_receipt() {
+  local outcome="$1"
+  RECEIPT_PATH="$RELEASE_AUDIT" RECEIPT_STATUS="$outcome" RELEASE_SHA="$SHA" \
+  RELEASE_OLD_IMAGE="$OLD" RELEASE_NEW_IMAGE="$NEW_IMAGE" RELEASE_ROLLBACK="$ROLLBACK_RESULT" \
+  RELEASE_BACKUP="$BACKUP" python3 - <<'PY'
+from datetime import datetime, timezone
+from pathlib import Path
+import json, os
+path=Path(os.environ["RECEIPT_PATH"])
+report={
+    "recorded_at_utc": datetime.now(timezone.utc).isoformat(),
+    "target": "aws-public-preview",
+    "source_sha": os.environ["RELEASE_SHA"],
+    "version": "git-" + os.environ["RELEASE_SHA"][:12],
+    "status": os.environ["RECEIPT_STATUS"],
+    "previous_image": os.environ["RELEASE_OLD_IMAGE"],
+    "new_image": os.environ["RELEASE_NEW_IMAGE"] or None,
+    "rollback": os.environ["RELEASE_ROLLBACK"],
+    "backup_tag": os.environ["RELEASE_BACKUP"],
+    "financial_writes": False,
+    "evidence_scope": "public preview host local receipt; not GitHub Actions",
+}
+with path.open("x", encoding="utf-8") as f:
+    json.dump(report, f, sort_keys=True, indent=2)
+    f.write("\\n")
+path.chmod(0o600)
+PY
+  sha256sum "$RELEASE_AUDIT" > "$RELEASE_AUDIT.sha256"
+  chmod 0600 "$RELEASE_AUDIT.sha256"
+}
 verify_container() {
   docker exec "$1" python -c '
 import base64, json, os, urllib.request, urllib.error
@@ -50,6 +85,11 @@ with get("/") as r: assert r.status==200 and b"All stages. One control center." 
 with get("/api/pipeline/status") as r:
     assert r.status==200 and json.load(r)["financial_api_connected"] is False
 with get("/api/upload") as r: assert r.status==403
+with get("/api/pipeline/version") as r:
+    version=json.load(r)
+    assert r.status==200
+    assert version["source_sha"]==os.environ["SBI_SOURCE_SHA"]
+    assert version["channel"]=="aws-public-preview"
 '
 }
 finish() {
@@ -57,21 +97,29 @@ finish() {
   trap - EXIT
   docker rm -f "$PROBE" >/dev/null 2>&1 || true
   rm -f "$AUTHFILE"
-  if (( code != 0 && CHANGED == 1 )); then
-    echo "PUBLIC_PREVIEW_ROLLBACK=STARTED"
-    docker tag "$OLD" "$TAG" || true
-    if docker compose up -d --no-deps --no-build --force-recreate sbi-preview; then
-      echo "PUBLIC_PREVIEW_ROLLBACK=RECREATED"
-    else
-      echo "PUBLIC_PREVIEW_ROLLBACK=MANUAL_REVIEW_REQUIRED"
+  if (( code != 0 )); then
+    if (( CHANGED == 1 )); then
+      echo "PUBLIC_PREVIEW_ROLLBACK=STARTED"
+      ROLLBACK_RESULT="attempted"
+      docker tag "$OLD" "$TAG" || true
+      if docker compose up -d --no-deps --no-build --force-recreate sbi-preview &&
+         [[ "$(docker inspect "$(docker compose ps -q sbi-preview)" --format '{{.Image}}')" == "$OLD" ]]; then
+        ROLLBACK_RESULT="previous_image_restored"
+        echo "PUBLIC_PREVIEW_ROLLBACK=PREVIOUS_IMAGE_RESTORED"
+      else
+        ROLLBACK_RESULT="manual_review_required"
+        echo "PUBLIC_PREVIEW_ROLLBACK=MANUAL_REVIEW_REQUIRED"
+      fi
     fi
+    write_receipt "failure" || echo "AUDIT_RECEIPT=WRITE_FAILED"
+    echo "PUBLIC_RELEASE_AUDIT=$RELEASE_AUDIT"
   fi
   exit "$code"
 }
 trap finish EXIT
 docker tag "$OLD" "$BACKUP"
 echo "ORIGINAL_PUBLIC_IMAGE_PRESERVED=YES"
-docker build --pull -t "$CANDIDATE" "$ROOT/staging/railway_public"
+docker build --pull --build-arg SBI_SOURCE_SHA="$SHA" --build-arg SBI_RELEASE_CHANNEL=aws-public-preview -t "$CANDIDATE" "$ROOT/staging/railway_public"
 docker run -d --name "$PROBE" -p 127.0.0.1:18085:8080 --cap-drop ALL --security-opt no-new-privileges --pids-limit 128 --memory 256m --env-file "$AUTHFILE" -e PORT=8080 "$CANDIDATE" >/dev/null
 for i in $(seq 1 20); do
   if docker exec "$PROBE" python -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8080/healthz",timeout=2)' >/dev/null 2>&1; then break; fi
@@ -91,7 +139,11 @@ for i in $(seq 1 20); do
   sleep 1
 done
 verify_container "$NEW"
+NEW_IMAGE="$(docker inspect "$NEW" --format '{{.Image}}')"
+write_receipt "success"
 CHANGED=0
+echo "PUBLIC_RELEASE_AUDIT=$RELEASE_AUDIT"
+echo "PUBLIC_RELEASE_VERSION=git-$SHORT"
 echo "PUBLIC_PIPELINE_DASHBOARD=DEPLOYED"
 echo "PREVIOUS_IMAGE_BACKUP=$BACKUP"
 echo "PRODUCTION_CADDY=UNMODIFIED"
