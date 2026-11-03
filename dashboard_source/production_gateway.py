@@ -287,6 +287,10 @@ def database_import_gateway(part):
         return import_reply({"error": "Invoice import permission required"}, 403)
 
     if expected_method == "POST":
+        # Origin and a custom marker are not sufficient CSRF defenses.
+        from dashboard_sessions import csrf_valid
+        if not csrf_valid():
+            return import_reply({"error": "Valid CSRF token required"}, 403)
         if (
             request.headers.get("Origin") not in IMPORT_ORIGINS
             or request.headers.get("X-DIL-Import") != "1"
