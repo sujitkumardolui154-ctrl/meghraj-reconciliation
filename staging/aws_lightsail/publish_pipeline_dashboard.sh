@@ -37,7 +37,7 @@ docker inspect "$NAME" --format '{{json .Config.Env}}' | python3 "$ROOT/staging/
 CHANGED=0
 RELEASE_AUDIT_DIR="/var/log/sbi-public-dashboard"
 install -d -o root -g root -m 0700 "$RELEASE_AUDIT_DIR"
-RELEASE_AUDIT="$RELEASE_AUDIT_DIR/$(date -u +%Y%m%dT%H%M%SZ)-$SHORT-$.json"
+RELEASE_AUDIT="$RELEASE_AUDIT_DIR/$(date -u +%Y%m%dT%H%M%SZ)-$SHORT-${BASHPID}.json"
 NEW_IMAGE=""
 ROLLBACK_RESULT="not_needed"
 write_receipt() {
@@ -64,7 +64,7 @@ report={
 }
 with path.open("x", encoding="utf-8") as f:
     json.dump(report, f, sort_keys=True, indent=2)
-    f.write("\\n")
+    f.write("\n")
 path.chmod(0o600)
 PY
   sha256sum "$RELEASE_AUDIT" > "$RELEASE_AUDIT.sha256"
