@@ -61,7 +61,7 @@ def _amount(text):
 def _classify(before, after):
     if before is None and after is not None:
         valid, _ = _amount(after[PAYMENT])
-        return ("NEW", "" if valid else "NEW_NON_NUMERIC_PAYMENT_REVIEW")
+        return ("NEW", "") if valid else ("CONFLICT", "NEW_NON_NUMERIC_PAYMENT_REVIEW")
     if before is not None and after is None:
         return "CONFLICT", "INVOICE_MISSING_FROM_NEW_SNAPSHOT"
     old_ok, old_num = _amount(before[PAYMENT])
