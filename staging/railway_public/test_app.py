@@ -1,5 +1,7 @@
 import base64
 import os
+import subprocess
+from pathlib import Path
 import unittest
 from unittest.mock import patch
 from app import app
@@ -53,6 +55,23 @@ class PreviewTests(unittest.TestCase):
         self.assertEqual(r.json["register"]["total"], 88)
         self.assertFalse(r.json["financial_api_connected"])
         status.assert_called_once()
+
+    def test_public_release_script_shell_syntax(self):
+        script = Path(__file__).resolve().parents[1] / "aws_lightsail" / "publish_pipeline_dashboard.sh"
+        self.assertTrue(script.is_file())
+        result = subprocess.run(["bash", "-n", str(script)],
+                                text=True, capture_output=True, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_unavailable_github_sources_fail_closed(self):
+        import pipeline_data
+        with patch("pipeline_data._fetch_json", side_effect=ValueError("source unavailable")):
+            data = pipeline_data._collect()
+        self.assertFalse(data["register"]["available"])
+        self.assertIsNone(data["register"]["total"])
+        self.assertEqual(data["sources"]["staging"], "unavailable")
+        self.assertEqual(data["sources"]["qa"], "unavailable")
+        self.assertFalse(data["financial_api_connected"])
 
     def test_api_denied_after_login(self):
         for method, path in [("post", "/api/imports/apply"),
