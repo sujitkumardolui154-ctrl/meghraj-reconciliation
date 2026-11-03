@@ -296,7 +296,7 @@
       "approval_gate": "database_write",
       "next_action": "Audit existing approved versioned finance rulebook and historic ledger for task \"Verify full v2.51 engine integration\"; correct source and write a scoped regression test where supported.",
       "required_evidence": "Reviewed source diff plus relevant passing CI; approved versioned finance rulebook and historic ledger; release-specific proof where applicable",
-      "constraint": "FINANCE_RELEASE_RESTRICTED"
+      "constraint": "NO_FINANCIAL_RELEASE_OR_LIVE_FINANCIAL_WRITES"
     },
     {
       "id": "D02",
@@ -309,7 +309,7 @@
       "approval_gate": "database_write",
       "next_action": "Audit existing approved versioned finance rulebook and historic ledger for task \"Confirm approved SBI SOL/Branch master\"; correct source and write a scoped regression test where supported.",
       "required_evidence": "Reviewed source diff plus relevant passing CI; approved versioned finance rulebook and historic ledger; release-specific proof where applicable",
-      "constraint": "FINANCE_RELEASE_RESTRICTED"
+      "constraint": "NO_FINANCIAL_RELEASE_OR_LIVE_FINANCIAL_WRITES"
     },
     {
       "id": "D03",
@@ -322,7 +322,7 @@
       "approval_gate": "database_write",
       "next_action": "Audit existing approved versioned finance rulebook and historic ledger for task \"Validate historical paid and partial allocation ledger\"; correct source and write a scoped regression test where supported.",
       "required_evidence": "Reviewed source diff plus relevant passing CI; approved versioned finance rulebook and historic ledger; release-specific proof where applicable",
-      "constraint": "FINANCE_RELEASE_RESTRICTED"
+      "constraint": "NO_FINANCIAL_RELEASE_OR_LIVE_FINANCIAL_WRITES"
     },
     {
       "id": "D04",
@@ -335,7 +335,7 @@
       "approval_gate": "database_write",
       "next_action": "Audit existing approved versioned finance rulebook and historic ledger for task \"Preserve v2.18 Excel output writer\"; correct source and write a scoped regression test where supported.",
       "required_evidence": "Reviewed source diff plus relevant passing CI; approved versioned finance rulebook and historic ledger; release-specific proof where applicable",
-      "constraint": "FINANCE_RELEASE_RESTRICTED"
+      "constraint": "NO_FINANCIAL_RELEASE_OR_LIVE_FINANCIAL_WRITES"
     },
     {
       "id": "D05",
@@ -348,7 +348,7 @@
       "approval_gate": "database_write",
       "next_action": "Audit existing approved versioned finance rulebook and historic ledger for task \"Verify TDS, SBISA, GST, DNM and waterfall rules\"; correct source and write a scoped regression test where supported.",
       "required_evidence": "Reviewed source diff plus relevant passing CI; approved versioned finance rulebook and historic ledger; release-specific proof where applicable",
-      "constraint": "FINANCE_RELEASE_RESTRICTED"
+      "constraint": "NO_FINANCIAL_RELEASE_OR_LIVE_FINANCIAL_WRITES"
     },
     {
       "id": "D06",
@@ -361,7 +361,7 @@
       "approval_gate": "database_write",
       "next_action": "Audit existing approved versioned finance rulebook and historic ledger for task \"Consolidated independent financial QA\"; correct source and write a scoped regression test where supported.",
       "required_evidence": "Reviewed source diff plus relevant passing CI; approved versioned finance rulebook and historic ledger; release-specific proof where applicable",
-      "constraint": "FINANCE_RELEASE_RESTRICTED"
+      "constraint": "NO_FINANCIAL_RELEASE_OR_LIVE_FINANCIAL_WRITES"
     },
     {
       "id": "D07",
@@ -374,7 +374,7 @@
       "approval_gate": "database_write",
       "next_action": "Audit existing approved versioned finance rulebook and historic ledger for task \"Synthetic deployment rehearsal and rollback\"; correct source and write a scoped regression test where supported.",
       "required_evidence": "Reviewed source diff plus relevant passing CI; approved versioned finance rulebook and historic ledger; release-specific proof where applicable",
-      "constraint": "FINANCE_RELEASE_RESTRICTED"
+      "constraint": "NO_FINANCIAL_RELEASE_OR_LIVE_FINANCIAL_WRITES"
     },
     {
       "id": "D08",
@@ -387,7 +387,7 @@
       "approval_gate": "finance_release",
       "next_action": "Audit existing approved versioned finance rulebook and historic ledger for task \"Separate financial production release approval\"; correct source and write a scoped regression test where supported.",
       "required_evidence": "Reviewed source diff plus relevant passing CI; approved versioned finance rulebook and historic ledger; release-specific proof where applicable",
-      "constraint": "FINANCE_RELEASE_RESTRICTED"
+      "constraint": "NO_FINANCIAL_RELEASE_OR_LIVE_FINANCIAL_WRITES"
     },
     {
       "id": "E02",
