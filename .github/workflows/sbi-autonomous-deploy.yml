@@ -86,11 +86,12 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v3
       - name: Build and deploy candidate with no traffic
         run: |
-          gcloud run deploy sbi-reconciliation-api \
+          gcloud run deploy sbi-reporting-canary-v1 \
             --project meghraj-reconciliation \
             --region asia-south1 \
-            --source deployment/staging \
+            --source deployment/reporting_staging \
             --no-traffic \
+            --no-allow-unauthenticated \
             --quiet
       - name: Declare traffic policy
         run: echo "No traffic promotion or financial data mutation authorized by this workflow."
