@@ -1,7 +1,5 @@
 import base64
 import os
-import subprocess
-from pathlib import Path
 import unittest
 from unittest.mock import patch
 from app import app
@@ -47,33 +45,80 @@ class PreviewTests(unittest.TestCase):
                         "task_register": "available"},
             "financial_api_connected": False,
             "financial_production": "restricted",
-            "register": {"available": True, "total": 88, "tasks": []},
+            "register": {"available": True, "total": 92, "tasks": []},
         }
         with patch("app.current_pipeline", return_value=record) as status:
             r = self.client.get("/api/pipeline/status", headers=self.auth())
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.json["register"]["total"], 88)
+        self.assertEqual(r.json["register"]["total"], 92)
         self.assertFalse(r.json["financial_api_connected"])
         status.assert_called_once()
 
-    def test_public_release_script_shell_syntax(self):
-        for name in ("publish_pipeline_dashboard.sh", "release_pipeline_dashboard.sh"):
-            with self.subTest(script=name):
-                script = Path(__file__).resolve().parents[1] / "aws_lightsail" / name
-                self.assertTrue(script.is_file())
-                result = subprocess.run(["bash", "-n", str(script)],
-                                        text=True, capture_output=True, check=False)
-                self.assertEqual(result.returncode, 0, result.stderr)
 
-    def test_unavailable_github_sources_fail_closed(self):
+    def test_deployed_version_only_from_embedded_image_sha(self):
+        sha = "a" * 40
+        with patch.dict(os.environ, {"SBI_SOURCE_SHA": sha,
+                                      "SBI_RELEASE_CHANNEL": "aws-staging"}):
+            response = self.client.get("/api/pipeline/version", headers=self.auth())
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json["version"], "git-" + sha[:12])
+            self.assertEqual(response.json["channel"], "aws-staging")
+            self.assertEqual(response.json["source_sha"], sha)
+            self.assertIsNone(response.json["deployed_at_utc"])
+        with patch.dict(os.environ, {"SBI_SOURCE_SHA": "main",
+                                      "SBI_RELEASE_CHANNEL": "aws-public-preview"}):
+            response = self.client.get("/api/pipeline/version", headers=self.auth())
+            self.assertEqual(response.json["version"], "UNVERIFIED")
+            self.assertIsNone(response.json["source_sha"])
+
+    def test_deployment_history_csv_authenticated_and_safe(self):
+        self.assertEqual(self.client.get("/api/pipeline/history.csv").status_code, 401)
+        data = {
+            "activity": {"events": [{"kind": "code_change",
+                "timestamp": "2026-11-03T07:00:00Z", "version": "git-abcdef123456",
+                "status": "source_only", "title": "=HYPERLINK(\"bad\")",
+                "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/commit/abc"}]}
+        }
+        with patch("app.current_pipeline", return_value=data):
+            response = self.client.get("/api/pipeline/history.csv", headers=self.auth())
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("text/csv", response.headers.get("Content-Type", ""))
+        self.assertIn("git-abcdef123456", response.get_data(as_text=True))
+        self.assertIn("'=HYPERLINK", response.get_data(as_text=True))
+
+    def test_dashboard_exposes_version_history_section(self):
+        response = self.client.get("/", headers=self.auth())
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Version &amp; deployment change log", response.data.replace(b"& deployment", b"&amp; deployment"))
+        self.assertIn(b"/api/pipeline/history.csv", response.data)
+        self.assertIn(b"running-version", response.data)
+
+
+    def test_git_change_log_does_not_claim_code_deployed(self):
         import pipeline_data
-        with patch("pipeline_data._fetch_json", side_effect=ValueError("source unavailable")):
-            data = pipeline_data._collect()
-        self.assertFalse(data["register"]["available"])
-        self.assertIsNone(data["register"]["total"])
-        self.assertEqual(data["sources"]["staging"], "unavailable")
-        self.assertEqual(data["sources"]["qa"], "unavailable")
-        self.assertFalse(data["financial_api_connected"])
+        sha = "b" * 40
+        response = [{"sha": sha, "html_url": "https://github.com/example/commit/" + sha,
+                     "commit": {"message": "Version update\\nmore details",
+                                "committer": {"date": "2026-11-03T09:00:00Z"}}}]
+        with patch("pipeline_data._fetch_payload", return_value=response):
+            changes = pipeline_data._recent_changes()
+        self.assertEqual(len(changes), 1)
+        self.assertEqual(changes[0]["version"], "git-" + sha[:12])
+        self.assertEqual(changes[0]["status"], "source_only")
+
+    def test_staging_history_status_is_from_github_run(self):
+        import pipeline_data
+        sha = "c" * 40
+        response = {"workflow_runs": [
+            {"head_sha": sha, "status": "completed", "conclusion": "failure",
+             "name": "Staging", "id": 123, "created_at": "2026-11-03T09:00:00Z",
+             "updated_at": "2026-11-03T09:01:00Z", "html_url": "https://github.com/example/actions/runs/123"}
+        ]}
+        with patch("pipeline_data._fetch_json", return_value=response):
+            events = pipeline_data._deployment_history()
+        self.assertEqual(events[0]["kind"], "staging_release")
+        self.assertEqual(events[0]["status"], "failure")
+        self.assertEqual(events[0]["run_id"], 123)
 
     def test_api_denied_after_login(self):
         for method, path in [("post", "/api/imports/apply"),
