@@ -6,6 +6,9 @@ on:
       - 'backend_source/main.py'
       - 'backend_source/invoice_import_security.py'
       - 'dashboard_source/production_gateway.py'
+      - 'dashboard_source/index.html'
+      - 'dashboard_source/dashboard_sessions.py'
+      - 'tests/test_import_ui_csrf_contract.py'
       - 'dashboard_source/sbi_report_access.py'
       - 'tests/test_import_authorization_guards.py'
       - '.github/workflows/sbi-import-authz-regression.yml'
@@ -23,5 +26,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run offline authorization regression
         run: python -m unittest discover -s tests -p 'test_import_authorization_guards.py' -v
+      - name: Verify dashboard import CSRF contract (offline)
+        run: python -m unittest discover -s tests -p 'test_import_ui_csrf_contract.py' -v
       - name: Compile impacted modules
         run: python -m py_compile backend_source/main.py backend_source/invoice_import_security.py dashboard_source/production_gateway.py dashboard_source/sbi_report_access.py
