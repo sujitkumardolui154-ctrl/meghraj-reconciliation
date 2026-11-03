@@ -50,18 +50,20 @@ jobs:
       - name: Check candidate prerequisites
         id: readiness
         shell: bash
+        env:
+          REPORTING_APPROVAL_JSON: ${{ secrets.REPORTING_APPROVAL_JSON }}
         run: |
           # Reporting-only candidate has an independent gate. It MUST NOT
           # consume or bypass the separate financial-engine certification.
-          # These candidate files are deliberately absent until reviewed.
+          # The independent approval must be provisioned as a protected secret,
+          # not committed to the public repository.
           candidate=deployment/reporting_staging
           if [[ -f "$candidate/Dockerfile" &&
                 -f "$candidate/requirements.txt" &&
-                -f "$candidate/reporting_release_approval.json" ]]; then
-            python - "$candidate/reporting_release_approval.json" <<'PY'
+                -n "$REPORTING_APPROVAL_JSON" ]]; then
+            python - <<'PY'
           import json, os, re, sys
-          with open(sys.argv[1], encoding="utf-8") as source:
-              approval = json.load(source)
+          approval = json.loads(os.environ["REPORTING_APPROVAL_JSON"])
           required = (
               approval.get("release_scope") == "reporting_only"
               and approval.get("decision") == "APPROVED_FOR_PRIVATE_STAGING"
