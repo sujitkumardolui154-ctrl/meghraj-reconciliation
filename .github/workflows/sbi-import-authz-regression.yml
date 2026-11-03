@@ -1,0 +1,27 @@
+name: SBI Import Authorization Guard Regression
+
+on:
+  pull_request:
+    paths:
+      - 'backend_source/main.py'
+      - 'backend_source/invoice_import_security.py'
+      - 'dashboard_source/production_gateway.py'
+      - 'dashboard_source/sbi_report_access.py'
+      - 'tests/test_import_authorization_guards.py'
+      - '.github/workflows/sbi-import-authz-regression.yml'
+  push:
+    branches:
+      - security/sbi-import-authz-20261103
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-import-authorization:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run offline authorization regression
+        run: python -m unittest discover -s tests -p 'test_import_authorization_guards.py' -v
+      - name: Compile impacted modules
+        run: python -m py_compile backend_source/main.py backend_source/invoice_import_security.py dashboard_source/production_gateway.py dashboard_source/sbi_report_access.py
