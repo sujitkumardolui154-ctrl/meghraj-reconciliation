@@ -724,14 +724,14 @@
       "category": "J — GitHub DevOps & CI/CD",
       "title": "Source-to-deployment provenance and SHA",
       "user_checklist": "new_requirement",
-      "verification": "aws_public_release_sha_reported_host_attestation_pending",
+      "verification": "aws_public_preview_source_to_image_pass_other_services_pending",
       "execution": "in_progress",
       "approval_gate": "standard",
       "related_existing_tasks": [
         "E06"
       ],
       "note": "Design and consolidate with referenced A-F task; no duplicate implementations",
-      "evidence": "Owner AWS release git-653a54f5bcef recorded 2026-11-03. Dedicated source-to-running-image HTTP and local receipt checks still required; does not certify Cloud Run finance/reports."
+      "evidence": "Owner executed versioned read-only AWS attestor merged via PR #25: PUBLIC_RELEASE_ATTESTATION=PASS; RELEASE_VERSION=git-653a54f5bcef; exact source SHA 653a54f5bcef8e686f5a17e8c56725e4a1a5de48; RUNNING_IMAGE=sha256:3046f5e4e7fe1a9998c21961deec30578efecffb43eea25be4f3ca578aa51a81; AUTHENTICATION=PASS; FINANCIAL_API_DENIAL=PASS; RECEIPT_HASH=PASS; ROLLBACK_IMAGE=PASS; HOST_MUTATIONS=0; VERIFY_EXIT=0. Attestation output provided in project chat on 2026-11-03. Validates public-preview host only, not Cloud Run/finance. No Cloud Run finance/report deployment attestation implied."
     },
     {
       "id": "J02",
@@ -764,14 +764,14 @@
       "category": "J — GitHub DevOps & CI/CD",
       "title": "Release manifest, rollback and evidence",
       "user_checklist": "new_requirement",
-      "verification": "preview_receipt_path_reported_not_certified",
+      "verification": "aws_release_receipt_hash_and_backup_tag_pass_restore_rehearsal_pending",
       "execution": "in_progress",
       "approval_gate": "standard",
       "related_existing_tasks": [
         "E06"
       ],
       "note": "Design and consolidate with referenced A-F task; no duplicate implementations",
-      "evidence": "Sanitized AWS public preview release receipt path reported; local contents/hash validation and rollback exercise pending."
+      "evidence": "Owner executed versioned read-only AWS attestor merged via PR #25: PUBLIC_RELEASE_ATTESTATION=PASS; RELEASE_VERSION=git-653a54f5bcef; exact source SHA 653a54f5bcef8e686f5a17e8c56725e4a1a5de48; RUNNING_IMAGE=sha256:3046f5e4e7fe1a9998c21961deec30578efecffb43eea25be4f3ca578aa51a81; AUTHENTICATION=PASS; FINANCIAL_API_DENIAL=PASS; RECEIPT_HASH=PASS; ROLLBACK_IMAGE=PASS; HOST_MUTATIONS=0; VERIFY_EXIT=0. Attestation output provided in project chat on 2026-11-03. Validates public-preview host only, not Cloud Run/finance. Digest/tag checked; actual restore operation not performed (zero host mutations)."
     },
     {
       "id": "J05",
@@ -791,14 +791,14 @@
       "category": "K — AWS Migration & Hosting",
       "title": "Protected HTTPS and private containers",
       "user_checklist": "new_requirement",
-      "verification": "public_preview_deployed_owner_reported",
+      "verification": "aws_app_auth_probe_pass_external_https_pending",
       "execution": "in_progress",
       "approval_gate": "standard",
       "related_existing_tasks": [
         "E08"
       ],
       "note": "Design and consolidate with referenced A-F task; no duplicate implementations",
-      "evidence": "Public preview URL https://sbi-preview.13-232-241-221.sslip.io/ and release success reported; external HTTPS access control and networking not independently verified."
+      "evidence": "Owner executed versioned read-only AWS attestor merged via PR #25: PUBLIC_RELEASE_ATTESTATION=PASS; RELEASE_VERSION=git-653a54f5bcef; exact source SHA 653a54f5bcef8e686f5a17e8c56725e4a1a5de48; RUNNING_IMAGE=sha256:3046f5e4e7fe1a9998c21961deec30578efecffb43eea25be4f3ca578aa51a81; AUTHENTICATION=PASS; FINANCIAL_API_DENIAL=PASS; RECEIPT_HASH=PASS; ROLLBACK_IMAGE=PASS; HOST_MUTATIONS=0; VERIFY_EXIT=0. Attestation output provided in project chat on 2026-11-03. Validates public-preview host only, not Cloud Run/finance. In-container HTTP passes authentication controls; public HTTPS/TLS and proxy routing remain separately untested by this script."
     },
     {
       "id": "K02",
@@ -844,14 +844,14 @@
       "category": "K — AWS Migration & Hosting",
       "title": "Health, logs and rollback verification",
       "user_checklist": "new_requirement",
-      "verification": "runtime_version_and_backup_tag_reported",
+      "verification": "aws_health_receipt_hash_rollback_image_pass_restore_drill_pending",
       "execution": "in_progress",
       "approval_gate": "standard",
       "related_existing_tasks": [
         "E08"
       ],
       "note": "Design and consolidate with referenced A-F task; no duplicate implementations",
-      "evidence": "Owner AWS deploy log reports previous Docker image backup tag, release SHA and audit path; independent health/rollback-readiness and audit integrity verification pending."
+      "evidence": "Owner executed versioned read-only AWS attestor merged via PR #25: PUBLIC_RELEASE_ATTESTATION=PASS; RELEASE_VERSION=git-653a54f5bcef; exact source SHA 653a54f5bcef8e686f5a17e8c56725e4a1a5de48; RUNNING_IMAGE=sha256:3046f5e4e7fe1a9998c21961deec30578efecffb43eea25be4f3ca578aa51a81; AUTHENTICATION=PASS; FINANCIAL_API_DENIAL=PASS; RECEIPT_HASH=PASS; ROLLBACK_IMAGE=PASS; HOST_MUTATIONS=0; VERIFY_EXIT=0. Attestation output provided in project chat on 2026-11-03. Validates public-preview host only, not Cloud Run/finance. No destructive rollback restore drill carried out; receipt integrity and image availability verified."
     },
     {
       "id": "L01",
@@ -1040,44 +1040,44 @@
       "id": "N06",
       "category": "N — Release Governance",
       "title": "Stamp each build with immutable Git SHA and channel; expose deployed version and source in authenticated dashboard",
-      "execution": "in_progress",
-      "verification": "aws_host_deploy_output_reported",
+      "execution": "done",
+      "verification": "owner_executed_aws_host_attestor_pass",
       "approval_gate": "standard",
-      "evidence": "Owner AWS shell release 2026-11-03 reported PUBLIC_RELEASE_VERSION=git-653a54f5bcef; immutable SHA in image is source-implemented. No independent authenticated endpoint comparison yet; must not label end-to-end verified."
+      "evidence": "Owner executed versioned read-only AWS attestor merged via PR #25: PUBLIC_RELEASE_ATTESTATION=PASS; RELEASE_VERSION=git-653a54f5bcef; exact source SHA 653a54f5bcef8e686f5a17e8c56725e4a1a5de48; RUNNING_IMAGE=sha256:3046f5e4e7fe1a9998c21961deec30578efecffb43eea25be4f3ca578aa51a81; AUTHENTICATION=PASS; FINANCIAL_API_DENIAL=PASS; RECEIPT_HASH=PASS; ROLLBACK_IMAGE=PASS; HOST_MUTATIONS=0; VERIFY_EXIT=0. Attestation output provided in project chat on 2026-11-03. Validates public-preview host only, not Cloud Run/finance. Immutable source SHA, matching version and channel were read from authenticated running public container. Scope complete: AWS public preview."
     },
     {
       "id": "N07",
       "category": "N — Release Governance",
       "title": "Display versioned code changes and staging deployment attempts with timestamp, outcome and GitHub evidence links",
       "execution": "in_progress",
-      "verification": "source_and_ci_passed_runtime_ui_pending",
+      "verification": "source_and_ci_passed_history_ui_e2e_pending",
       "approval_gate": "standard",
-      "evidence": "PR #19 on main and PR #20 on AWS preview merged with GitHub CI PASS. Live dashboard owner reported deployed 2026-11-03; authenticated external version/change-history UI not independently verified."
+      "evidence": "PR #19/#20 versioned history source and CI PASS; owner-executed PR #25 runtime attestation verifies app version but does not exercise history.csv or GitHub history UI. Further E2E required."
     },
     {
       "id": "N08",
       "category": "N — Release Governance",
       "title": "Record sanitized public preview release audit receipts with previous/new image and rollback outcome",
       "execution": "in_progress",
-      "verification": "aws_audit_receipt_path_reported_hash_pending",
+      "verification": "aws_release_receipt_hash_and_backup_verified_release_review_pending",
       "approval_gate": "release_review",
-      "evidence": "Owner-reported public release receipt /var/log/sbi-public-dashboard/20261103T084121Z-653a54f5bcef-55460.json and prior image backup tag sbi-public-pipeline-backup:653a54f5bcef. Receipt contents, digest and backup image not independently read."
+      "evidence": "Owner executed versioned read-only AWS attestor merged via PR #25: PUBLIC_RELEASE_ATTESTATION=PASS; RELEASE_VERSION=git-653a54f5bcef; exact source SHA 653a54f5bcef8e686f5a17e8c56725e4a1a5de48; RUNNING_IMAGE=sha256:3046f5e4e7fe1a9998c21961deec30578efecffb43eea25be4f3ca578aa51a81; AUTHENTICATION=PASS; FINANCIAL_API_DENIAL=PASS; RECEIPT_HASH=PASS; ROLLBACK_IMAGE=PASS; HOST_MUTATIONS=0; VERIFY_EXIT=0. Attestation output provided in project chat on 2026-11-03. Validates public-preview host only, not Cloud Run/finance. Receipt 20261103T084121Z-653a54f5bcef-55460.json matches running image and hash. Formal release-review gate and additional receipt-history review still pending."
     },
     {
       "id": "N09",
       "category": "N — Release Governance",
       "title": "Verify source-to-image version match and deployment change history end to end; final release receipt",
       "execution": "in_progress",
-      "verification": "owner_reported_release_success_http_and_hash_pending",
+      "verification": "aws_host_attestation_pass_change_history_e2e_pending",
       "approval_gate": "mandatory_release",
-      "evidence": "Owner shell reported PUBLIC_PIPELINE_DASHBOARD=DEPLOYED, PUBLIC_DEPLOY_RESULT=0, git-653a54f5bcef, Caddy unmodified and financial writes disabled. External authenticated HTTP, in-container deployed image provenance, audit sha256 and restored rollback were not independently verified."
+      "evidence": "Owner executed versioned read-only AWS attestor merged via PR #25: PUBLIC_RELEASE_ATTESTATION=PASS; RELEASE_VERSION=git-653a54f5bcef; exact source SHA 653a54f5bcef8e686f5a17e8c56725e4a1a5de48; RUNNING_IMAGE=sha256:3046f5e4e7fe1a9998c21961deec30578efecffb43eea25be4f3ca578aa51a81; AUTHENTICATION=PASS; FINANCIAL_API_DENIAL=PASS; RECEIPT_HASH=PASS; ROLLBACK_IMAGE=PASS; HOST_MUTATIONS=0; VERIFY_EXIT=0. Attestation output provided in project chat on 2026-11-03. Validates public-preview host only, not Cloud Run/finance. Pending authenticated real end-to-end versioned code/change-history UI and final release review; do not conflate host local probe with public external browser."
     }
   ],
   "audit_metadata": {
-    "updated_for": "92-task register synced with owner-reported AWS public preview deployment evidence; financial and independent host gates unchanged",
+    "updated_for": "Evidence sync after user-executed read-only AWS host attestor; 92-task register with exact source SHA and explicit remaining release gates",
     "as_of_utc": "2026-11-03",
-    "source_of_evidence": "GitHub PR #19-#23 merge and CI results, plus user-supplied AWS Lightsail release output 2026-11-03; no direct AWS runtime audit",
-    "status_rules": "Only evidence-backed in_progress transitions. Owner-reported deploy logs are not certified external HTTP/receipt hash. Synthetic/source CI not full financial completion.",
+    "source_of_evidence": "User-provided AWS Lightsail output of PR #25 read-only attestor on 2026-11-03; PASS for local public preview only, not direct independent remote inspection",
+    "status_rules": "Only N06 AWS preview build/version stamping verified complete by host attestor; N07-N09/other services remain subject to external HTTP, change-history and release review gates.",
     "production_release": "NOT_READY",
     "real_financial_execution": "RESTRICTED",
     "total_selected_tasks": 50,
@@ -1085,10 +1085,18 @@
       "release_sha": "653a54f5bcef8e686f5a17e8c56725e4a1a5de48",
       "version": "git-653a54f5bcef",
       "reported_status": "DEPLOYED",
-      "verification": "owner_server_output_only",
+      "verification": "owner_executed_host_attestor_pass",
       "audit_receipt": "/var/log/sbi-public-dashboard/20261103T084121Z-653a54f5bcef-55460.json",
       "financial_execution": "RESTRICTED",
-      "last_reported_date": "2026-11-03"
+      "last_reported_date": "2026-11-03",
+      "host_attestation": "PASS",
+      "running_image": "sha256:3046f5e4e7fe1a9998c21961deec30578efecffb43eea25be4f3ca578aa51a81",
+      "receipt_hash": "PASS",
+      "rollback_image_available": "PASS",
+      "authenticated_app": "PASS",
+      "financial_api_denial": "PASS",
+      "external_https_e2e": "PENDING",
+      "release_review": "PENDING"
     }
   },
   "extension": {
