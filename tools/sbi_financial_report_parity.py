@@ -25,6 +25,7 @@ import argparse
 import csv
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import hashlib
+import io
 import json
 from pathlib import Path
 import re
@@ -63,7 +64,7 @@ def _load_verified_csv(path, expected_sha):
     if _sha(raw) != expected_sha:
         raise ParityBlocked("EXTERNAL_SOURCE_SHA256_MISMATCH")
     try:
-        lines = iter(csv.reader(raw.decode("utf-8-sig").splitlines(), strict=True))
+        lines = iter(csv.reader(io.StringIO(raw.decode("utf-8-sig"), newline=""), strict=True))
         headers = next(lines)
         if headers != SOURCE_HEADERS:
             raise ParityBlocked("ORIGINAL_53_HEADER_ORDER_MISMATCH")
