@@ -15,7 +15,7 @@ app = Flask(__name__)
 def authorized():
     username = os.environ.get("PREVIEW_USERNAME", "")
     password = os.environ.get("PREVIEW_PASSWORD", "")
-    if not username or len(password) < 20:
+    if not username or not (10 <= len(password) <= 15) or not re.fullmatch(r"[A-Za-z0-9._~-]{10,15}", password):
         return False
     supplied = request.authorization
     return bool(supplied and hmac.compare_digest(supplied.username or "", username)
