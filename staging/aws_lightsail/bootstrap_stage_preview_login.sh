@@ -120,9 +120,11 @@ rollback() {
   docker rm -f "$PROBE_NAME" >/dev/null 2>&1 || true
   if (( code != 0 && MUTATED == 1 )); then
     echo "STAGING_LOGIN_ROLLBACK=STARTED"
-    docker rm -f "$NAME" >/dev/null 2>&1 || true
-    if docker rename "$BACKUP_NAME" "$NAME" &&
-       docker start "$NAME" >/dev/null &&
+    if docker container inspect "$BACKUP_NAME" >/dev/null 2>&1; then
+      docker rm -f "$NAME" >/dev/null 2>&1 || true
+      docker rename "$BACKUP_NAME" "$NAME" || true
+    fi
+    if docker start "$NAME" >/dev/null &&
        curl -fsS --max-time 5 "http://127.0.0.1:$PORT/healthz" >/dev/null; then
       echo "STAGING_LOGIN_ROLLBACK=PASS"
     else
@@ -141,9 +143,9 @@ wait_for_health "$PROBE_PORT" && verify_login "$PROBE_NAME" || {
 echo "AUTH_PROBE=PASS"
 docker rm -f "$PROBE_NAME" >/dev/null
 # Retain original container configuration until replacement passes all gates.
+MUTATED=1
 docker stop "$NAME" >/dev/null
 docker rename "$NAME" "$BACKUP_NAME"
-MUTATED=1
 docker run -d --name "$NAME" --restart unless-stopped \
   --cap-drop ALL --security-opt no-new-privileges --pids-limit 128 --memory 256m \
   -p "127.0.0.1:$PORT:8080" --env-file "$AUTH_FILE" -e PORT=8080 "$IMAGE" >/dev/null
