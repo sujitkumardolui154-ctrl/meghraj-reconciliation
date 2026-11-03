@@ -2,8 +2,7 @@
 """Safely rotate legacy AWS public-preview Basic Auth without printing credentials.
 
 The old preview may have a sub-20-character password. This operator-only
-migration requires a new >=24-character password and preserves an encrypted-
-at-rest-by-host-permissions (root-only) local backup of the original .env.
+migration requires a new >=24-character password and preserves a root-only local backup of the original .env (not encrypted).
 It changes only the existing sbi-preview service and never the financial stack.
 """
 from __future__ import annotations
