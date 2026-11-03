@@ -21,7 +21,7 @@ def authorized_import_caller(request, *, verifier=None, audience=None, caller_em
     if not value.startswith("Bearer ") or len(value) > 12000:
         return False
     token = value[7:]
-    if not token or token.strip() != token or " " in token:
+    if not token or any(char.isspace() or ord(char) < 32 or ord(char) == 127 for char in token):
         return False
 
     try:
