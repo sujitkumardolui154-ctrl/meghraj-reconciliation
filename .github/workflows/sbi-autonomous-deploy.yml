@@ -50,17 +50,41 @@ jobs:
       - name: Check candidate prerequisites
         id: readiness
         shell: bash
+        env:
+          REPORTING_APPROVAL_JSON: ${{ secrets.REPORTING_APPROVAL_JSON }}
         run: |
-          if [[ -f deployment/staging/Dockerfile && -f deployment/staging/requirements.txt && -f deployment/staging/financial_engine_certification.json ]]; then
+          # Reporting-only candidate has an independent gate. It MUST NOT
+          # consume or bypass the separate financial-engine certification.
+          # The independent approval must be provisioned as a protected secret,
+          # not committed to the public repository.
+          candidate=deployment/reporting_staging
+          if [[ -f "$candidate/Dockerfile" &&
+                -f "$candidate/requirements.txt" &&
+                -n "$REPORTING_APPROVAL_JSON" ]]; then
+            python - <<'PY'
+          import json, os, re, sys
+          approval = json.loads(os.environ["REPORTING_APPROVAL_JSON"])
+          required = (
+              approval.get("release_scope") == "reporting_only"
+              and approval.get("decision") == "APPROVED_FOR_PRIVATE_STAGING"
+              and approval.get("source_sha") == os.environ["GITHUB_SHA"]
+              and bool(re.fullmatch(r"[0-9a-f]{64}", str(approval.get("dataset_sha256", ""))))
+              and bool(approval.get("reviewer"))
+              and approval.get("private_evidence_verified") is True
+              and approval.get("financial_execution") == "RESTRICTED"
+          )
+          if not required:
+              sys.exit("Reporting-only independent release evidence is incomplete")
+          PY
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Container build and independent financial certification are missing: zero-traffic deployment remains disabled."
+            echo "::notice::Private reporting candidate image and independently reviewed reporting evidence are missing; deployment remains disabled."
           fi
 
   zero-traffic-candidate:
     needs: consolidated-source-qa
-    if: github.event_name != 'pull_request' && needs.consolidated-source-qa.outputs.deploy_ready == 'true'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && needs.consolidated-source-qa.outputs.deploy_ready == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 35
     environment: staging
