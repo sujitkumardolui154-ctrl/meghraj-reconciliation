@@ -210,6 +210,52 @@ class PreviewTests(unittest.TestCase):
             with self.subTest(forbidden=forbidden):
                 self.assertNotIn(forbidden, source)
 
+    def test_aws_public_release_attestation_receipt_integrity(self):
+        import hashlib
+        import json
+        import tempfile
+        script = Path(__file__).resolve().parents[1] / "aws_lightsail" / "verify_public_pipeline_release.py"
+        spec = importlib.util.spec_from_file_location("sbi_public_attestation", script)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        sha = "a" * 40
+        running = "sha256:" + "1" * 64
+        old = "sha256:" + "2" * 64
+        record = {
+            "status": "success", "target": "aws-public-preview",
+            "source_sha": sha, "new_image": running, "previous_image": old,
+            "backup_tag": "sbi-public-pipeline-backup:" + sha[:12],
+        }
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "20261103T084121Z-release.json"
+            def save():
+                payload = json.dumps(record, sort_keys=True).encode()
+                path.write_bytes(payload)
+                Path(str(path) + ".sha256").write_text(
+                    hashlib.sha256(payload).hexdigest() + "  " + str(path) + "\n")
+            save()
+            validated = module.verify_receipt(Path(folder), sha, running, lambda tag: old)
+            self.assertEqual(validated["backup_tag"], record["backup_tag"])
+            self.assertEqual(validated["receipt_file"], path.name)
+            record["new_image"] = "sha256:" + "3" * 64
+            save()
+            with self.assertRaises(module.ReleaseReviewRequired):
+                module.verify_receipt(Path(folder), sha, running, lambda tag: old)
+            record["new_image"] = running
+            save()
+            with self.assertRaises(module.ReleaseReviewRequired):
+                module.verify_receipt(Path(folder), sha, running, lambda tag: "missing")
+            record["status"] = "failure"
+            save()
+            with self.assertRaises(module.ReleaseReviewRequired):
+                module.verify_receipt(Path(folder), sha, running, lambda tag: old)
+        source = script.read_text(encoding="utf-8")
+        self.assertIn("PUBLIC_RELEASE_ATTESTATION=PASS", source)
+        self.assertIn("HOST_MUTATIONS=0", source)
+        for forbidden in ("docker compose up", "docker build", "docker run",
+                          "docker tag", "docker rm", "gcloud run deploy", "firebase deploy"):
+            self.assertNotIn(forbidden, source)
+
     def test_api_denied_after_login(self):
         for method, path in [("post", "/api/imports/apply"),
                              ("post", "/api/upload"), ("get", "/api/reports"),
