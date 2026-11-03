@@ -35,6 +35,10 @@ jobs:
           python tools/sbi_manual_correction_audit.py
       - name: Verify offline approved CSV report bundling
         run: python -m unittest discover -s tests -p test_sbi_approved_report_bundle.py -v
+      - name: Validate A-workstream CREDIT NOTE narration and change-report contracts
+        run: |
+          python -m unittest discover -s tests -p test_sbi_credit_note_narration_contract.py -v
+          python -m unittest discover -s tests -p test_sbi_reconciliation_changes_offline.py -v
       - name: Run consolidated safety contract tests
         run: python agent/consolidated_controller.py --run-tests --full-tests --output /tmp/sbi-agentic-gate.json
       - name: Publish auditable results

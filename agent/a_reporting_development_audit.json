@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "project": "SBI Reconciliation",
+  "workstream": "A — Reports Development",
+  "date": "2026-11-03",
+  "scope": "READ_ONLY_SOURCE_AUDIT_AND_SYNTHETIC_REGRESSION",
+  "live_financial_writes": false,
+  "public_traffic_changed": false,
+  "source_evidence": [
+    "backend_source/report_api.py",
+    "backend_source/payment_report_rules.py",
+    "backend_source/invoice_source_schema.py",
+    "backend_source/invoice_import_contract.json",
+    "backend_source/credit_note_report.py",
+    "dashboard_source/production_gateway.py",
+    "tools/sbi_approved_report_bundle.py",
+    "backend_source/reconciliation_changes_offline.py"
+  ],
+  "tasks": [
+    {
+      "id": "A01",
+      "state": "SOURCE_AUDIT_IN_PROGRESS",
+      "finding": "Report metadata/download handlers exist in report_api.py and production_gateway.py. Existing gateway uses backend service identity; independent real-user Firebase session and role authorization on main app not verified.",
+      "release_gate": "AUTHENTICATED_ROLE_E2E_AND_SOURCE_CONTRACT"
+    },
+    {
+      "id": "A02",
+      "state": "SOURCE_AUDIT_IN_PROGRESS",
+      "finding": "Current report source categorizes original payment data as unpaid, ok, error-value, and balance-review with the 53-column schema. No approved Suspense report implementation proven.",
+      "release_gate": "APPROVED_SUSPENSE_POLICY_AND_GOLDEN_ROWSET"
+    },
+    {
+      "id": "A03",
+      "state": "SOURCE_FORMAT_AUDIT_IN_PROGRESS",
+      "finding": "Current source includes the 53-column original header list including duplicate labels; independently approved v2.18 output headers and exact writer contract are not available in this source audit.",
+      "release_gate": "EXTERNAL_APPROVED_V2_18_HEADER_AND_GOLDEN_EXPORT"
+    },
+    {
+      "id": "A04",
+      "state": "SOURCE_IMPLEMENTATION_UNDER_REVIEW",
+      "finding": "Offline ZIP packager validates explicit declared approval reference, source CSV hash, ordered headers, row counts and no overwrite; no independent approval validation or authenticated private report bundle release.",
+      "release_gate": "PRIVATE_APPROVED_REPORTS_AND_MANIFEST_ATTESTATION"
+    },
+    {
+      "id": "A05",
+      "state": "SOURCE_IMPLEMENTATION_UNDER_REVIEW",
+      "finding": "Offline old/new snapshot classifier categorizes NEW, UNCHANGED, PAYMENT_ADDED, PAYMENT_CHANGED, PAYMENT_CLEARED_REVIEW and CONFLICT with duplicate-invoice review. No live source-to-snapshot adapter or real rowset validation.",
+      "release_gate": "AUTHENTICATED_SNAPSHOT_EVIDENCE_AND_PRIVATE_E2E"
+    },
+    {
+      "id": "A06",
+      "state": "SOURCE_CORRECTION_UNDER_REVIEW",
+      "finding": "Legacy 18-column builder matched CREDIT NOTE by exact equality rather than approved embedded CREDIT NOTE/NORTE narrations; corrected token matching and grouped duplicate-invoice conflict review with synthetic tests. Current private staging observation of five conflicts is not independently reproduced by this source change.",
+      "release_gate": "PRIVATE_APPROVED_SOURCE_AND_AUTH_REPORT_QA"
+    },
+    {
+      "id": "A07",
+      "state": "SOURCE_AUDIT_IN_PROGRESS",
+      "finding": "Current report metadata returns EVENT_LOGGING_NOT_CONNECTED for login/failure reports. An independently verified full database change-history log and protected log-report API are not implemented.",
+      "release_gate": "IMMUTABLE_AUDIT_EVENT_CONTRACT_AND_SIGNED_IN_ACCESS"
+    },
+    {
+      "id": "A08",
+      "state": "PARTIAL_SOURCE_VERIFICATION",
+      "finding": "Report API can export CSV preserving original 53 values and has formula-injection guard; full Excel output, cross-report financial totals and restored data-source verification are not certified.",
+      "release_gate": "EXACT_EXCEL_CSV_TOTALS_AGAINST_INDEPENDENT_SOURCES"
+    }
+  ],
+  "rollup": {
+    "workstream_tasks": 8,
+    "fully_released": 0,
+    "financial_release": "RESTRICTED",
+    "database_writes": "DISABLED",
+    "recommended_next": "Obtain independently approved v2.18 header and private manifest; verify authenticated reporting gateway and financial totals before main release"
+  }
+}
