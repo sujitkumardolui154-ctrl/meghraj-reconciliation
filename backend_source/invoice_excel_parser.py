@@ -66,7 +66,7 @@ def parse_excel(filename, data):
                 if layout:
                     matches.append((sheet.title, header, layout))
             if len(matches) != 1:
-                raise ValueError("Use Invoice Details. with the original 34 headers, or one sheet with the approved 53 headers.")
+                raise ValueError("Use Invoice Details. with exact approved 34 or 35 source headers, or one sheet with the approved 53 headers.")
             name, source_headers, layout = matches[0]
             width, invoice_index = layout
             sheet = raw[name]
@@ -106,7 +106,7 @@ def parse_excel(filename, data):
                 if sheet.nrows and sheet_layout(sheet.name, sheet.row_values(0))
             ]
             if len(matches) != 1:
-                raise ValueError("Use Invoice Details. with the original 34 headers, or one sheet with the approved 53 headers.")
+                raise ValueError("Use Invoice Details. with exact approved 34 or 35 source headers, or one sheet with the approved 53 headers.")
             sheet = matches[0]
             name = sheet.name
             source_headers = sheet.row_values(0)

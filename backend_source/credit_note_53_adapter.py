@@ -81,6 +81,16 @@ def header_mapping(source_headers):
 
             return dict(zip(REPORT_HEADERS[:-1], indexes))
 
+    # The approved 35-column source repeats "Branch Code" at G and I.
+    # Bind the report to source G (index 6) and preserve I independently.
+    # Do not use ambiguous first-match heuristics for financial columns.
+    if len(headers) == 35:
+        from invoice_source_schema import HEADERS_35
+        if headers != tuple(HEADERS_35):
+            raise ValueError("Incorrect approved 35-column source headers")
+        indexes = (1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18)
+        return dict(zip(REPORT_HEADERS[:-1], indexes))
+
     positions = {}
     for index, header in enumerate(headers):
         key = normalize_header(header)
@@ -158,9 +168,10 @@ def project_credit_notes(source_headers, source_rows):
     for row in source_rows:
         if isinstance(row, Mapping):
             from invoice_source_schema import HEADERS_53
-            if source_headers == tuple(HEADERS_53):
+            from invoice_source_schema import HEADERS_35
+            if source_headers in (tuple(HEADERS_53), tuple(HEADERS_35)):
                 raise ValueError(
-                    "53-column source requires positional rows "
+                    "35/53-column source requires positional rows "
                     "to distinguish duplicate field names"
                 )
             values = required_values_from_mapping(row)
