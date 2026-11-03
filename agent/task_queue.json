@@ -1030,6 +1030,42 @@
         "D08"
       ],
       "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+    },
+    {
+      "id": "N06",
+      "category": "N — Release Governance",
+      "title": "Stamp each build with immutable Git SHA and channel; expose deployed version and source in authenticated dashboard",
+      "execution": "in_progress",
+      "verification": "source_implementation_under_review",
+      "approval_gate": "standard",
+      "evidence": "Version comes from Docker build metadata, not inferred from GitHub HEAD"
+    },
+    {
+      "id": "N07",
+      "category": "N — Release Governance",
+      "title": "Display versioned code changes and staging deployment attempts with timestamp, outcome and GitHub evidence links",
+      "execution": "in_progress",
+      "verification": "source_implementation_under_review",
+      "approval_gate": "standard",
+      "evidence": "GitHub commit history and Actions run history; source outages fail closed"
+    },
+    {
+      "id": "N08",
+      "category": "N — Release Governance",
+      "title": "Record sanitized public preview release audit receipts with previous/new image and rollback outcome",
+      "execution": "pending",
+      "verification": "not_verified_on_aws",
+      "approval_gate": "release_review",
+      "evidence": "Host-side append-only evidence, prohibit credentials and financial data"
+    },
+    {
+      "id": "N09",
+      "category": "N — Release Governance",
+      "title": "Verify source-to-image version match and deployment change history end to end; final release receipt",
+      "execution": "pending",
+      "verification": "not_verified_on_aws",
+      "approval_gate": "mandatory_release",
+      "evidence": "Separate actual runtime verification from source CI; preserve staging and financial gates"
     }
   ],
   "audit_metadata": {
@@ -1043,7 +1079,7 @@
   },
   "extension": {
     "base_count": 50,
-    "added_count": 38,
+    "added_count": 42,
     "release_status": "DESIGN_PREPARED",
     "finance_release": "RESTRICTED",
     "test_policy": "reuse unchanged SHA-bound results; run relevant safety checks when changed"
