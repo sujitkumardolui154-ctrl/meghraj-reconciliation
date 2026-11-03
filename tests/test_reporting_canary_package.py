@@ -26,5 +26,44 @@ class CanaryIsolationTests(unittest.TestCase):
         self.assertIn('@app.get("/health")',src)
         self.assertNotIn("@app.post(",src)
 
+
+    def test_report_routes_fail_closed_for_missing_revoked_and_wrong_roles(self):
+        """Exercise the actual Flask authorization callback without cloud calls."""
+        import importlib.util
+        import sys
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        sys.path.insert(0, str(ROOT / "dashboard_source"))
+        sys.path.insert(0, str(PKG))
+        try:
+            spec = importlib.util.spec_from_file_location("sbi_private_canary_under_test", PKG / "app.py")
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            client = module.app.test_client()
+            url = "/reports/credit-note/summary"
+            self.assertEqual(client.get(url).status_code, 403)
+            client.set_cookie(module.SESSION_COOKIE, "synthetic-cookie")
+            with patch.object(module, "firebase_app", return_value=object()), \
+                 patch.object(module.auth, "verify_session_cookie", side_effect=ValueError("revoked")):
+                self.assertEqual(client.get(url).status_code, 403)
+            for claims, disabled, expected in [
+                ({}, False, 403),
+                ({"dil_dashboard": True}, False, 403),
+                ({"sbi_report_viewer": True}, False, 403),
+                ({"dil_dashboard": True, "sbi_report_viewer": True}, True, 403),
+                ({"dil_dashboard": True, "sbi_report_viewer": True}, False, 503),
+            ]:
+                user = SimpleNamespace(uid="synthetic-uid", disabled=disabled, custom_claims=claims)
+                with patch.object(module, "firebase_app", return_value=object()), \
+                     patch.object(module.auth, "verify_session_cookie", return_value={"uid": "synthetic-uid"}) as verify, \
+                     patch.object(module.auth, "get_user", return_value=user), \
+                     patch("sbi_credit_report_auth._read_snapshot", side_effect=ValueError("private snapshot unavailable")):
+                    self.assertEqual(client.get(url).status_code, expected)
+                    self.assertTrue(verify.call_args.kwargs["check_revoked"])
+        finally:
+            sys.path.remove(str(PKG))
+            sys.path.remove(str(ROOT / "dashboard_source"))
+
 if __name__=="__main__":
     unittest.main()
