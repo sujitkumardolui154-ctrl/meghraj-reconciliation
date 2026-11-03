@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import stat
 import sys
 
@@ -33,7 +34,8 @@ def approved_preview_env(entries: object) -> dict[str, str]:
         result[key] = value
     username = result.get("PREVIEW_USERNAME", "")
     password = result.get("PREVIEW_PASSWORD", "")
-    if not username or ":" in username or len(password) < 20:
+    if (not username or ":" in username or not (10 <= len(password) <= 15)
+            or not re.fullmatch(r"[A-Za-z0-9._~-]{10,15}", password)):
         raise ValueError("Existing preview login is missing or invalid")
     return result
 
