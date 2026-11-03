@@ -81,10 +81,12 @@ def pipeline_history_csv():
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(("Type", "Timestamp UTC", "Version", "Status", "Description", "GitHub evidence URL"))
+    def safe_cell(value):
+        text = str(value or "")
+        return "'" + text if text.lstrip().startswith(("=", "+", "-", "@")) or "\\t" in text or "\\r" in text else text
     for entry in rows[:24]:
-        writer.writerow((entry.get("kind", ""), entry.get("timestamp", ""),
-                         entry.get("version", ""), entry.get("status", ""),
-                         entry.get("title", ""), entry.get("url", "")))
+        writer.writerow(tuple(safe_cell(entry.get(key, "")) for key in
+                              ("kind", "timestamp", "version", "status", "title", "url")))
     response = Response(output.getvalue(), mimetype="text/csv; charset=utf-8")
     response.headers["Content-Disposition"] = 'attachment; filename="sbi-version-deployment-history.csv"'
     return response
