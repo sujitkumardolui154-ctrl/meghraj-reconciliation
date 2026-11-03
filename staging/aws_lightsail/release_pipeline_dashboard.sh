@@ -30,8 +30,9 @@ REMOTE_MAIN="$(git -C "$MAIN" ls-remote origin refs/heads/main | awk '{print $1}
 [[ "$MAIN_SHA" == "$REMOTE_MAIN" ]] || {
   echo "BLOCKED: staging SHA differs from reviewed main"; exit 2;
 }
-[[ "$(git -C "$MAIN" show "$MAIN_SHA:staging/railway_public/pipeline.html" | sha256sum | cut -d' ' -f1)" ==
-   "$(sha256sum "$PUBLIC/staging/railway_public/pipeline.html" | cut -d' ' -f1)" ]] || {
+MAIN_HTML_SHA="$(git -C "$MAIN" show "$MAIN_SHA:staging/railway_public/pipeline.html" | sha256sum | cut -d' ' -f1)"
+PUBLIC_HTML_SHA="$(sha256sum "$PUBLIC/staging/railway_public/pipeline.html" | cut -d' ' -f1)"
+[[ "$MAIN_HTML_SHA" == "$PUBLIC_HTML_SHA" ]] || {
   echo "BLOCKED: staging/public dashboard HTML are not identical"; exit 2;
 }
 echo "SOURCE_DASHBOARD_CONTRACT=PASS"
