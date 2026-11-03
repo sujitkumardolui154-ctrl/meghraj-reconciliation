@@ -63,11 +63,25 @@ class ManualCorrectionTests(unittest.TestCase):
         self.assertIn("incomplete_manual_instruction", errors)
         self.assertIn("restricted_policy_mismatch", errors)
 
-    def test_task_state_change_requires_retriage(self):
+    def test_evidenced_task_can_advance_without_freezing_future_ci(self):
         queue = deepcopy(QUEUE)
         target = next(x for x in queue["tasks"] if x["execution"] == "pending")
         target["execution"] = "in_progress"
-        self.assertIn("nonpending_manual_item", self.check(queue=queue)["errors"])
+        self.assertIn("advanced_task_missing_evidence", self.check(queue=queue)["errors"])
+        target["verification"] = "source_implementation_under_review"
+        target["evidence"] = "Scoped implementation with test evidence awaiting private review"
+        updated = self.check(queue=queue)
+        self.assertEqual(updated["status"], "PASS", updated["errors"])
+        self.assertEqual(updated["advanced_from_baseline"], 1)
+        self.assertEqual(updated["pending_triaged"], 68)
+
+    def test_task_cannot_be_marked_done_without_verification(self):
+        queue = deepcopy(QUEUE)
+        target = next(x for x in queue["tasks"] if x["execution"] == "pending")
+        target["execution"] = "done"
+        target["evidence"] = "Source implementation submitted"
+        target["verification"] = "not_verified"
+        self.assertIn("done_task_missing_verification", self.check(queue=queue)["errors"])
 
     def test_no_direct_cloud_or_financial_operations(self):
         text = (ROOT / "tools" / "sbi_manual_correction_audit.py").read_text(encoding="utf-8")
