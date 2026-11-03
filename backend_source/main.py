@@ -21,6 +21,10 @@ def supervisor_api(request):
         return handle_change_report(request)
     # DIL v1.4.0 database import API
     if request.path.startswith("/imports/"):
+        # Independent service-to-service verification before ANY Firestore client.
+        from invoice_import_security import authorized_import_caller
+        if not authorized_import_caller(request):
+            return respond({"error": "Import service authentication required"}, 403)
         from invoice_import_api import handle_imports
         return handle_imports(request)
     # DIL v1.3.0 database reports
