@@ -341,8 +341,11 @@ def database_import_gateway(part):
                 {"error": "Maximum file size is 8 MiB"}, 413
             )
 
+    # Mint the service ID token for the exact backend being called.
+    # A token for the supervisor backend must not be reused for IMPORT_BACKEND.
+    import_target = os.environ.get("IMPORT_BACKEND", BACKEND).rstrip("/")
     try:
-        token = get_backend_token(BACKEND)
+        token = get_backend_token(import_target)
     except Exception:
         app.logger.exception("Import backend authentication failed")
         return import_reply(
@@ -352,7 +355,7 @@ def database_import_gateway(part):
     try:
         response = requests.request(
             expected_method,
-            os.environ.get("IMPORT_BACKEND", BACKEND).rstrip("/") + "/imports/" + part,
+            import_target + "/imports/" + part,
             headers={"Authorization": "Bearer " + token},
             params=params,
             files=files,
