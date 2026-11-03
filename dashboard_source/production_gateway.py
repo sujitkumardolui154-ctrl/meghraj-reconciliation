@@ -2,7 +2,7 @@ import os
 import requests
 from flask import Flask, jsonify, send_from_directory, g
 from cloud_auth import get_backend_token
-from sbi_report_access import can_view_report
+from sbi_report_access import can_view_report, can_import_invoice
 
 app = Flask(__name__, static_folder=None)
 BACKEND = "https://sbi-supervisor-backend-109590290120.asia-south1.run.app"
@@ -279,6 +279,12 @@ def database_import_gateway(part):
     expected_method = "POST" if action in ("preview", "apply") else "GET"
     if request.method != expected_method:
         return import_reply({"error": "Method not allowed"}, 405)
+
+    # Firebase session middleware runs before this route. An explicit import
+    # entitlement is required for preview, receipt reads and apply alike.
+    if not can_import_invoice(getattr(g, "dil_user", None),
+                              getattr(g, "dil_identity", None)):
+        return import_reply({"error": "Invoice import permission required"}, 403)
 
     if expected_method == "POST":
         if (
