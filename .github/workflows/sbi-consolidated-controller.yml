@@ -39,6 +39,10 @@ jobs:
         run: |
           python -m unittest discover -s tests -p test_sbi_credit_note_narration_contract.py -v
           python -m unittest discover -s tests -p test_sbi_reconciliation_changes_offline.py -v
+      - name: Verify A03 exact source header and A06 original positional report projection
+        run: |
+          python -m unittest discover -s tests -p test_sbi_credit_note_53_projection.py -v
+          python -m unittest discover -s tests -p test_sbi_report_headers_audit.py -v
       - name: Run consolidated safety contract tests
         run: python agent/consolidated_controller.py --run-tests --full-tests --output /tmp/sbi-agentic-gate.json
       - name: Publish auditable results
