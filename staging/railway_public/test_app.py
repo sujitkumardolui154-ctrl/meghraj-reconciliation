@@ -1,5 +1,7 @@
 import base64
 import os
+import subprocess
+from pathlib import Path
 import unittest
 from unittest.mock import patch
 from app import app
@@ -119,6 +121,29 @@ class PreviewTests(unittest.TestCase):
         self.assertEqual(events[0]["kind"], "staging_release")
         self.assertEqual(events[0]["status"], "failure")
         self.assertEqual(events[0]["run_id"], 123)
+
+
+    def test_public_versioned_release_scripts_parse(self):
+        folder = Path(__file__).resolve().parents[1] / "aws_lightsail"
+        for name in ("publish_pipeline_dashboard.sh", "release_pipeline_dashboard.sh"):
+            with self.subTest(name=name):
+                proc = subprocess.run(["bash", "-n", str(folder / name)],
+                                      capture_output=True, text=True, check=False)
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+
+    def test_public_release_receipt_contains_version_and_no_financial_data(self):
+        source = (Path(__file__).resolve().parents[1] /
+                  "aws_lightsail/publish_pipeline_dashboard.sh").read_text()
+        self.assertIn('SBI_SOURCE_SHA="$SHA"', source)
+        self.assertIn('SBI_RELEASE_CHANNEL=aws-public-preview', source)
+        self.assertIn('RELEASE_AUDIT_DIR=', source)
+        self.assertIn('write_receipt "success"', source)
+        self.assertIn('write_receipt "failure"', source)
+        self.assertIn('"financial_writes": False', source)
+        self.assertIn('chmod 0600 "$RELEASE_AUDIT.sha256"', source)
+        for unsafe in ("gh secret set", "docker compose down", "gcloud run deploy",
+                       "firestore", "PAYMENT_DATABASE_URL"):
+            self.assertNotIn(unsafe, source)
 
     def test_api_denied_after_login(self):
         for method, path in [("post", "/api/imports/apply"),
