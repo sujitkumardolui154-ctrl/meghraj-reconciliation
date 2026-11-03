@@ -44,9 +44,10 @@
       "category": "A — Reports Development",
       "title": "Consolidated Report: all approved CSV reports in one ZIP",
       "user_checklist": "checked",
-      "verification": "not_verified",
-      "execution": "pending",
-      "approval_gate": "standard"
+      "verification": "source_implementation_under_review",
+      "execution": "in_progress",
+      "approval_gate": "standard",
+      "evidence": "Source implementation: offline approved-report ZIP generator in tools/sbi_approved_report_bundle.py with SHA256, ordered header, row count, approval reference, path and no-overwrite gates; synthetic CI tests in tests/test_sbi_approved_report_bundle.py. Pending private approved CSV+manifest and authenticated reporting integration. No production report generated."
     },
     {
       "id": "A05",
@@ -976,52 +977,56 @@
       "category": "N — Release Governance",
       "title": "Unified A-N backlog with related A-F IDs",
       "user_checklist": "new_requirement",
-      "verification": "not_verified",
-      "execution": "pending",
+      "verification": "source_implementation_under_review",
+      "execution": "in_progress",
       "approval_gate": "standard",
       "related_existing_tasks": [
         "D08"
       ],
-      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations",
+      "evidence": "Source implementation: A–N manual_correction_plan.json covers baseline 69 pending tasks against the authoritative 92-task register; fail-closed tests validate ID/metadata consistency, no premature completion. Needs long-term source-of-truth acceptance."
     },
     {
       "id": "N02",
       "category": "N — Release Governance",
       "title": "Requirement acceptance before coding",
       "user_checklist": "new_requirement",
-      "verification": "not_verified",
-      "execution": "pending",
+      "verification": "source_implementation_under_review",
+      "execution": "in_progress",
       "approval_gate": "standard",
       "related_existing_tasks": [
         "D08"
       ],
-      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations",
+      "evidence": "Source implementation: every baseline pending task has a manual next action, required evidence and explicit approval/no-write gate in agent/manual_correction_plan.json. Formal acceptance checks per functional feature remain pending."
     },
     {
       "id": "N03",
       "category": "N — Release Governance",
       "title": "Deduplicate tasks and unchanged tests",
       "user_checklist": "new_requirement",
-      "verification": "not_verified",
-      "execution": "pending",
+      "verification": "source_implementation_under_review",
+      "execution": "in_progress",
       "approval_gate": "standard",
       "related_existing_tasks": [
         "D08"
       ],
-      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations",
+      "evidence": "Source implementation: fail-closed manual audit rejects duplicate task IDs and detects queue drift; reviewed scope allows reusing SHA-bound CI tests and per-task evidence. Broader code deduplication still pending."
     },
     {
       "id": "N04",
       "category": "N — Release Governance",
       "title": "Release A AWS, B reporting, C finance",
       "user_checklist": "new_requirement",
-      "verification": "not_verified",
-      "execution": "pending",
+      "verification": "source_implementation_under_review",
+      "execution": "in_progress",
       "approval_gate": "standard",
       "related_existing_tasks": [
         "D08"
       ],
-      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations",
+      "evidence": "Source implementation: explicit A/AWS, B/reporting, C/financial lanes assigned across all baseline pending tasks; release gates remain separate and none promoted to financial production."
     },
     {
       "id": "N05",
@@ -1074,10 +1079,10 @@
     }
   ],
   "audit_metadata": {
-    "updated_for": "Record owner-executed AWS public external HTTPS 7/7 probes after host attestation; preserve release and finance gates",
+    "updated_for": "Manual correction batch 1: all 69 baseline pending tasks triaged; A04 and N01-N04 source implementation under review",
     "as_of_utc": "2026-11-03",
     "source_of_evidence": "Owner-provided exact AWS server command output on 2026-11-03; seven HTTP expectations passed; version SHA/channel validated; not independently fetched in this run",
-    "status_rules": "AWS external endpoint statuses verified by owner-supplied HTTPS probe; history payload contents and browser UI require separate validation; do not certify finance, report roles, or actual rollback restore.",
+    "status_rules": "Manual triage baseline does not mean execution; evidenced source work may become in_progress, and owner approved financial releases remain separate.",
     "production_release": "NOT_READY",
     "real_financial_execution": "RESTRICTED",
     "total_selected_tasks": 50,
