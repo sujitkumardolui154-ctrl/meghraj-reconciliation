@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>SBI Reconciliation | Live Pipeline Control Center</title>
+<style>
+:root{--bg:#080f1d;--surface:#111c30;--surface2:#16233b;--line:#2b3b57;--text:#eef4ff;--muted:#9cafc9;--teal:#40d9be;--blue:#5faaff;--violet:#b7a1ff;--amber:#ffca70;--red:#ff8e9b}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse at top left,#173054 0,#080f1d 45%);color:var(--text);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh}
+a{color:#8fcbff}a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--teal);outline-offset:3px}
+.shell{max-width:1400px;margin:auto;padding:0 28px}.top{border-bottom:1px solid #263755;background:#0b1526c9;backdrop-filter:blur(18px);position:sticky;top:0;z-index:10}
+.top .inner{display:flex;align-items:center;justify-content:space-between;gap:18px;min-height:72px}.brand{display:flex;gap:13px;align-items:center}.mark{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#39cdb7,#417cda);color:#061021;font-weight:900;letter-spacing:-1px}.brand strong{font-size:15px;display:block}.brand small{font-size:11px;color:var(--muted);display:block}
+.nav{display:flex;gap:18px;align-items:center}.nav a{color:var(--muted);font-size:13px;text-decoration:none}.nav a:hover{color:white}.head-actions{display:flex;align-items:center;gap:12px}
+button{font:inherit;cursor:pointer}.btn{padding:10px 16px;border-radius:10px;border:1px solid #4774a4;background:#1b3c64;color:#e8f4ff;font-weight:650}.btn:hover{background:#285184}.live-tag{border:1px solid #386052;background:#143a34;color:#8fe7cb;border-radius:50px;padding:7px 12px;white-space:nowrap;font-weight:650;font-size:11px}
+.hero{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:48px 0 30px}.eyebrow{color:#77ddce;font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase}h1{font-size:clamp(28px,4vw,45px);line-height:1.12;letter-spacing:-1.4px;margin:13px 0}.hero p{max-width:710px;color:var(--muted);margin:0;font-size:15px}.updated{font-size:12px;color:var(--muted);text-align:right;min-width:210px}
+.notice{border:1px solid #69542b;border-left:4px solid var(--amber);border-radius:12px;padding:14px 18px;background:#392b1b75;color:#f4dbae;margin-bottom:28px}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.panel{background:linear-gradient(155deg,#15233a,#101a2d);border:1px solid var(--line);border-radius:16px;min-width:0}.metric{padding:21px 22px}.metric .label{color:var(--muted);font-size:13px}.metric .value{font-size:34px;font-weight:780;letter-spacing:-1px;margin:6px 0}.metric .hint{color:var(--muted);font-size:12px}.metric:nth-child(1) .value{color:var(--blue)}.metric:nth-child(2) .value{color:var(--teal)}.metric:nth-child(3) .value{color:var(--amber)}.metric:nth-child(4) .value{color:var(--violet)}
+.section{margin-top:34px}.section-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:15px}.section h2{font-size:20px;letter-spacing:-.4px;margin:0}.section-head p{color:var(--muted);font-size:12px;margin:0}
+.pipeline{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.stage{padding:22px;min-height:175px}.stage-top{display:flex;justify-content:space-between;align-items:center;gap:12px}.stage h3{font-size:16px;margin:12px 0 6px}.stage p{color:var(--muted);font-size:13px;min-height:42px;margin:0 0 12px}.stage footer{color:#9bbedc;font-size:12px;overflow-wrap:anywhere}.bubble{font-size:11px;font-weight:750;padding:5px 10px;border-radius:40px;white-space:nowrap}.ok{background:#164d43;color:#84f3ca}.warn{background:#554122;color:#ffdb96}.bad{background:#632e39;color:#ffb6c1}.neutral{background:#2b3a52;color:#bfcfe6}.dot{width:11px;height:11px;border-radius:50%;display:inline-block;background:var(--blue)}.dot.green{background:var(--teal)}.dot.yellow{background:var(--amber)}.dot.red{background:var(--red)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:17px}.panel-pad{padding:23px}.sub{color:var(--muted);font-size:13px;margin:6px 0 20px}.issues{display:grid;gap:11px}.issue{border:1px solid #35445b;background:#122035;padding:13px 14px;border-radius:10px;display:flex;gap:13px;align-items:flex-start}.issue .symbol{font-size:16px;color:var(--amber)}.issue strong{display:block;font-size:13px}.issue p{margin:3px 0 0;color:var(--muted);font-size:12px}.issue small{color:#b7cbe4;font-weight:750}.progress{background:#293a55;height:8px;overflow:hidden;border-radius:25px;margin:8px 0}.progress>div{background:linear-gradient(90deg,#42cdb7,#64aaff);height:100%;border-radius:25px;min-width:0}
+.category{padding:12px 0;border-bottom:1px solid #2a3951}.category:last-child{border-bottom:0}.category-meta{display:flex;justify-content:space-between;gap:12px;font-size:12px}.category-meta strong{max-width:80%;font-weight:600}.category-meta span{color:var(--muted)}
+.filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}.filters input,.filters select{border:1px solid #385072;border-radius:10px;color:var(--text);background:#122036;padding:11px 12px;font:inherit}.filters input{flex:1;min-width:220px}.filters select{min-width:170px}
+.task-list{display:grid;gap:8px;max-height:540px;overflow:auto}.task{display:grid;grid-template-columns:62px 1fr auto;gap:14px;align-items:center;padding:12px 15px;border:1px solid #304259;border-radius:9px;background:#122035}.task .id{font-size:12px;color:#9dcaff;font-weight:750}.task strong{font-size:13px;font-weight:600}.task small{display:block;color:var(--muted);margin-top:3px}.task-status{font-size:11px;text-transform:capitalize;font-weight:700;color:var(--amber)}.task-status.done,.task-status.approved{color:var(--teal)}.task-status.blocked{color:var(--red)}
+.footer{border-top:1px solid var(--line);margin:44px 0 0;padding:24px 0 38px;color:var(--muted);font-size:12px;display:flex;justify-content:space-between;gap:20px}.footer a{color:#a4d1ff}
+.empty{padding:20px;border:1px dashed #52617b;border-radius:10px;color:var(--muted);font-size:13px}.sources{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted)}
+@media(max-width:1050px){.grid{grid-template-columns:repeat(2,1fr)}.pipeline{grid-template-columns:repeat(2,1fr)}.nav{display:none}.two{grid-template-columns:1fr}}
+@media(max-width:640px){.shell{padding:0 16px}.top .inner{min-height:64px}.head-actions .live-tag{display:none}.hero{display:block;padding:30px 0 20px}.updated{text-align:left;margin-top:18px}.grid,.pipeline{grid-template-columns:1fr 1fr;gap:10px}.stage{min-height:auto;padding:16px}.stage h3{font-size:14px}.stage p{font-size:12px}.metric{padding:15px}.metric .value{font-size:28px}.two{gap:12px}.task{grid-template-columns:48px 1fr;gap:8px}.task-status{grid-column:2}.footer{display:block}}
+@media(max-width:430px){.grid,.pipeline{grid-template-columns:1fr}.brand strong{font-size:13px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="shell inner">
+    <div class="brand"><span class="mark" aria-hidden="true">SBI</span><div><strong>Reconciliation Control Center</strong><small>Meghraj Express · Engineering Pipeline</small></div></div>
+    <nav class="nav" aria-label="Sections"><a href="#overview">Overview</a><a href="#pipeline">Stages</a><a href="#obstructions">Obstructions</a><a href="#tasks">Task pipeline</a></nav>
+    <div class="head-actions"><span class="live-tag" id="data-mode">● Checking source</span><button class="btn" id="refresh" type="button">↻ Refresh</button></div>
+  </div>
+</header>
+<main class="shell">
+  <section class="hero" id="overview">
+    <div><div class="eyebrow">SBI · Program Operations</div><h1>All stages. One control center.</h1><p>Read-only visibility into engineering, AWS staging releases, QA, blockers and the approved task register. This is a monitoring dashboard, not a financial reconciliation interface.</p></div>
+    <div class="updated"><strong id="last-sync">Loading latest evidence…</strong><div id="source-age">GitHub sources cached for up to 2 minutes</div></div>
+  </section>
+  <div class="notice" role="status"><strong>Financial production restricted.</strong> Payment settlement, database update and Excel upload are disabled in this AWS preview. A successful CI job does not approve financial release.</div>
+  <section class="grid" aria-label="Executive summary">
+    <div class="panel metric"><div class="label">Tracked tasks</div><div class="value" id="total">—</div><div class="hint">From GitHub task register</div></div>
+    <div class="panel metric"><div class="label">Done / approved</div><div class="value" id="done">—</div><div class="hint">Register execution states</div></div>
+    <div class="panel metric"><div class="label">Pending + in progress</div><div class="value" id="pending">—</div><div class="hint">Work remaining in pipeline</div></div>
+    <div class="panel metric"><div class="label">Blocked tasks</div><div class="value" id="blocked">—</div><div class="hint">Plus mandatory release gates below</div></div>
+  </section>
+  <section class="section" id="pipeline">
+    <div class="section-head"><h2>Deployment & engineering stages</h2><p>Latest workflow evidence, not continuous agent telemetry</p></div>
+    <div class="pipeline">
+      <article class="panel stage"><div class="stage-top"><span class="dot green"></span><span class="bubble ok">CONNECTED</span></div><h3>Read-only monitoring</h3><p>This page is responding through authenticated AWS preview.</p><footer>Dashboard API · Current session</footer></article>
+      <article class="panel stage"><div class="stage-top"><span class="dot yellow" id="qa-dot"></span><span class="bubble neutral" id="qa-state">CHECKING</span></div><h3>GitHub engineering QA</h3><p id="qa-detail">Looking up latest consolidated QA run.</p><footer id="qa-foot">GitHub Actions · Source verification</footer></article>
+      <article class="panel stage"><div class="stage-top"><span class="dot yellow" id="stage-dot"></span><span class="bubble neutral" id="stage-state">CHECKING</span></div><h3>AWS staging deployment</h3><p id="stage-detail">Looking up latest staging release run.</p><footer id="stage-foot">GitHub Actions · Last deployment request</footer></article>
+      <article class="panel stage"><div class="stage-top"><span class="dot yellow"></span><span class="bubble warn">IN DEVELOPMENT</span></div><h3>Dashboard & report backend</h3><p>Dashboard status is visible; financial reporting API remains disconnected here.</p><footer>Full SBI financial application · Not migrated</footer></article>
+      <article class="panel stage"><div class="stage-top"><span class="dot yellow"></span><span class="bubble warn">NOT VERIFIED</span></div><h3>Automated rollback</h3><p>Isolated clone rollback rehearsal passed previously. Live executor failure recovery is not verified.</p><footer>Staging recovery gate · Separate evidence required</footer></article>
+      <article class="panel stage"><div class="stage-top"><span class="dot red"></span><span class="bubble bad">RESTRICTED</span></div><h3>Financial production</h3><p>Database writes, reconciliation execution and public financial access are not authorized.</p><footer>Independent financial QA · Release gate</footer></article>
+    </div>
+  </section>
+  <section class="section two" id="obstructions">
+    <article class="panel panel-pad"><div class="section-head"><h2>Critical obstructions</h2><span class="bubble warn">ACTION REQUIRED</span></div><p class="sub">Mandatory safeguards and task-register blockers. These are not bypassed by deployment success.</p><div class="issues" id="issues"><div class="empty">Loading blockers…</div></div></article>
+    <article class="panel panel-pad"><div class="section-head"><h2>Workstream progress</h2><span class="bubble neutral" id="category-count">—</span></div><p class="sub">Categories A–N, counted from GitHub source tasks.</p><div id="categories"><div class="empty">Loading workstream summaries…</div></div></article>
+  </section>
+  <section class="section" id="tasks">
+    <div class="section-head"><h2>Pending task pipeline</h2><p>Search, inspect and filter source-backed tasks</p></div>
+    <div class="panel panel-pad">
+      <div class="filters"><input id="find-task" aria-label="Search tasks" placeholder="Search by ID, task name or workstream" type="search"><select id="filter-task" aria-label="Filter task status"><option value="active">Pending and in progress</option><option value="blocked">Blocked</option><option value="all">All tracked tasks</option><option value="done">Done and approved</option></select></div>
+      <p class="sub" id="task-summary">Loading current register…</p><div class="task-list" id="task-list" aria-live="polite"></div>
+    </div>
+  </section>
+</main>
+<footer class="shell footer">
+  <div>Source: <a href="https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation" rel="noopener noreferrer" target="_blank">SBI GitHub repository</a> · API cache ~2 minutes · Automatically refreshes every 90 seconds</div>
+  <div><strong>Read-only preview</strong> · No invoice, payment or bank data served</div>
+</footer>
+<script>
+(function(){
+  "use strict";
+  var current = null;
+  var $ = function(id){ return document.getElementById(id); };
+  var statuses = {success:["PASS","ok","green"],failure:["FAILED","bad","red"],cancelled:["CANCELLED","warn","yellow"],timed_out:["TIMEOUT","bad","red"],in_progress:["RUNNING","warn","yellow"],queued:["QUEUED","warn","yellow"],pending:["PENDING","warn","yellow"],skipped:["SKIPPED","neutral","yellow"]};
+  function clear(el){ while(el.firstChild)el.removeChild(el.firstChild); }
+  function txt(tag,content,cls){ var e=document.createElement(tag);e.textContent=content;if(cls)e.className=cls;return e; }
+  function safeGithubLink(url,text){
+    try{var u=new URL(url);if(u.protocol==="https:" && u.hostname==="github.com" && u.pathname.indexOf("/sujitkumardolui154-ctrl/meghraj-reconciliation/")===0){var a=txt("a",text);a.href=u.href;a.target="_blank";a.rel="noopener noreferrer";return a;}}
+    catch(e){}
+    return txt("span",text);
+  }
+  function dateText(v){if(!v)return "Not available";var d=new Date(v);return Number.isNaN(d.getTime())?"Unknown":d.toLocaleString("en-IN",{timeZone:"Asia/Kolkata",dateStyle:"medium",timeStyle:"short"})+" IST";}
+  function workflow(data,prefix){
+    var run=data && data.run; var status=(run && (run.status==="completed"?run.conclusion:run.status)) || "unknown";
+    var s=statuses[status] || ["UNVERIFIED","neutral","yellow"];
+    $(prefix+"-state").textContent=s[0]; $(prefix+"-state").className="bubble "+s[1]; $(prefix+"-dot").className="dot "+s[2];
+    $(prefix+"-detail").textContent=run ? "Last workflow: "+s[0]+". Run recorded "+dateText(run.updated_at)+".":"Workflow source unavailable. No success is assumed.";
+    var foot=$(prefix+"-foot");clear(foot);
+    if(run && run.url){foot.appendChild(safeGithubLink(run.url,"View GitHub workflow evidence"));}else{foot.textContent="GitHub Actions · No result available";}
+  }
+  function issue(id,title,description){
+    var el=txt("div","","issue");var sign=txt("span","!","symbol");sign.setAttribute("aria-hidden","true");
+    var body=document.createElement("div");body.appendChild(txt("small",id));body.appendChild(txt("strong",title));body.appendChild(txt("p",description));
+    el.appendChild(sign);el.appendChild(body);return el;
+  }
+  function renderIssues(data){
+    var box=$("issues");clear(box);
+    box.appendChild(issue("FINANCIAL GATE","Financial production remains restricted","Independent reconciliation integrity QA and release authorization still required."));
+    box.appendChild(issue("BACKEND INTEGRATION","Full financial API not connected","This AWS view is a read-only preview; the finance backend, imports and reports are not exposed."));
+    box.appendChild(issue("RECOVERY GATE","Live rollback not verified","An isolated clone fault-and-recovery drill passed; the live executor's forced failure path remains unverified."));
+    if(!data.register || !data.register.available){box.appendChild(issue("SOURCE UNAVAILABLE","Task register could not be fetched","Task counts and individual blockers are unknown until GitHub responds."));return;}
+    var blocked=data.register.tasks.filter(function(t){return t.execution==="blocked";});
+    blocked.slice(0,12).forEach(function(t){box.appendChild(issue(t.id,t.title,t.category));});
+    if(blocked.length>12)box.appendChild(txt("p","+"+(blocked.length-12)+" additional blocked tasks. Filter the task register below.","sub"));
+  }
+  function renderCategories(data){
+    var box=$("categories");clear(box);
+    var cs=data.register && data.register.available?data.register.categories:[];
+    $("category-count").textContent=cs.length?cs.length+" workstreams":"Unverified";
+    if(!cs.length){box.appendChild(txt("div","Category progress unavailable from GitHub.","empty"));return;}
+    cs.forEach(function(c){
+      var row=txt("div","","category");var meta=txt("div","","category-meta");
+      meta.appendChild(txt("strong",c.name));meta.appendChild(txt("span",c.done+"/"+c.total+" done"));
+      var bar=txt("div","","progress");var fill=document.createElement("div");fill.style.width=(c.total?100*c.done/c.total:0)+"%";bar.appendChild(fill);
+      row.appendChild(meta);row.appendChild(bar);box.appendChild(row);
+    });
+  }
+  function renderTasks(){
+    var box=$("task-list");clear(box);
+    var data=current && current.register;
+    if(!data || !data.available){$("task-summary").textContent="GitHub task register unavailable; counts are not verified.";box.appendChild(txt("div","No live tasks can be displayed.","empty"));return;}
+    var q=$("find-task").value.trim().toLowerCase(),filter=$("filter-task").value;
+    var list=data.tasks.filter(function(t){
+      var match=!q || (t.id+" "+t.title+" "+t.category).toLowerCase().indexOf(q)>=0;
+      var state=filter==="all" || (filter==="active" && (t.execution==="pending"||t.execution==="in_progress")) ||
+        (filter==="done" && (t.execution==="done"||t.execution==="approved")) || t.execution===filter;
+      return match && state;
+    });
+    $("task-summary").textContent=list.length+" matching tasks · "+data.total+" tracked · Current source: public GitHub task register";
+    if(!list.length){box.appendChild(txt("div","No matching tasks.","empty"));return;}
+    list.forEach(function(t){
+      var e=txt("div","","task");e.appendChild(txt("span",t.id,"id"));
+      var body=txt("div");body.appendChild(txt("strong",t.title));body.appendChild(txt("small",t.category+" · Verification: "+t.verification.replaceAll("_"," ")));
+      e.appendChild(body);e.appendChild(txt("span",t.execution.replaceAll("_"," "),"task-status "+t.execution));box.appendChild(e);
+    });
+  }
+  function render(data){
+    current=data;var register=data.register;var available=register && register.available;
+    var c=available?register.counts:{};
+    $("total").textContent=available?register.total:"—";
+    $("done").textContent=available?((c.done||0)+(c.approved||0)):"—";
+    $("pending").textContent=available?((c.pending||0)+(c.in_progress||0)):"—";
+    $("blocked").textContent=available?(c.blocked||0):"—";
+    $("data-mode").textContent=Object.values(data.sources||{}).every(function(s){return s==="available";})?"● GitHub connected":"● Partial source outage";
+    $("last-sync").textContent="Last source fetch: "+dateText(data.generated_at_utc);
+    $("source-age").textContent="Source-backed status · refresh every 90s · cached "+data.cache_seconds+"s";
+    workflow(data.qa,"qa");workflow(data.staging,"stage");renderIssues(data);renderCategories(data);renderTasks();
+  }
+  var busy=false;
+  async function refresh(){
+    if(busy)return;busy=true;$("refresh").disabled=true;$("refresh").textContent="Refreshing…";
+    try{
+      var response=await fetch("/api/pipeline/status",{method:"GET",credentials:"same-origin",cache:"no-store"});
+      if(!response.ok)throw new Error("Monitoring API returned HTTP "+response.status);
+      var data=await response.json();if(!data || typeof data!=="object" || !data.sources)throw new Error("Unexpected monitoring response");
+      render(data);
+    }catch(err){
+      $("data-mode").textContent="● Source unavailable";
+      $("last-sync").textContent="Refresh failed: "+err.message;
+      if(!current){$("task-list").textContent="Status unavailable. No data inferred."; }
+    }finally{busy=false;$("refresh").disabled=false;$("refresh").textContent="↻ Refresh";}
+  }
+  $("refresh").addEventListener("click",refresh);
+  $("find-task").addEventListener("input",renderTasks);
+  $("filter-task").addEventListener("change",renderTasks);
+  refresh();setInterval(refresh,90000);
+})();
+</script>
+</body>
+</html>
