@@ -724,13 +724,14 @@
       "category": "J — GitHub DevOps & CI/CD",
       "title": "Source-to-deployment provenance and SHA",
       "user_checklist": "new_requirement",
-      "verification": "not_verified",
-      "execution": "pending",
+      "verification": "aws_public_release_sha_reported_host_attestation_pending",
+      "execution": "in_progress",
       "approval_gate": "standard",
       "related_existing_tasks": [
         "E06"
       ],
-      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations",
+      "evidence": "Owner AWS release git-653a54f5bcef recorded 2026-11-03. Dedicated source-to-running-image HTTP and local receipt checks still required; does not certify Cloud Run finance/reports."
     },
     {
       "id": "J02",
@@ -763,13 +764,14 @@
       "category": "J — GitHub DevOps & CI/CD",
       "title": "Release manifest, rollback and evidence",
       "user_checklist": "new_requirement",
-      "verification": "not_verified",
-      "execution": "pending",
+      "verification": "preview_receipt_path_reported_not_certified",
+      "execution": "in_progress",
       "approval_gate": "standard",
       "related_existing_tasks": [
         "E06"
       ],
-      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations",
+      "evidence": "Sanitized AWS public preview release receipt path reported; local contents/hash validation and rollback exercise pending."
     },
     {
       "id": "J05",
@@ -789,13 +791,14 @@
       "category": "K — AWS Migration & Hosting",
       "title": "Protected HTTPS and private containers",
       "user_checklist": "new_requirement",
-      "verification": "not_verified",
-      "execution": "pending",
+      "verification": "public_preview_deployed_owner_reported",
+      "execution": "in_progress",
       "approval_gate": "standard",
       "related_existing_tasks": [
         "E08"
       ],
-      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations",
+      "evidence": "Public preview URL https://sbi-preview.13-232-241-221.sslip.io/ and release success reported; external HTTPS access control and networking not independently verified."
     },
     {
       "id": "K02",
@@ -841,13 +844,14 @@
       "category": "K — AWS Migration & Hosting",
       "title": "Health, logs and rollback verification",
       "user_checklist": "new_requirement",
-      "verification": "not_verified",
-      "execution": "pending",
+      "verification": "runtime_version_and_backup_tag_reported",
+      "execution": "in_progress",
       "approval_gate": "standard",
       "related_existing_tasks": [
         "E08"
       ],
-      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations",
+      "evidence": "Owner AWS deploy log reports previous Docker image backup tag, release SHA and audit path; independent health/rollback-readiness and audit integrity verification pending."
     },
     {
       "id": "L01",
@@ -945,13 +949,14 @@
       "category": "M — Audit, Compliance & Security",
       "title": "Credential rotation and secrets checks",
       "user_checklist": "new_requirement",
-      "verification": "not_verified",
-      "execution": "pending",
+      "verification": "owner_reported_successful_credential_rotation",
+      "execution": "in_progress",
       "approval_gate": "standard",
       "related_existing_tasks": [
         "E03"
       ],
-      "note": "Design and consolidate with referenced A-F task; no duplicate implementations"
+      "note": "Design and consolidate with referenced A-F task; no duplicate implementations",
+      "evidence": "Owner shell printed PUBLIC_LOGIN_ROTATION=PASS, PUBLIC_IMAGE_UNCHANGED=PASS, FINANCIAL_WRITES=DISABLED before public dashboard release 2026-11-03. Credential exposure review, browser login proof and policy evaluation pending."
     },
     {
       "id": "M05",
@@ -1036,46 +1041,55 @@
       "category": "N — Release Governance",
       "title": "Stamp each build with immutable Git SHA and channel; expose deployed version and source in authenticated dashboard",
       "execution": "in_progress",
-      "verification": "source_implementation_under_review",
+      "verification": "aws_host_deploy_output_reported",
       "approval_gate": "standard",
-      "evidence": "Version comes from Docker build metadata, not inferred from GitHub HEAD"
+      "evidence": "Owner AWS shell release 2026-11-03 reported PUBLIC_RELEASE_VERSION=git-653a54f5bcef; immutable SHA in image is source-implemented. No independent authenticated endpoint comparison yet; must not label end-to-end verified."
     },
     {
       "id": "N07",
       "category": "N — Release Governance",
       "title": "Display versioned code changes and staging deployment attempts with timestamp, outcome and GitHub evidence links",
       "execution": "in_progress",
-      "verification": "source_implementation_under_review",
+      "verification": "source_and_ci_passed_runtime_ui_pending",
       "approval_gate": "standard",
-      "evidence": "GitHub commit history and Actions run history; source outages fail closed"
+      "evidence": "PR #19 on main and PR #20 on AWS preview merged with GitHub CI PASS. Live dashboard owner reported deployed 2026-11-03; authenticated external version/change-history UI not independently verified."
     },
     {
       "id": "N08",
       "category": "N — Release Governance",
       "title": "Record sanitized public preview release audit receipts with previous/new image and rollback outcome",
-      "execution": "pending",
-      "verification": "not_verified_on_aws",
+      "execution": "in_progress",
+      "verification": "aws_audit_receipt_path_reported_hash_pending",
       "approval_gate": "release_review",
-      "evidence": "Host-side append-only evidence, prohibit credentials and financial data"
+      "evidence": "Owner-reported public release receipt /var/log/sbi-public-dashboard/20261103T084121Z-653a54f5bcef-55460.json and prior image backup tag sbi-public-pipeline-backup:653a54f5bcef. Receipt contents, digest and backup image not independently read."
     },
     {
       "id": "N09",
       "category": "N — Release Governance",
       "title": "Verify source-to-image version match and deployment change history end to end; final release receipt",
-      "execution": "pending",
-      "verification": "not_verified_on_aws",
+      "execution": "in_progress",
+      "verification": "owner_reported_release_success_http_and_hash_pending",
       "approval_gate": "mandatory_release",
-      "evidence": "Separate actual runtime verification from source CI; preserve staging and financial gates"
+      "evidence": "Owner shell reported PUBLIC_PIPELINE_DASHBOARD=DEPLOYED, PUBLIC_DEPLOY_RESULT=0, git-653a54f5bcef, Caddy unmodified and financial writes disabled. External authenticated HTTP, in-container deployed image provenance, audit sha256 and restored rollback were not independently verified."
     }
   ],
   "audit_metadata": {
-    "updated_for": "Complete selected task inventory including DIL chatbot",
-    "as_of_utc": "2026-11-01",
-    "source_of_evidence": "Cloud Shell outputs supplied in conversation; not a fresh direct runtime test",
-    "status_rules": "Staging/synthetic/structure/export verified do not mean full task complete",
+    "updated_for": "92-task register synced with owner-reported AWS public preview deployment evidence; financial and independent host gates unchanged",
+    "as_of_utc": "2026-11-03",
+    "source_of_evidence": "GitHub PR #19-#23 merge and CI results, plus user-supplied AWS Lightsail release output 2026-11-03; no direct AWS runtime audit",
+    "status_rules": "Only evidence-backed in_progress transitions. Owner-reported deploy logs are not certified external HTTP/receipt hash. Synthetic/source CI not full financial completion.",
     "production_release": "NOT_READY",
     "real_financial_execution": "RESTRICTED",
-    "total_selected_tasks": 50
+    "total_selected_tasks": 50,
+    "aws_public_preview": {
+      "release_sha": "653a54f5bcef8e686f5a17e8c56725e4a1a5de48",
+      "version": "git-653a54f5bcef",
+      "reported_status": "DEPLOYED",
+      "verification": "owner_server_output_only",
+      "audit_receipt": "/var/log/sbi-public-dashboard/20261103T084121Z-653a54f5bcef-55460.json",
+      "financial_execution": "RESTRICTED",
+      "last_reported_date": "2026-11-03"
+    }
   },
   "extension": {
     "base_count": 50,
