@@ -166,6 +166,11 @@ class PreviewTests(unittest.TestCase):
             module.replace_password(original, "not safe with spaces 1234567890")
         source = script.read_text(encoding="utf-8")
         self.assertIn("getpass.getpass", source)
+        for expected in ("ROTATION_BLOCK_STAGE=", "ENV_ASSIGNMENT_FORMAT",
+                         "PASSWORD_CONFIRMATION", "PASSWORD_POLICY",
+                         "PASSWORD_REUSE", "BACKUP_PREPARATION", "UPDATE_OR_RESTART"):
+            self.assertIn(expected, source)
+        self.assertNotIn('print(str(error))', source)
         self.assertIn("AUTH_ROTATION_ROLLBACK=ATTEMPTED", source)
         self.assertIn("PUBLIC_IMAGE_UNCHANGED=PASS", source)
         self.assertIn("FINANCIAL_WRITES=DISABLED", source)

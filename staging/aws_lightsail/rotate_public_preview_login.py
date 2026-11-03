@@ -154,6 +154,7 @@ def main() -> int:
         print("BLOCKED: run as root from an interactive AWS terminal")
         return 2
     with open("/run/lock/sbi-public-pipeline.lock", "a", encoding="ascii") as lock:
+        failure_stage = "PREFLIGHT"
         try:
             fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
@@ -172,6 +173,10 @@ def main() -> int:
             if not stat.S_ISREG(info.st_mode):
                 raise RuntimeError("public .env is not a regular file")
             original = ENV_PATH.read_text(encoding="utf-8")
+            failure_stage = "ENV_ASSIGNMENT_FORMAT"
+            if sum(line.startswith("PREVIEW_PASSWORD=") for line in original.splitlines()) != 1:
+                raise ValueError("expected exactly one password entry")
+            failure_stage = "COMPOSE_AND_CONTAINER_CHECK"
             current = compose_login()
             cid = command("docker", "compose", "ps", "-q", SERVICE)
             if not cid:
@@ -190,14 +195,18 @@ def main() -> int:
                 raise RuntimeError("Compose service image tag cannot be safely reused")
             if command("docker", "image", "inspect", image_tag, "--format", "{{.Id}}") != image_id:
                 raise RuntimeError("Compose image tag differs from active image; no rotation attempted")
+            failure_stage = "PASSWORD_CONFIRMATION"
             new_password = getpass.getpass("New public preview password (24-128 URL-safe characters): ")
             repeat = getpass.getpass("Confirm new preview password: ")
             if not hmac.compare_digest(new_password, repeat):
                 raise ValueError("password confirmation mismatch")
+            failure_stage = "PASSWORD_REUSE"
             if new_password == current["PREVIEW_PASSWORD"]:
                 raise ValueError("new password must be different")
+            failure_stage = "PASSWORD_POLICY"
             updated = replace_password(original, new_password)
             del new_password, repeat
+            failure_stage = "BACKUP_PREPARATION"
             BACKUPS.mkdir(parents=True, exist_ok=True, mode=0o700)
             os.chmod(BACKUPS, 0o700)
             backup = BACKUPS / ("preview-env-" + datetime.datetime.now(datetime.timezone.utc)
@@ -230,6 +239,7 @@ def main() -> int:
                     print("AUDIT_RECEIPT=WRITE_FAILED")
                 return 0
             except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired, json.JSONDecodeError):
+                print("ROTATION_BLOCK_STAGE=UPDATE_OR_RESTART")
                 if changed:
                     print("AUTH_ROTATION_ROLLBACK=ATTEMPTED")
                     try:
@@ -246,6 +256,8 @@ def main() -> int:
                 return 2
         except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired,
                 json.JSONDecodeError):
+            # Only hard-coded stage labels; never echo exception details or secrets.
+            print("ROTATION_BLOCK_STAGE=" + failure_stage)
             print("BLOCKED: safe public-preview credential migration prerequisites failed")
             return 2
 
