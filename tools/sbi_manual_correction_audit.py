@@ -50,10 +50,15 @@ def validate(queue: dict, plan: dict) -> dict:
             # Source implementation can advance a triaged task only with evidence.
             if not str(original.get("evidence") or "").strip():
                 errors.append("advanced_task_missing_evidence")
-            if original.get("execution") == "done" and not any(
-                    key in str(original.get("verification") or "").lower()
-                    for key in ("pass", "verified")):
-                errors.append("done_task_missing_verification")
+            if original.get("execution") == "done":
+                verification = str(original.get("verification") or "").lower()
+                disallowed = ("", "not_verified", "partial_verified",
+                              "source_implementation_under_review")
+                if (verification in disallowed
+                        or verification.startswith("not_verified")
+                        or not any(key in verification for key in
+                                   ("pass", "verified", "certified", "approved"))):
+                    errors.append("done_task_missing_verification")
         if item.get("title") != original.get("title"):
             errors.append("title_mismatch")
         if item.get("approval_gate") != original.get("approval_gate"):
