@@ -1,5 +1,6 @@
 import base64
 import os
+import importlib.util
 import subprocess
 from pathlib import Path
 import unittest
@@ -144,6 +145,34 @@ class PreviewTests(unittest.TestCase):
         for unsafe in ("gh secret set", "docker compose down", "gcloud run deploy",
                        "firestore", "PAYMENT_DATABASE_URL"):
             self.assertNotIn(unsafe, source)
+
+    def test_legacy_public_preview_credential_rotation_contract(self):
+        script = Path(__file__).resolve().parents[1] / "aws_lightsail" / "rotate_public_preview_login.py"
+        self.assertTrue(script.is_file())
+        spec = importlib.util.spec_from_file_location("sbi_preview_rotation_contract", script)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        original = "SITE_DOMAIN=example.com\\nPREVIEW_USERNAME=reviewer\\nPREVIEW_PASSWORD=short\\n"
+        revised = module.replace_password(original, "safe-secret-string-1234567890")
+        self.assertIn("SITE_DOMAIN=example.com", revised)
+        self.assertIn("PREVIEW_USERNAME=reviewer", revised)
+        self.assertIn("PREVIEW_PASSWORD=safe-secret-string-1234567890", revised)
+        self.assertNotIn("PREVIEW_PASSWORD=short", revised)
+        with self.assertRaises(ValueError):
+            module.replace_password(original, "short")
+        with self.assertRaises(ValueError):
+            module.replace_password(original + "PREVIEW_PASSWORD=duplicate\\n", "safe-secret-string-1234567890")
+        with self.assertRaises(ValueError):
+            module.replace_password(original, "not safe with spaces 1234567890")
+        source = script.read_text(encoding="utf-8")
+        self.assertIn("getpass.getpass", source)
+        self.assertIn("AUTH_ROTATION_ROLLBACK=ATTEMPTED", source)
+        self.assertIn("PUBLIC_IMAGE_UNCHANGED=PASS", source)
+        self.assertIn("FINANCIAL_WRITES=DISABLED", source)
+        for forbidden in ("docker compose down", "docker system prune", "gcloud run deploy",
+                          "gh secret set", "PAYMENT_DATABASE_URL", "docker rm -f"):
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, source)
 
     def test_api_denied_after_login(self):
         for method, path in [("post", "/api/imports/apply"),
