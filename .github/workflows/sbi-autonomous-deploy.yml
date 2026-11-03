@@ -51,6 +51,7 @@ jobs:
         run: |
           python -m unittest discover -s tests -p 'test_reporting_staging_approval.py' -v
           python -m unittest discover -s tests -p 'test_reporting_canary_package.py' -v
+          python -m unittest discover -s tests -p 'test_private_reporting_evidence.py' -v
       - name: Check candidate prerequisites
         id: readiness
         shell: bash
