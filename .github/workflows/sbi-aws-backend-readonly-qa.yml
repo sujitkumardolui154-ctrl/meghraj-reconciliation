@@ -5,6 +5,8 @@ on:
       - backend_source/aws_readonly_reporting_app.py
       - staging/aws_backend_readonly/**
       - tests/test_sbi_aws_readonly_backend.py
+      - tests/test_sbi_aws_backend_stage_automation.py
+      - .github/workflows/sbi-aws-backend-staging-release.yml
       - .github/workflows/sbi-aws-backend-readonly-qa.yml
   workflow_dispatch:
 permissions:
@@ -21,7 +23,11 @@ jobs:
       - name: Install minimal isolated test dependencies
         run: python -m pip install -r staging/aws_backend_readonly/requirements.txt
       - name: Verify fail-closed report routes and packaging
-        run: python -m unittest discover -s tests -p test_sbi_aws_readonly_backend.py -v
+        run: |
+          python -m unittest discover -s tests -p test_sbi_aws_readonly_backend.py -v
+          python -m unittest discover -s tests -p test_sbi_aws_backend_stage_automation.py -v
+      - name: Validate host deployment scripts syntax without executing them
+        run: bash -n staging/aws_backend_readonly/stage_release_root.sh staging/aws_backend_readonly/stage_ssh_gate.sh
       - name: Build isolated image (no deploy)
         run: docker build -f staging/aws_backend_readonly/Dockerfile --build-arg SBI_SOURCE_SHA="${GITHUB_SHA}" -t sbi-readonly-qa:"${GITHUB_SHA}" .
       - name: Test non-root image with no network access
