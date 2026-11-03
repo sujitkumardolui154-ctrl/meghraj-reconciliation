@@ -16,20 +16,20 @@
       "category": "A — Reports Development",
       "title": "Verify existing report APIs and handlers",
       "user_checklist": "checked",
-      "verification": "source_audit_or_synthetic_implementation_under_review",
+      "verification": "source_correction_and_synthetic_tests_under_review",
       "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "Existing report handler and Firestore import functions inspected; production contract not fully verified\n2026-11-03 report-source audit: backend_source/report_api.py exposes report handlers; dashboard_source/production_gateway.py forwards reports by backend identity. Real signed-in app session/strict role gate remains unverified and release blocked."
+      "evidence": "Existing report handler and Firestore import functions inspected; production contract not fully verified\n2026-11-03 report-source audit: backend_source/report_api.py exposes report handlers; dashboard_source/production_gateway.py forwards reports by backend identity. Real signed-in app session/strict role gate remains unverified and release blocked.\n2026-11-03 reviewed source correction under test: production_gateway.py now explicitly gates general report index/CSV on revocation-checked Firebase session user identity plus sbi_report_viewer=True and reconciliation change-report routes on an additional sbi_reconciliation_change_viewer=True; dashboard login/admin claim alone does not grant report access. Backend token audience now uses configured REPORT_BACKEND rather than hardcoded supervisor URL. New pure helper dashboard_source/sbi_report_access.py and synthetic permission tests. Actual signed-in Firebase HTTP E2E, custom-claim provisioning and Cloud Run zero-traffic candidate remain pending. No deployment performed."
     },
     {
       "id": "A02",
       "category": "A — Reports Development",
       "title": "Unpaid / OK / Balance Review / Suspense reports",
       "user_checklist": "checked",
-      "verification": "source_audit_or_synthetic_implementation_under_review",
+      "verification": "source_correction_and_synthetic_tests_under_review",
       "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "2026-11-03 source audit: backend_source/payment_report_rules.py classifies unpaid/ok/error-value; report_api.py adds balance-review. No approved Suspense report contract or real row count proof yet; no changes to financial classifications."
+      "evidence": "2026-11-03 source audit: backend_source/payment_report_rules.py classifies unpaid/ok/error-value; report_api.py adds balance-review. No approved Suspense report contract or real row count proof yet; no changes to financial classifications.\n2026-11-03 reviewed source correction under test: payment_report_rules.classify_payment() no longer treats negative Payment Received cells as OK. Negative, malformed, nonnumeric and credit-note narration sources remain error-value exceptions; exact zero/blank unpaid and positive numeric OK. Supports both 34- and 53-column source layout, preserves raw cells. No inference of SUSPENSE or reconciliation settlement. Synthetic regression added. Real payment/Balance Review/Suspense approved rowset certification pending."
     },
     {
       "id": "A03",
@@ -1083,10 +1083,10 @@
     }
   ],
   "audit_metadata": {
-    "updated_for": "A03 v2.18/53-column independent reference header checker and A06 approved positional 53-to-18 CREDIT NOTE projection",
+    "updated_for": "A01 explicit per-report role gate and correct backend token audience; A02 conservative negative-payment error classification; source-only CI pending",
     "as_of_utc": "2026-11-03",
-    "source_of_evidence": "Synthetic header and positional source regression only, not private data verification; GitHub CI evidence pending",
-    "status_rules": "All eight reporting tasks remain in progress; A03 and A06 new source QA require independent original approved files, duplicate conflict review and separate authenticated reporting release.",
+    "source_of_evidence": "GitHub source inspection and synthetic regressions, not live account session/data verification",
+    "status_rules": "No A01/A02 production approval; reporting viewer claims must be provisioned and verified independently; SUSPENSE remains rulebook-gated.",
     "production_release": "NOT_READY",
     "real_financial_execution": "RESTRICTED",
     "total_selected_tasks": 50,
