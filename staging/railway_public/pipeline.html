@@ -27,20 +27,27 @@ button{font:inherit;cursor:pointer}.btn{padding:10px 16px;border-radius:10px;bor
 @media(max-width:1050px){.grid{grid-template-columns:repeat(2,1fr)}.pipeline{grid-template-columns:repeat(2,1fr)}.nav{display:none}.two{grid-template-columns:1fr}}
 @media(max-width:640px){.shell{padding:0 16px}.top .inner{min-height:64px}.head-actions .live-tag{display:none}.hero{display:block;padding:30px 0 20px}.updated{text-align:left;margin-top:18px}.grid,.pipeline{grid-template-columns:1fr 1fr;gap:10px}.stage{min-height:auto;padding:16px}.stage h3{font-size:14px}.stage p{font-size:12px}.metric{padding:15px}.metric .value{font-size:28px}.two{gap:12px}.task{grid-template-columns:48px 1fr;gap:8px}.task-status{grid-column:2}.footer{display:block}}
 @media(max-width:430px){.grid,.pipeline{grid-template-columns:1fr}.brand strong{font-size:13px}}
+
+.release-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.release-log{display:grid;gap:10px;max-height:430px;overflow:auto}
+.release-entry{border:1px solid #34465e;background:#102034;border-radius:10px;padding:12px 14px}
+.release-entry strong{display:block;font-size:13px}.release-entry p{margin:4px 0 7px;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.release-meta{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.release-version{font:700 25px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--teal);overflow-wrap:anywhere}
+@media(max-width:880px){.release-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <header class="top">
   <div class="shell inner">
     <div class="brand"><span class="mark" aria-hidden="true">SBI</span><div><strong>Reconciliation Control Center</strong><small>Meghraj Express · Engineering Pipeline</small></div></div>
-    <nav class="nav" aria-label="Sections"><a href="#overview">Overview</a><a href="#pipeline">Stages</a><a href="#obstructions">Obstructions</a><a href="#tasks">Task pipeline</a></nav>
+    <nav class="nav" aria-label="Sections"><a href="#overview">Overview</a><a href="#pipeline">Stages</a><a href="#obstructions">Obstructions</a><a href="#tasks">Task pipeline</a><a href="#versions">Version log</a></nav>
     <div class="head-actions"><span class="live-tag" id="data-mode">● Checking source</span><button class="btn" id="refresh" type="button">↻ Refresh</button></div>
   </div>
 </header>
 <main class="shell">
   <section class="hero" id="overview">
     <div><div class="eyebrow">SBI · Program Operations</div><h1>All stages. One control center.</h1><p>Read-only visibility into engineering, AWS staging releases, QA, blockers and the approved task register. This is a monitoring dashboard, not a financial reconciliation interface.</p></div>
-    <div class="updated"><strong id="last-sync">Loading latest evidence…</strong><div id="source-age">GitHub sources cached for up to 2 minutes</div></div>
+    <div class="updated"><strong id="last-sync">Loading latest evidence…</strong><div id="source-age">GitHub sources cached for up to 5 minutes</div></div>
   </section>
   <div class="notice" role="status"><strong>Financial production restricted.</strong> Payment settlement, database update and Excel upload are disabled in this AWS preview. A successful CI job does not approve financial release.</div>
   <section class="grid" aria-label="Executive summary">
@@ -64,6 +71,31 @@ button{font:inherit;cursor:pointer}.btn{padding:10px 16px;border-radius:10px;bor
     <article class="panel panel-pad"><div class="section-head"><h2>Critical obstructions</h2><span class="bubble warn">ACTION REQUIRED</span></div><p class="sub">Mandatory safeguards and task-register blockers. These are not bypassed by deployment success.</p><div class="issues" id="issues"><div class="empty">Loading blockers…</div></div></article>
     <article class="panel panel-pad"><div class="section-head"><h2>Workstream progress</h2><span class="bubble neutral" id="category-count">—</span></div><p class="sub">Categories A–N, counted from GitHub source tasks.</p><div id="categories"><div class="empty">Loading workstream summaries…</div></div></article>
   </section>
+  <section class="section" id="versions">
+    <div class="section-head"><h2>Version & deployment change log</h2><p>Verified image version · GitHub history · source evidence</p></div>
+    <div class="release-grid">
+      <article class="panel panel-pad">
+        <h3>Currently served dashboard</h3>
+        <div class="release-version" id="running-version">UNVERIFIED</div>
+        <p class="sub" id="running-channel">The exact running image version will appear after a version-stamped deployment.</p>
+        <div class="release-meta"><span id="running-sha">Image source commit not verified</span><span id="running-version-status">Version evidence pending</span></div>
+      </article>
+      <article class="panel panel-pad">
+        <h3>Release log controls</h3>
+        <p class="sub">Every GitHub change and AWS staging deployment is listed with its recorded time, status and evidence link. A source commit is not proof of deployment.</p>
+        <a class="btn" href="/api/pipeline/history.csv" style="display:inline-block;text-decoration:none">Download version / deployment log CSV</a>
+        <p class="sub" id="history-source">Waiting for GitHub history.</p>
+      </article>
+      <article class="panel panel-pad">
+        <h3>Staging deployment history</h3>
+        <div id="deployment-history" class="release-log"><div class="empty">Loading staging deployment log…</div></div>
+      </article>
+      <article class="panel panel-pad">
+        <h3>Source changes & versions</h3>
+        <div id="source-history" class="release-log"><div class="empty">Loading source change log…</div></div>
+      </article>
+    </div>
+  </section>
   <section class="section" id="tasks">
     <div class="section-head"><h2>Pending task pipeline</h2><p>Search, inspect and filter source-backed tasks</p></div>
     <div class="panel panel-pad">
@@ -73,7 +105,7 @@ button{font:inherit;cursor:pointer}.btn{padding:10px 16px;border-radius:10px;bor
   </section>
 </main>
 <footer class="shell footer">
-  <div>Source: <a href="https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation" rel="noopener noreferrer" target="_blank">SBI GitHub repository</a> · API cache ~2 minutes · Automatically refreshes every 90 seconds</div>
+  <div>Source: <a href="https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation" rel="noopener noreferrer" target="_blank">SBI GitHub repository</a> · API cache ~5 minutes · Automatically refreshes every 90 seconds</div>
   <div><strong>Read-only preview</strong> · No invoice, payment or bank data served</div>
 </footer>
 <script>
@@ -144,6 +176,38 @@ button{font:inherit;cursor:pointer}.btn{padding:10px 16px;border-radius:10px;bor
       e.appendChild(body);e.appendChild(txt("span",t.execution.replaceAll("_"," "),"task-status "+t.execution));box.appendChild(e);
     });
   }
+
+  function renderReleaseLog(events,kind,target){
+    var box=$(target);clear(box);
+    var selected=events.filter(function(e){return e.kind===kind;});
+    if(!selected.length){box.appendChild(txt("div","No verified events available from GitHub.","empty"));return;}
+    selected.forEach(function(e){
+      var item=txt("div","","release-entry");
+      item.appendChild(txt("strong",(e.kind==="code_change"?"Code change · ":"Staging run · ")+(e.version||"unknown")));
+      item.appendChild(txt("p",e.title||"No title available"));
+      var meta=txt("div","","release-meta");
+      meta.appendChild(txt("span",dateText(e.timestamp)));
+      meta.appendChild(txt("span",(e.status||"unknown").replaceAll("_"," ")));
+      item.appendChild(meta);
+      if(e.url){var foot=txt("div","","release-meta");foot.appendChild(safeGithubLink(e.url,"Open source evidence"));item.appendChild(foot);}
+      box.appendChild(item);
+    });
+  }
+  function renderHistory(data){
+    var build=data.deployed_build||{};
+    $("running-version").textContent=build.version||"UNVERIFIED";
+    $("running-channel").textContent="Channel: "+(build.channel||"UNVERIFIED")+". Build version is taken from the running Docker image, not inferred from main.";
+    $("running-sha").textContent=build.source_sha||"No source SHA embedded in running container";
+    $("running-version-status").textContent=build.version_source==="docker_image_build_args"?"BUILD STAMP VERIFIED":"BUILD STAMP PENDING";
+    var activity=data.activity||{};
+    var ev=Array.isArray(activity.events)?activity.events:[];
+    renderReleaseLog(ev,"staging_release","deployment-history");
+    renderReleaseLog(ev,"code_change","source-history");
+    var sources=activity.sources||{};
+    $("history-source").textContent="Staging releases: "+(sources.staging_releases||"unavailable")+
+       " · Code history: "+(sources.code_changes||"unavailable")+
+       " · Public-preview deployment history requires separate server release receipts.";
+  }
   function render(data){
     current=data;var register=data.register;var available=register && register.available;
     var c=available?register.counts:{};
@@ -154,7 +218,7 @@ button{font:inherit;cursor:pointer}.btn{padding:10px 16px;border-radius:10px;bor
     $("data-mode").textContent=Object.values(data.sources||{}).every(function(s){return s==="available";})?"● GitHub connected":"● Partial source outage";
     $("last-sync").textContent="Last source fetch: "+dateText(data.generated_at_utc);
     $("source-age").textContent="Source-backed status · refresh every 90s · cached "+data.cache_seconds+"s";
-    workflow(data.qa,"qa");workflow(data.staging,"stage");renderIssues(data);renderCategories(data);renderTasks();
+    workflow(data.qa,"qa");workflow(data.staging,"stage");renderIssues(data);renderCategories(data);renderTasks();renderHistory(data);
   }
   var busy=false;
   async function refresh(){
