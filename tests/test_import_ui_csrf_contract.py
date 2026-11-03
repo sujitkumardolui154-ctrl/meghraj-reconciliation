@@ -35,6 +35,13 @@ class ImportUiCsrfContract(unittest.TestCase):
         self.assertIn('request.headers.get("X-DIL-Import") != "1"', section)
         self.assertLess(section.index('if not csrf_valid():'), section.index('requests.request('))
 
+    def test_import_token_audience_matches_target_url(self):
+        section = self.gateway.split('def database_import_gateway(part):', 1)[1].split('# DIL authentication integration', 1)[0]
+        self.assertIn('import_target = os.environ.get("IMPORT_BACKEND", BACKEND).rstrip("/")', section)
+        self.assertIn('token = get_backend_token(import_target)', section)
+        self.assertIn('import_target + "/imports/" + part', section)
+        self.assertNotIn('token = get_backend_token(BACKEND)', section)
+
     def test_csrf_endpoint_matches_http_only_cookie(self):
         self.assertIn('CSRF_COOKIE = "__Host-dil_csrf"', self.sessions)
         self.assertIn('httponly=True', self.sessions)
