@@ -93,6 +93,33 @@ class PreviewTests(unittest.TestCase):
         self.assertIn(b"/api/pipeline/history.csv", response.data)
         self.assertIn(b"running-version", response.data)
 
+
+    def test_git_change_log_does_not_claim_code_deployed(self):
+        import pipeline_data
+        sha = "b" * 40
+        response = [{"sha": sha, "html_url": "https://github.com/example/commit/" + sha,
+                     "commit": {"message": "Version update\\nmore details",
+                                "committer": {"date": "2026-11-03T09:00:00Z"}}}]
+        with patch("pipeline_data._fetch_payload", return_value=response):
+            changes = pipeline_data._recent_changes()
+        self.assertEqual(len(changes), 1)
+        self.assertEqual(changes[0]["version"], "git-" + sha[:12])
+        self.assertEqual(changes[0]["status"], "source_only")
+
+    def test_staging_history_status_is_from_github_run(self):
+        import pipeline_data
+        sha = "c" * 40
+        response = {"workflow_runs": [
+            {"head_sha": sha, "status": "completed", "conclusion": "failure",
+             "name": "Staging", "id": 123, "created_at": "2026-11-03T09:00:00Z",
+             "updated_at": "2026-11-03T09:01:00Z", "html_url": "https://github.com/example/actions/runs/123"}
+        ]}
+        with patch("pipeline_data._fetch_json", return_value=response):
+            events = pipeline_data._deployment_history()
+        self.assertEqual(events[0]["kind"], "staging_release")
+        self.assertEqual(events[0]["status"], "failure")
+        self.assertEqual(events[0]["run_id"], 123)
+
     def test_api_denied_after_login(self):
         for method, path in [("post", "/api/imports/apply"),
                              ("post", "/api/upload"), ("get", "/api/reports"),
