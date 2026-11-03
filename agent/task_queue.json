@@ -16,28 +16,30 @@
       "category": "A — Reports Development",
       "title": "Verify existing report APIs and handlers",
       "user_checklist": "checked",
-      "verification": "partial_verified",
+      "verification": "source_audit_or_synthetic_implementation_under_review",
       "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "Existing report handler and Firestore import functions inspected; production contract not fully verified"
+      "evidence": "Existing report handler and Firestore import functions inspected; production contract not fully verified\n2026-11-03 report-source audit: backend_source/report_api.py exposes report handlers; dashboard_source/production_gateway.py forwards reports by backend identity. Real signed-in app session/strict role gate remains unverified and release blocked."
     },
     {
       "id": "A02",
       "category": "A — Reports Development",
       "title": "Unpaid / OK / Balance Review / Suspense reports",
       "user_checklist": "checked",
-      "verification": "not_verified",
-      "execution": "pending",
-      "approval_gate": "standard"
+      "verification": "source_audit_or_synthetic_implementation_under_review",
+      "execution": "in_progress",
+      "approval_gate": "standard",
+      "evidence": "2026-11-03 source audit: backend_source/payment_report_rules.py classifies unpaid/ok/error-value; report_api.py adds balance-review. No approved Suspense report contract or real row count proof yet; no changes to financial classifications."
     },
     {
       "id": "A03",
       "category": "A — Reports Development",
       "title": "Preserve exact v2.18 output format",
       "user_checklist": "checked",
-      "verification": "not_verified",
-      "execution": "pending",
-      "approval_gate": "standard"
+      "verification": "source_audit_or_synthetic_implementation_under_review",
+      "execution": "in_progress",
+      "approval_gate": "standard",
+      "evidence": "2026-11-03 original-header source audit: 53-column contract in invoice_import_contract.json; independent approved v2.18 writer/header reference and golden parity test still required. Exact historical spellings remain protected."
     },
     {
       "id": "A04",
@@ -54,19 +56,20 @@
       "category": "A — Reports Development",
       "title": "Reconciliation Change Report: old/new payments and statuses",
       "user_checklist": "checked",
-      "verification": "not_verified",
-      "execution": "pending",
-      "approval_gate": "standard"
+      "verification": "source_audit_or_synthetic_implementation_under_review",
+      "execution": "in_progress",
+      "approval_gate": "standard",
+      "evidence": "2026-11-03 source implementation: backend_source/reconciliation_changes_offline.py provides read-only six-category old/new invoice diff, conflict and payment-clearing review, synthetic CSV injection guard and regression tests. Not wired to live database; private snapshot comparison/auth integration pending."
     },
     {
       "id": "A06",
       "category": "A — Reports Development",
       "title": "CREDIT NOTE: approved 18-column report and count",
       "user_checklist": "checked",
-      "verification": "private_staging_passed_auth_module_prepared",
+      "verification": "synthetic_source_fix_under_review",
       "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "User confirmed Batch 11 Cloud Shell final result (2026-11-01): PRIVATE REAL CREDIT NOTE STAGING PASS, private storage security PASS, 14,374 report rows, observed 1,009 CREDIT NOTE invoices, five conflicts preserved REVIEW_REQUIRED. Main dashboard unchanged, staging tagged candidate only, traffic unchanged; authenticated main dashboard integration pending; financial execution restricted. Batch 12 authenticated main-dashboard CREDIT NOTE blueprint preparation script added to GitHub at tools/sbi_batch12_prepare_auth_report_module.sh; script includes fail-closed explicit per-request auth callback, no production deployment. User has not executed Batch 12; cannot mark main auth verified. Owner Cloud Shell confirmed Batch12: AUTH-REQUIRED REPORT MODULE PREPARED; anonymous and missing session denied in synthetic test; main app route attachment pending auth callback verification; no main dashboard or production traffic change; financial execution restricted. Current status is source prepared, not authenticated main release. Batch13 owner Cloud Shell evidence 2026-11-01: source has Flask app objects in dashboard_source/gateway.py and dashboard_source/production_gateway.py (2 candidates); explicit recognized role-auth function 0; login route present; logout route not found; session indicator in 5 files, SESSION_COOKIE_SECURE/HTTPONLY/SAMESITE and PERMANENT_SESSION_LIFETIME configured in one file each. Decision BLOCKED_SOURCE_APP_AMBIGUOUS. No app changes, financial restricted. Batch15 confirmed main dashboard uses separate Flask app, not safe to reuse old gateway.py guard. Next attach requires direct production auth/session contract, no traffic changes. Owner combined report gate 2026-11-01 PASS 9/12; blocked: completed_import_completeness_certified, main_report_routes_attached_with_permission, authenticated_real_user_and_anonymous_http_e2e. Published a single next-step guarded script tools/sbi_combined_three_blocker_correction.sh at commit 129ffa273c03e84acac004f30c3e19871d27da71 to collect full v140 import evidence, prepare a Firebase session-cookie-verified custom-claim role-gated production gateway candidate, and run local negative/positive auth gate tests. Real signed-in HTTP QA and deployment remain outstanding until user execution; this is not a release waiver. Owner requested next accelerated release step. Published Batch19 fast-track script tools/sbi_batch19_fast_track_candidate.sh to reuse Batch18 proof, build isolated strict-role production gateway source candidate if known source matches, and keep live Cloud Run unchanged. Not executed yet; signed-in live E2E, source import completeness, and zero-traffic candidate rehearsal remain mandatory. Batch20 private zero-traffic Cloud Run canary script published 2026-11-01, tools/sbi_batch20_private_canary.sh commit 4d8fb11c27fd609c9579c1363930642e13899e76. It conditionally runs Batch19, checks candidate source, Firebase session cookie issuer/reader and report viewer role, private report bucket, and creates separate IAM-protected Cloud Run canary using --no-traffic --tag only if all preflight gates pass. Not yet executed; main dashboard release and real signed-in E2E pending. Financial release restricted. User executed Batch20: can_deploy=false, bucket PASS, candidate NOT_VERIFIED, cookie_name UNIQUE_ISSUER_READER_PAIR_NOT_PROVEN, import completeness NOT_CERTIFIED; blockers EXACT_FIREBASE_SESSION_COOKIE_NAME_NOT_PROVEN and CANDIDATE_REQUIREMENTS_INCOMPLETE. Separate canary NOT_DEPLOYED; main dashboard unchanged; finance restricted. Batch21 source-scoped cookie-name proof and isolated requirements repair published as tools/sbi_batch21_cookie_requirements_fix.sh at commit 10e2ce315769e53a37659ab00c83337b19e8473e, not yet executed. Import completeness and signed-in real HTTP remain open.",
+      "evidence": "User confirmed Batch 11 Cloud Shell final result (2026-11-01): PRIVATE REAL CREDIT NOTE STAGING PASS, private storage security PASS, 14,374 report rows, observed 1,009 CREDIT NOTE invoices, five conflicts preserved REVIEW_REQUIRED. Main dashboard unchanged, staging tagged candidate only, traffic unchanged; authenticated main dashboard integration pending; financial execution restricted. Batch 12 authenticated main-dashboard CREDIT NOTE blueprint preparation script added to GitHub at tools/sbi_batch12_prepare_auth_report_module.sh; script includes fail-closed explicit per-request auth callback, no production deployment. User has not executed Batch 12; cannot mark main auth verified. Owner Cloud Shell confirmed Batch12: AUTH-REQUIRED REPORT MODULE PREPARED; anonymous and missing session denied in synthetic test; main app route attachment pending auth callback verification; no main dashboard or production traffic change; financial execution restricted. Current status is source prepared, not authenticated main release. Batch13 owner Cloud Shell evidence 2026-11-01: source has Flask app objects in dashboard_source/gateway.py and dashboard_source/production_gateway.py (2 candidates); explicit recognized role-auth function 0; login route present; logout route not found; session indicator in 5 files, SESSION_COOKIE_SECURE/HTTPONLY/SAMESITE and PERMANENT_SESSION_LIFETIME configured in one file each. Decision BLOCKED_SOURCE_APP_AMBIGUOUS. No app changes, financial restricted. Batch15 confirmed main dashboard uses separate Flask app, not safe to reuse old gateway.py guard. Next attach requires direct production auth/session contract, no traffic changes. Owner combined report gate 2026-11-01 PASS 9/12; blocked: completed_import_completeness_certified, main_report_routes_attached_with_permission, authenticated_real_user_and_anonymous_http_e2e. Published a single next-step guarded script tools/sbi_combined_three_blocker_correction.sh at commit 129ffa273c03e84acac004f30c3e19871d27da71 to collect full v140 import evidence, prepare a Firebase session-cookie-verified custom-claim role-gated production gateway candidate, and run local negative/positive auth gate tests. Real signed-in HTTP QA and deployment remain outstanding until user execution; this is not a release waiver. Owner requested next accelerated release step. Published Batch19 fast-track script tools/sbi_batch19_fast_track_candidate.sh to reuse Batch18 proof, build isolated strict-role production gateway source candidate if known source matches, and keep live Cloud Run unchanged. Not executed yet; signed-in live E2E, source import completeness, and zero-traffic candidate rehearsal remain mandatory. Batch20 private zero-traffic Cloud Run canary script published 2026-11-01, tools/sbi_batch20_private_canary.sh commit 4d8fb11c27fd609c9579c1363930642e13899e76. It conditionally runs Batch19, checks candidate source, Firebase session cookie issuer/reader and report viewer role, private report bucket, and creates separate IAM-protected Cloud Run canary using --no-traffic --tag only if all preflight gates pass. Not yet executed; main dashboard release and real signed-in E2E pending. Financial release restricted. User executed Batch20: can_deploy=false, bucket PASS, candidate NOT_VERIFIED, cookie_name UNIQUE_ISSUER_READER_PAIR_NOT_PROVEN, import completeness NOT_CERTIFIED; blockers EXACT_FIREBASE_SESSION_COOKIE_NAME_NOT_PROVEN and CANDIDATE_REQUIREMENTS_INCOMPLETE. Separate canary NOT_DEPLOYED; main dashboard unchanged; finance restricted. Batch21 source-scoped cookie-name proof and isolated requirements repair published as tools/sbi_batch21_cookie_requirements_fix.sh at commit 10e2ce315769e53a37659ab00c83337b19e8473e, not yet executed. Import completeness and signed-in real HTTP remain open.\n2026-11-03 source correction: backend_source/credit_note_report.py now recognizes embedded CREDIT NOTE and CREDIT NORTE tokens, preserves 18 existing headers/source values, and reports duplicate-invoice conflict groups. Synthetic tests in tests/test_sbi_credit_note_narration_contract.py; five existing private conflicts stay REVIEW_REQUIRED. This is not independent live-data recertification.",
       "requirement": {
         "scope": "ALL invoices in the approved original 53-column invoice database plus completed legitimate imports",
         "source": "Original payment received field Column U (index 20) named Payment Received ( If With GST or Excluding GST)",
@@ -129,19 +132,20 @@
       "category": "A — Reports Development",
       "title": "Log Report: full database change history",
       "user_checklist": "checked",
-      "verification": "not_verified",
-      "execution": "pending",
-      "approval_gate": "standard"
+      "verification": "source_audit_or_synthetic_implementation_under_review",
+      "execution": "in_progress",
+      "approval_gate": "standard",
+      "evidence": "2026-11-03 source audit: report_api.py metadata explicitly reports EVENT_LOGGING_NOT_CONNECTED for login/failure logs. Immutable database change-history export/source authorization contract is pending; no live log report deployed."
     },
     {
       "id": "A08",
       "category": "A — Reports Development",
       "title": "Excel/CSV exports and financial totals validation",
       "user_checklist": "checked",
-      "verification": "partial_verified",
+      "verification": "source_audit_or_synthetic_implementation_under_review",
       "execution": "in_progress",
       "approval_gate": "standard",
-      "evidence": "Step 18 18-column CREDIT NOTE CSV passed; all financial exports and totals not verified"
+      "evidence": "Step 18 18-column CREDIT NOTE CSV passed; all financial exports and totals not verified\n2026-11-03 source audit: report_api.py writes 53-column CSV with formula protection; full Excel writer and exact reconciled financial totals remain unverified without approved external source and private ledger."
     },
     {
       "id": "B01",
@@ -1079,10 +1083,10 @@
     }
   ],
   "audit_metadata": {
-    "updated_for": "Manual correction batch 1: all 69 baseline pending tasks triaged; A04 and N01-N04 source implementation under review",
+    "updated_for": "A-reporting workstream source audit, CREDIT NOTE narration correction, offline reconciliation-change adapter",
     "as_of_utc": "2026-11-03",
-    "source_of_evidence": "Owner-provided exact AWS server command output on 2026-11-03; seven HTTP expectations passed; version SHA/channel validated; not independently fetched in this run",
-    "status_rules": "Manual triage baseline does not mean execution; evidenced source work may become in_progress, and owner approved financial releases remain separate.",
+    "source_of_evidence": "GitHub main report source inspection and synthetic regression in workstream-A reviewed branch; no private financial records accessed, no AWS/GCP deployment",
+    "status_rules": "All A tasks have source inspection started; A05/A06 source implementation under review. No A task labeled fully released or financial execution allowed.",
     "production_release": "NOT_READY",
     "real_financial_execution": "RESTRICTED",
     "total_selected_tasks": 50,
