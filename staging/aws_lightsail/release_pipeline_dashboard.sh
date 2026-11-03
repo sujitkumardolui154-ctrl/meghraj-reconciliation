@@ -36,6 +36,10 @@ PUBLIC_HTML_SHA="$(sha256sum "$PUBLIC/staging/railway_public/pipeline.html" | cu
   echo "BLOCKED: staging/public dashboard HTML are not identical"; exit 2;
 }
 echo "SOURCE_DASHBOARD_CONTRACT=PASS"
+# A new release may require a newer root executor (e.g. source-SHA image stamps).
+# The reviewed upgrade never deploys containers and requires the exact main SHA.
+sudo bash "$MAIN/staging/aws_lightsail/upgrade_stage_executor.sh" "$MAIN_SHA"
+echo "STAGING_EXECUTOR_VERSION=VERIFIED"
 echo "STAGING_RELEASE_SHA=$MAIN_SHA"
 echo "PUBLIC_PREVIEW_SOURCE_SHA=$PUBLIC_SHA"
 
