@@ -202,7 +202,7 @@ class PreviewTests(unittest.TestCase):
             module.replace_password(original, "123456789")
         with self.assertRaises(ValueError):
             module.replace_password(original, "1234567890123456")
-                self.assertIn("AUTH_ROTATION_ROLLBACK=ATTEMPTED", source)
+        self.assertIn("AUTH_ROTATION_ROLLBACK=ATTEMPTED", source)
         self.assertIn("PUBLIC_IMAGE_UNCHANGED=PASS", source)
         self.assertIn("FINANCIAL_WRITES=DISABLED", source)
         for forbidden in ("docker compose down", "docker system prune", "gcloud run deploy",
