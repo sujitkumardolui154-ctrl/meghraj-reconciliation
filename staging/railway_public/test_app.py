@@ -57,11 +57,13 @@ class PreviewTests(unittest.TestCase):
         status.assert_called_once()
 
     def test_public_release_script_shell_syntax(self):
-        script = Path(__file__).resolve().parents[1] / "aws_lightsail" / "publish_pipeline_dashboard.sh"
-        self.assertTrue(script.is_file())
-        result = subprocess.run(["bash", "-n", str(script)],
-                                text=True, capture_output=True, check=False)
-        self.assertEqual(result.returncode, 0, result.stderr)
+        for name in ("publish_pipeline_dashboard.sh", "release_pipeline_dashboard.sh"):
+            with self.subTest(script=name):
+                script = Path(__file__).resolve().parents[1] / "aws_lightsail" / name
+                self.assertTrue(script.is_file())
+                result = subprocess.run(["bash", "-n", str(script)],
+                                        text=True, capture_output=True, check=False)
+                self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_unavailable_github_sources_fail_closed(self):
         import pipeline_data
