@@ -44,8 +44,16 @@ def validate(queue: dict, plan: dict) -> dict:
         if original is None:
             errors.append("unknown_id")
             continue
-        if original.get("execution") != "pending":
-            errors.append("nonpending_manual_item")
+        if original.get("execution") not in ("pending", "in_progress", "done"):
+            errors.append("unknown_execution_state")
+        elif original.get("execution") in ("in_progress", "done"):
+            # Source implementation can advance a triaged task only with evidence.
+            if not str(original.get("evidence") or "").strip():
+                errors.append("advanced_task_missing_evidence")
+            if original.get("execution") == "done" and not any(
+                    key in str(original.get("verification") or "").lower()
+                    for key in ("pass", "verified")):
+                errors.append("done_task_missing_verification")
         if item.get("title") != original.get("title"):
             errors.append("title_mismatch")
         if item.get("approval_gate") != original.get("approval_gate"):
@@ -64,12 +72,15 @@ def validate(queue: dict, plan: dict) -> dict:
             errors.append("financial_approval_mismatch")
     if len(manual_ids) != len(set(manual_ids)):
         errors.append("duplicate_manual_id")
-    if set(manual_ids) != pending:
+    # The plan records a baseline cohort. A triaged task may later progress;
+    # new pending tasks must still be added to the manual plan.
+    if not pending.issubset(set(manual_ids)):
         errors.append("pending_coverage_mismatch")
     scope = plan.get("scope") or {}
-    if (scope.get("pending_triaged") != len(pending)
+    if (scope.get("pending_triaged") != len(entries)
             or scope.get("total_tasks") != len(tasks)
-            or scope.get("completed_unchanged") !=
+            or not isinstance(scope.get("completed_unchanged"), int)
+            or scope["completed_unchanged"] >
             sum(t.get("execution") == "done" for t in tasks if isinstance(t, dict))):
         errors.append("scope_count_mismatch")
     policy = plan.get("gate_policy") or {}
@@ -85,6 +96,11 @@ def validate(queue: dict, plan: dict) -> dict:
         "status": "PASS" if not errors else "REVIEW_REQUIRED",
         "total": len(tasks),
         "pending_triaged": len(set(manual_ids) & pending),
+        "baseline_triaged": len(manual_ids),
+        "advanced_from_baseline": sum(
+            item.get("id") in indexed and indexed[item["id"]].get("execution") != "pending"
+            for item in entries if isinstance(item, dict) and isinstance(item.get("id"), str)
+        ),
         "completed": sum(t.get("execution") == "done" for t in tasks if isinstance(t, dict)),
         "priority_counts": dict(sorted(Counter(
             item.get("priority") for item in entries if isinstance(item, dict)
