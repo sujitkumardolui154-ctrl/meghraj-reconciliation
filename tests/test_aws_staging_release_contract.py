@@ -238,7 +238,7 @@ class AWSStagingReleaseContractTests(unittest.TestCase):
         self.assertIn('CLONE="sbi-stage-rollback-drill"', script)
         self.assertIn('PORT=18084', script)
         self.assertIn('LIVE="sbi-agent-stage"', script)
-        self.assertIn('LIVE_STAGE_IMAGE' if False else 'LIVE_IMAGE=', script)
+        self.assertIn('LIVE_IMAGE=', script)
         self.assertIn('start_clone -e PREVIEW_PASSWORD=invalid', script)
         self.assertIn('FAULT_DETECTION=PASS', script)
         self.assertIn('CLONE_ROLLBACK=PASS', script)
