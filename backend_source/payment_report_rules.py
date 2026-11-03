@@ -25,7 +25,9 @@ def classify_payment(value, cell_type):
         number = Decimal(text)
     except InvalidOperation:
         return "error-value"
-    if not number.is_finite():
+    if not number.is_finite() or number < 0:
+        # Negative source payments are exceptions, never positive received
+        # credits. Keep the raw amount unchanged for independent review.
         return "error-value"
     return "unpaid" if number == 0 else "ok"
 
