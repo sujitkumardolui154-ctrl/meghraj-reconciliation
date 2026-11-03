@@ -523,10 +523,27 @@ Reports include new invoices only after an import completes. Preview alone does 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 150000);
     try {
+      // CSRF cookie is HttpOnly. Obtain its matching request value
+      // from the same-origin endpoint; never read cookies or persist tokens.
+      const headers = {};
+      if (method === "POST") {
+        const csrfResponse = await fetch("/auth/csrf", {
+          method: "GET", credentials: "same-origin", cache: "no-store",
+          redirect: "error", signal: controller.signal
+        });
+        if (!csrfResponse.ok ||
+            !(csrfResponse.headers.get("Content-Type") || "").includes("application/json"))
+          throw new Error("CSRF initialization failed. Sign in and retry.");
+        const csrfPayload = await csrfResponse.json();
+        if (!csrfPayload || typeof csrfPayload.csrf_token !== "string" ||
+            !/^[a-f0-9]{64}$/.test(csrfPayload.csrf_token))
+          throw new Error("Invalid CSRF response. Refresh the dashboard.");
+        headers["X-DIL-Import"] = "1";
+        headers["X-DIL-CSRF"] = csrfPayload.csrf_token;
+      }
       const response = await fetch("/api/imports/" + path, {
         method, body, credentials: "same-origin", cache: "no-store",
-        redirect: "error", signal: controller.signal,
-        headers: method === "POST" ? {"X-DIL-Import": "1"} : {}
+        redirect: "error", signal: controller.signal, headers
       });
       if (!(response.headers.get("Content-Type") || "").includes("application/json"))
         throw new Error("Unexpected response. Check sign-in and receipt status.");
