@@ -77,7 +77,7 @@ class BackendServiceIdentityTests(unittest.TestCase):
     def test_malformed_bearer_token_rejected_before_verification(self):
         def forbidden(*args):
             raise AssertionError("Malformed token reached verifier")
-        for token in ("", "abc def", "abc\\tdef", "abc\\ndef", "abc\\rdef", "abc\\x00def", "abc\\x7fdef"):
+        for token in ("", "abc def", "abc\tdef", "abc\ndef", "abc\rdef", "abc\x00def", "abc\x7fdef"):
             with self.subTest(token=repr(token)):
                 self.assertFalse(self.check(request=self.req(token), verifier=forbidden))
 
