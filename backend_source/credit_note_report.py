@@ -99,3 +99,51 @@ def generate_credit_note_report(source_rows):
     }
 
     return result, summary
+
+
+# Ordered ORIGINAL 53-column positions, not name lookups. Original headers
+# contain duplicate "Client Name" and "Branch Code" labels: source A and
+# K must not overwrite approved source H and G respectively.
+SOURCE_POSITIONS_53 = (
+    1, 2, 3, 4, 5, 6, 7, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+)
+
+
+def generate_credit_note_report_from_53(source_rows, *, approved_53_headers):
+    """Project original 53-cell rows into the 18-column report without mutation.
+
+    approved_53_headers must be independently provided by the caller. This
+    function checks exact positions against the repository's existing
+    import schema; it does NOT certify the approver or the source snapshot.
+    The final 18th column is the derived CREDIT NOTE label only.
+    """
+    from invoice_source_schema import HEADERS_53
+
+    if (not isinstance(approved_53_headers, list)
+            or len(approved_53_headers) != 53
+            or approved_53_headers != HEADERS_53):
+        raise ValueError("Approved 53-column header proof missing or mismatched")
+    if len(SOURCE_POSITIONS_53) != len(SOURCE_HEADERS) or len(set(SOURCE_HEADERS)) != 17:
+        raise ValueError("CREDIT NOTE source positional projection invalid")
+    if not isinstance(source_rows, list):
+        raise ValueError("53-column source rows must be a list")
+    projected = []
+    for source in source_rows:
+        if not isinstance(source, dict):
+            raise ValueError("53-column source record must be a dictionary")
+        values = source.get("original_values")
+        if (not isinstance(values, list) or len(values) != 53
+                or any(not isinstance(value, str) for value in values)):
+            raise ValueError("Original 53-column values are missing or incomplete")
+        if ("original_headers" in source
+                and source["original_headers"] != approved_53_headers):
+            raise ValueError("Source row header positions mismatch approved headers")
+        projected.append({
+            header: values[index]
+            for header, index in zip(SOURCE_HEADERS, SOURCE_POSITIONS_53)
+        })
+    report, summary = generate_credit_note_report(projected)
+    summary["source_projection"] = "ORIGINAL_53_POSITIONAL"
+    summary["exact_header_match_to_caller_reference"] = True
+    summary["independent_source_approval"] = False
+    return report, summary
