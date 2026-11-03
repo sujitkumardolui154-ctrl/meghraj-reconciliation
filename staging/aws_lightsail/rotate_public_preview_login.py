@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Safely rotate legacy AWS public-preview Basic Auth without printing credentials.
 
-The old preview may have a sub-20-character password. This operator-only
-migration requires a new >=24-character password and preserves a root-only local backup of the original .env (not encrypted).
+The old preview may have credentials outside the current password policy. This operator-only
+migration requires a new 10-15-character password and preserves a root-only local
+backup of the original .env (not encrypted).
 It changes only the existing sbi-preview service and never the financial stack.
 """
 from __future__ import annotations
@@ -22,6 +23,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 
 BRANCH = "aws/lightsail-preview-20261102"
 ORIGIN = "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation.git"
@@ -30,7 +32,7 @@ COMPOSE_DIR = ROOT / "staging" / "aws_lightsail"
 ENV_PATH = COMPOSE_DIR / ".env"
 BACKUPS = Path("/root/sbi-public-login-backups")
 AUDIT_DIR = Path("/var/log/sbi-public-dashboard")
-PASSWORD_PATTERN = re.compile(r"[A-Za-z0-9._~\-]{24,128}\Z")
+PASSWORD_PATTERN = re.compile(r"[A-Za-z0-9._~-]{10,15}\Z")
 SERVICE = "sbi-preview"
 VERIFY_CODE = """
 import base64, os, urllib.request, urllib.error
@@ -46,7 +48,7 @@ def code(path, login=False):
 assert code("/healthz")==200
 assert code("/")==401
 assert code("/", True)==200
-assert code("/api/upload", True)==403
+assert code("/api/upload", True) in (403,404)  # Legacy preview may not define this route; never allow 2xx.
 """
 
 
@@ -61,7 +63,7 @@ def command(*args: str) -> str:
 
 def replace_password(text: str, password: str) -> str:
     if not PASSWORD_PATTERN.fullmatch(password):
-        raise ValueError("new password must have 24-128 safe characters")
+        raise ValueError("new password must have 10-15 approved characters")
     lines = text.splitlines(keepends=True)
     matches = [i for i, line in enumerate(lines) if line.startswith("PREVIEW_PASSWORD=")]
     if len(matches) != 1:
@@ -196,7 +198,7 @@ def main() -> int:
             if command("docker", "image", "inspect", image_tag, "--format", "{{.Id}}") != image_id:
                 raise RuntimeError("Compose image tag differs from active image; no rotation attempted")
             failure_stage = "PASSWORD_CONFIRMATION"
-            new_password = getpass.getpass("New public preview password (24-128 URL-safe characters): ")
+            new_password = getpass.getpass("New public preview password (10-15 approved characters): ")
             repeat = getpass.getpass("Confirm new preview password: ")
             if not hmac.compare_digest(new_password, repeat):
                 raise ValueError("password confirmation mismatch")
@@ -215,20 +217,31 @@ def main() -> int:
                 os.chmod(backup, 0o600)
                 f.write(original.encode("utf-8"))
             changed = False
+            update_stage = "WRITE_PREVIEW_ENV"
             try:
                 changed = True
                 atomic_env(updated, info)
                 # Validate the actual Compose interpretation before altering the container.
+                update_stage = "VALIDATE_UPDATED_ENV"
                 replacement = compose_login()
                 if replacement["PREVIEW_USERNAME"] != current["PREVIEW_USERNAME"] or not PASSWORD_PATTERN.fullmatch(replacement["PREVIEW_PASSWORD"]):
                     raise RuntimeError("updated Compose login validation failed")
+                update_stage = "RECREATE_PUBLIC_PREVIEW"
                 command("docker", "compose", "up", "-d", "--no-deps", "--no-build",
                         "--force-recreate", SERVICE)
                 cid_new = command("docker", "compose", "ps", "-q", SERVICE)
                 if not cid_new:
                     raise RuntimeError("new public preview container not found")
+                update_stage = "VERIFY_SAME_IMAGE_AND_LOGIN"
                 new_image = command("docker", "inspect", cid_new, "--format", "{{.Image}}")
-                if new_image != image_id or not verify(cid_new):
+                if new_image != image_id:
+                    raise RuntimeError("public preview image changed unexpectedly")
+                # The legacy app can take several seconds to become available.
+                for attempt in range(20):
+                    if verify(cid_new):
+                        break
+                    time.sleep(1)
+                else:
                     raise RuntimeError("new login/health/financial-denial probe failed")
                 print("PUBLIC_LOGIN_ROTATION=PASS")
                 print("PUBLIC_IMAGE_UNCHANGED=PASS")
@@ -239,7 +252,7 @@ def main() -> int:
                     print("AUDIT_RECEIPT=WRITE_FAILED")
                 return 0
             except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired, json.JSONDecodeError):
-                print("ROTATION_BLOCK_STAGE=UPDATE_OR_RESTART")
+                print("ROTATION_BLOCK_STAGE=" + update_stage)
                 if changed:
                     print("AUTH_ROTATION_ROLLBACK=ATTEMPTED")
                     try:
