@@ -66,7 +66,7 @@ def authorized_invoice_reader(
         or not caller.uid
         or "sbi_invoice_reader" not in caller.permissions
         or not isinstance(verified_scope, TrustedScope)
-        or not verified_scope.verified
+        or verified_scope.verified is not True
         or verified_scope.uid != caller.uid
         or not verified_scope.scope
         or not isinstance(question, str)
