@@ -78,6 +78,16 @@ class AuthorizedReadAdapterTests(unittest.TestCase):
             )
         self.assertEqual(self.compose_count, 0)
 
+    def test_truthy_nonboolean_policy_decision_is_denied(self):
+        # A misconfigured policy returning a string or integer must not grant access.
+        for decision in ("allow", 1, {"allowed": True}):
+            with self.subTest(decision=decision), self.assertRaises(IntelligenceUnavailable):
+                execute_invoice_question(
+                    self.caller, "Invoice?", (),
+                    self.reader(policy=lambda *_: decision), self.compose
+                )
+        self.assertEqual(self.compose_count, 0)
+
     def test_cross_scope_is_never_partially_answered(self):
         different = CandidateRow(
             "invoice", "MXP-TEST-002", "sha256:def", "2026-11-04T00:00:00Z",
