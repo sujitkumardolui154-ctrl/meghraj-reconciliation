@@ -6,6 +6,8 @@ on:
       - tests/test_aws_stage5e_preflight.py
       - staging/aws_lightsail/stage5e_combined_readiness.py
       - tests/test_aws_stage5e_combined_readiness.py
+      - staging/aws_lightsail/stage5g_acceptance_audit.py
+      - tests/test_aws_stage5g_acceptance_audit.py
       - .github/workflows/aws_stage5e_hardening.yml
   push:
     branches:
@@ -21,5 +23,7 @@ jobs:
         run: python3 -B -m unittest discover -s tests -p test_aws_stage5e_preflight.py -v
       - name: Stage 5E combined deployment readiness contract
         run: python3 -B -m unittest discover -s tests -p test_aws_stage5e_combined_readiness.py -v
+      - name: Stage 5G real-service read-only audit contract
+        run: python3 -B -m unittest discover -s tests -p test_aws_stage5g_acceptance_audit.py -v
       - name: Verify no deployment credentials required
         run: python3 -m py_compile staging/aws_lightsail/stage5e_hardening_preflight.py staging/aws_lightsail/stage5e_combined_readiness.py
