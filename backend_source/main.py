@@ -34,6 +34,10 @@ def supervisor_api(request):
             allowed = False
         if not allowed:
             return respond({"error": "Import service authentication required"}, 403)
+        if mode == "aws-hmac-v1":
+            # Stage 5B exercises authentication only. Even correctly signed
+            # requests must not create preview receipts or apply invoices.
+            return respond({"error": "AWS invoice import execution disabled"}, 503)
         from invoice_import_api import handle_imports
         return handle_imports(request)
     # DIL v1.3.0 database reports
