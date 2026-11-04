@@ -1,0 +1,17 @@
+# Stage 6D: FULL original dashboard candidate; PRIVATE-ONLY, NOT PRODUCTION.
+# Build from repository root with -f staging/aws_lightsail/Dockerfile.stage6d
+FROM python:3.12-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
+WORKDIR /app
+COPY dashboard_source/requirements.txt /tmp/dashboard-requirements.txt
+RUN python3 -m pip install --disable-pip-version-check -r /tmp/dashboard-requirements.txt
+COPY dashboard_source/ /app/
+COPY staging/aws_lightsail/stage6b_build_guard.py /app/stage6b_build_guard.py
+RUN python3 -m compileall -q /app && python3 /app/stage6b_build_guard.py --validate-source
+USER 65534:65534
+EXPOSE 8080
+LABEL sbi.release.status="PRIVATE_AUTH_SHELL_ONLY_FINANCIAL_DISABLED"
+# Launch-time guard requires an exact HTTPS AWS origin, private-only profile,
+# financial execution disabled and no backend integration. Do not change the
+# existing compose.yaml, Caddy public routes or production services.
+CMD ["python3", "/app/stage6d_private_entry.py"]
