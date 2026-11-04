@@ -82,6 +82,30 @@ class AuthorizedReadAdapterTests(unittest.TestCase):
         self.assertEqual((self.read_count, self.policy_count, self.compose_count),
                          (0, 0, 0))
 
+    def test_invalid_scope_types_denied_before_read(self):
+        for scope_value in (1, {"branch": "x"}, ["branch"], "   "):
+            with self.subTest(scope=scope_value), self.assertRaises(IntelligenceUnavailable):
+                execute_invoice_question(
+                    self.caller, "Invoice?", (),
+                    self.reader(scope=TrustedScope("tester-a", scope_value, True)),
+                    self.compose,
+                )
+        self.assertEqual((self.read_count, self.policy_count, self.compose_count),
+                         (0, 0, 0))
+
+    def test_invalid_candidate_scope_denied_before_composition(self):
+        for scope_value in (1, {"branch": "x"}, "   "):
+            bad = CandidateRow(
+                "invoice", "MXP-TEST-001", "sha256:abc",
+                "2026-11-04T00:00:00Z", "Synthetic invoice", scope_value
+            )
+            with self.subTest(scope=scope_value), self.assertRaises(IntelligenceUnavailable):
+                execute_invoice_question(
+                    self.caller, "Invoice?", (),
+                    self.reader(fetch=lambda *_: (bad,)), self.compose,
+                )
+        self.assertEqual(self.compose_count, 0)
+
     def test_negative_per_record_policy_denied_before_composition(self):
         with self.assertRaises(IntelligenceUnavailable):
             execute_invoice_question(
