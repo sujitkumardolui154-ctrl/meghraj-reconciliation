@@ -36,6 +36,9 @@ on:
       - tests/test_aws_stage6d7_x509_identity_plan.py
       - staging/aws_lightsail/stage6d8_review_gate.py
       - tests/test_aws_stage6d8_review_gate.py
+      - staging/aws_lightsail/stage6r_cloud_shell_independent_recovery.py
+      - tests/test_aws_stage6r_cloud_shell_recovery.py
+      - docs/SBI_STAGE6R_CLOUD_SHELL_RECOVERY_AWS_LIGHTSAIL.md
       - docs/SBI_STAGE6D8_IDENTITY_APPROVAL_INTAKE.md
       - docs/SBI_STAGE6D7_LIGHTSAIL_X509_IDENTITY_APPROVAL_GATE.md
       - docs/SBI_STAGE6D5_X509_LIGHTSAIL_FEASIBILITY.md
@@ -94,6 +97,11 @@ jobs:
           grep -Fxq 'BATCH_QA=PASS' /tmp/stage6d8-approval.txt
           grep -Fxq 'IDENTITY_PROVISIONING=NOT_PERFORMED' /tmp/stage6d8-approval.txt
           grep -Fxq 'PRODUCTION_CUTOVER=BLOCKED' /tmp/stage6d8-approval.txt
+      - name: Stage 6R recovery inventory without Cloud Shell (offline)
+        run: |
+          python3 -B -m unittest discover -s tests -p test_aws_stage6r_cloud_shell_recovery.py -v
+          python3 -B staging/aws_lightsail/stage6r_cloud_shell_independent_recovery.py --repo . > /tmp/stage6r-recovery.json
+          python3 -c 'import json; d=json.load(open("/tmp/stage6r-recovery.json")); assert d["batch_qa"] == "PASS" and d["financial_writes"] == 0 and d["production_cutover"] == "BLOCKED" and d["deployed_gcp_revision_parity"] == "NOT_VERIFIED"'
       - name: Stage 6 full app source report (no secrets, no cloud access)
         run: python3 -B staging/aws_lightsail/stage6_source_migration_audit.py --repo . > /tmp/sbi-stage6-inventory.json
       - name: Check explicit release blocking gate
