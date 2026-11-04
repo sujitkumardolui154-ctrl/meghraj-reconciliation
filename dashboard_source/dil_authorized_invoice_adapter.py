@@ -62,7 +62,7 @@ def authorized_invoice_reader(
     """
     if (
         not isinstance(caller, VerifiedCaller)
-        or caller.session_revoked
+        or caller.session_revoked is not False
         or not isinstance(caller.uid, str)
         or not caller.uid.strip()
         or not isinstance(caller.permissions, frozenset)
