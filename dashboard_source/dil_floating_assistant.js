@@ -87,13 +87,60 @@
     launcher.addEventListener("click", function () { toggle(panel.hidden); });
     close.addEventListener("click", function () { toggle(false); launcher.focus(); });
     panel.addEventListener("keydown", function (event) { if (event.key === "Escape") { toggle(false); launcher.focus(); } });
-    form.addEventListener("submit", function (event) {
+    // Same-origin, revocation-checked dashboard session; no client-side role claims.
+    // The authenticated gateway currently responds 503 until read-only retrieval
+    // is independently reviewed. Never fabricate an invoice answer.
+    let awaiting = false;
+    form.addEventListener("submit", async function (event) {
       event.preventDefault();
       const question = input.value.trim();
-      if (!question) return;
+      if (!question || awaiting) return;
+      awaiting = true;
+      const sendButton = form.querySelector(".dil-send");
+      sendButton.disabled = true;
+      input.disabled = true;
       appendMessage(question, "user");
       input.value = "";
-      appendMessage("Secure invoice query integration is not yet available. No financial data was accessed or modified.", "assistant");
+      try {
+        const csrfResponse = await fetch("/auth/csrf", {
+          method: "GET", credentials: "same-origin", cache: "no-store"
+        });
+        if (!csrfResponse.ok) throw new Error("Security token unavailable. Sign in again.");
+        const tokenBody = await csrfResponse.json();
+        if (!tokenBody || typeof tokenBody.csrf_token !== "string") {
+          throw new Error("Security token unavailable. Sign in again.");
+        }
+        const response = await fetch("/api/dil/chat", {
+          method: "POST",
+          credentials: "same-origin",
+          cache: "no-store",
+          redirect: "error",
+          headers: {
+            "Content-Type": "application/json",
+            "X-DIL-CSRF": tokenBody.csrf_token
+          },
+          body: JSON.stringify({ question })
+        });
+        const body = await response.json();
+        if (!response.ok) {
+          if (response.status === 401) throw new Error("Session expired. Please sign in again.");
+          if (response.status === 403) throw new Error("Invoice chat access was denied.");
+          if (response.status === 503) throw new Error("Invoice intelligence is not connected to authorized financial records yet.");
+          throw new Error("Invoice query unavailable. Please retry.");
+        }
+        // Future integration: accept only verified backend response text.
+        if (!body || typeof body.answer !== "string" || !body.answer.trim()) {
+          throw new Error("No verified invoice answer was returned.");
+        }
+        appendMessage(body.answer.slice(0, 6000), "assistant");
+      } catch (error) {
+        appendMessage(error instanceof Error ? error.message : "Invoice query unavailable.", "assistant");
+      } finally {
+        awaiting = false;
+        sendButton.disabled = false;
+        input.disabled = false;
+        input.focus();
+      }
     });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount, {once:true});
