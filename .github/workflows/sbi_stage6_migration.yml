@@ -1,0 +1,24 @@
+name: SBI Stage 6 Full Application Migration — source audit
+on:
+  push:
+    branches:
+      - feature/sbi-stage6-full-gcloud-to-aws-migration-20261104
+  pull_request:
+    paths:
+      - staging/aws_lightsail/stage6_source_migration_audit.py
+      - tests/test_aws_stage6_source_migration.py
+      - docs/SBI_STAGE6_FULL_GCLOUD_TO_AWS_MIGRATION.md
+      - .github/workflows/sbi_stage6_migration.yml
+permissions:
+  contents: read
+jobs:
+  stage6-source-inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Offline audit regression
+        run: python3 -B -m unittest discover -s tests -p test_aws_stage6_source_migration.py -v
+      - name: Stage 6 full app source report (no secrets, no cloud access)
+        run: python3 -B staging/aws_lightsail/stage6_source_migration_audit.py --repo . > /tmp/sbi-stage6-inventory.json
+      - name: Check explicit release blocking gate
+        run: python3 -c 'import json; d=json.load(open("/tmp/sbi-stage6-inventory.json")); assert d["financial_writes"] == 0 and d["production_change"] is False and "BLOCKED" in d["stage6_release_gate"]'
