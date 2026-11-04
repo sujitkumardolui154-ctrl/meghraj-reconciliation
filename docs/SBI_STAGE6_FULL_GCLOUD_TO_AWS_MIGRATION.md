@@ -43,3 +43,15 @@ The audit only reports files and known migration dependencies from that local ch
 - Migrate full application before running repeat infrastructure QA.
 
 **Official workstreams:** K — AWS Migration & Hosting, E — Deployment & Operations, G — UI/UX Engineering, M — Audit, Compliance & Security and N — Release Governance.
+
+
+## Stage 6C — implemented source adaptation (not a live deployment)
+
+- Exact HTTPS AWS origin policy in `dashboard_source/stage6_origin_policy.py`, enabled only when `SBI_STAGE6_AUTH_PROFILE=aws-private-staging`. An explicit, exact `SBI_STAGE6_AWS_ORIGIN=https://<approved-host>.sslip.io` must be provided through private deployment configuration. No wildcard origins or HTTP fallback.
+- Existing Cloud Run origin allowlists are preserved **per endpoint** in default mode: Firebase session + CSRF, upload, and imports retain their prior rules.
+- `dashboard_sessions.py` still verifies Firebase ID/session tokens with revocation checks and retains secure, HttpOnly, SameSite cookie settings; no alternate bypass authentication was introduced.
+- `stage6_aws_guard.py` rejects any AWS profile lacking an approved origin, all unknown profiles, and every `/api/*` or `/reports/*` request in AWS private staging with HTTP 503. This intentionally blocks financial and monitoring backend calls, user-management writes and report retrieval until AWS-to-GCP credentials, role checks and independent acceptance are completed.
+- Full source image remains a **package-only, non-runnable** candidate. `stage6b_build_guard.py` now requires both Stage 6C guard modules to be packaged.
+- Offline synthetic tests exercise valid/invalid/missing origins, original Cloud Run compatibility, unknown profiles and denied AWS backend routes.
+- **Not verified:** actual Firebase credential authority on AWS, origin domain provisioning, private AWS login flow, backend identity federation, authenticated end-to-end sessions, certificate rollover and financial/report parity. No running container, production traffic, Firebase account or financial database was changed.
+
