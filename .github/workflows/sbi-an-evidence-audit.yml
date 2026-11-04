@@ -1,0 +1,37 @@
+name: SBI A–N Evidence Reconciliation Audit (read-only)
+
+on:
+  pull_request:
+    paths:
+      - agent/evidence_reconciliation_20261104.json
+      - agent/readiness.py
+      - agent/task_queue.json
+      - tests/test_an_evidence_reconciliation.py
+      - .github/workflows/sbi-an-evidence-audit.yml
+  push:
+    branches:
+      - audit/sbi-an-92-evidence-reconciliation-20261104
+
+permissions:
+  contents: read
+
+jobs:
+  validate-evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconciliation contract — no state promotion
+        run: python3 -B -m unittest discover -s tests -p 'test_an_evidence_reconciliation.py' -v
+      - name: Read-only readiness check
+        run: |
+          SBI_READINESS_OUTPUT=/tmp/sbi-agent-readiness.json python3 -B agent/readiness.py
+          python3 - <<'PY'
+          import json
+          d = json.load(open('/tmp/sbi-agent-readiness.json'))
+          assert d['task_total'] == 92
+          assert d['workstream_count'] == 14
+          assert d['done_or_approved_tasks'] == 1
+          assert d['release_ready'] is False
+          assert d['execution_mode'] == 'AUDIT_ONLY'
+          print('AN_READINESS_AUDIT=PASS')
+          PY

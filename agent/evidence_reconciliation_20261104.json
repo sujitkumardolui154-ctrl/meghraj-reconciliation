@@ -1,0 +1,1690 @@
+{
+  "schema_version": 1,
+  "audit_kind": "read_only_evidence_index",
+  "date": "2026-11-04",
+  "source": {
+    "repository": "sujitkumardolui154-ctrl/meghraj-reconciliation",
+    "branch": "main",
+    "path": "agent/task_queue.json",
+    "blob_sha": "cb201ccf406ec8cc0ee95919d6fc5f9d7c00fd12"
+  },
+  "policy": {
+    "no_changes_to_task_status": true,
+    "no_financial_writes": true,
+    "production_untouched": true,
+    "pr_links_are_not_completion_proof": true,
+    "owner_supplied_aws_results_not_independently_host_attested": true
+  },
+  "summary": {
+    "total": 92,
+    "states": {
+      "in_progress": 31,
+      "pending": 60,
+      "done": 1
+    },
+    "official_workstreams": 14,
+    "proposed_status_changes": 0
+  },
+  "tasks": [
+    {
+      "id": "A01",
+      "workstream": "A — Reports Development",
+      "title": "Verify existing report APIs and handlers",
+      "register_execution": "in_progress",
+      "register_verification": "synthetic_contract_ci_passed_real_evidence_pending",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 33,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/33"
+        },
+        {
+          "number": 34,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/34"
+        },
+        {
+          "number": 35,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/35"
+        }
+      ],
+      "source_evidence_note": "Existing report handler and Firestore import functions inspected; production contract not fully verified\n2026-11-03 report-source audit: backend_source/report_api.py exposes report handlers; dashboard_source/production_gateway.py forwards reports by backend identity. Real signed-in app session/strict role gate remains ",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "A02",
+      "workstream": "A — Reports Development",
+      "title": "Unpaid / OK / Balance Review / Suspense reports",
+      "register_execution": "in_progress",
+      "register_verification": "synthetic_contract_ci_passed_real_evidence_pending",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 33,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/33"
+        },
+        {
+          "number": 34,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/34"
+        },
+        {
+          "number": 35,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/35"
+        }
+      ],
+      "source_evidence_note": "2026-11-03 source audit: backend_source/payment_report_rules.py classifies unpaid/ok/error-value; report_api.py adds balance-review. No approved Suspense report contract or real row count proof yet; no changes to financial classifications.\n2026-11-03 reviewed source correction under test: payment_report_rules.classify_",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "A03",
+      "workstream": "A — Reports Development",
+      "title": "Preserve exact v2.18 output format",
+      "register_execution": "in_progress",
+      "register_verification": "source_positional_contract_under_review",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 31,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/31"
+        }
+      ],
+      "source_evidence_note": "2026-11-03 original-header source audit: 53-column contract in invoice_import_contract.json; independent approved v2.18 writer/header reference and golden parity test still required. Exact historical spellings remain protected.\n2026-11-03 correction: tools/sbi_report_headers_audit.py compares caller-supplied independen",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "A04",
+      "workstream": "A — Reports Development",
+      "title": "Consolidated Report: all approved CSV reports in one ZIP",
+      "register_execution": "in_progress",
+      "register_verification": "source_implementation_under_review",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 28,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/28"
+        }
+      ],
+      "source_evidence_note": "Source implementation: offline approved-report ZIP generator in tools/sbi_approved_report_bundle.py with SHA256, ordered header, row count, approval reference, path and no-overwrite gates; synthetic CI tests in tests/test_sbi_approved_report_bundle.py. Pending private approved CSV+manifest and authenticated reporting i",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "A05",
+      "workstream": "A — Reports Development",
+      "title": "Reconciliation Change Report: old/new payments and statuses",
+      "register_execution": "in_progress",
+      "register_verification": "source_audit_or_synthetic_implementation_under_review",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 29,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/29"
+        }
+      ],
+      "source_evidence_note": "2026-11-03 source implementation: backend_source/reconciliation_changes_offline.py provides read-only six-category old/new invoice diff, conflict and payment-clearing review, synthetic CSV injection guard and regression tests. Not wired to live database; private snapshot comparison/auth integration pending.",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "A06",
+      "workstream": "A — Reports Development",
+      "title": "CREDIT NOTE: approved 18-column report and count",
+      "register_execution": "in_progress",
+      "register_verification": "source_positional_contract_under_review",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 29,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/29"
+        },
+        {
+          "number": 31,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/31"
+        }
+      ],
+      "source_evidence_note": "User confirmed Batch 11 Cloud Shell final result (2026-11-01): PRIVATE REAL CREDIT NOTE STAGING PASS, private storage security PASS, 14,374 report rows, observed 1,009 CREDIT NOTE invoices, five conflicts preserved REVIEW_REQUIRED. Main dashboard unchanged, staging tagged candidate only, traffic unchanged; authenticate",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "A07",
+      "workstream": "A — Reports Development",
+      "title": "Log Report: full database change history",
+      "register_execution": "in_progress",
+      "register_verification": "source_audit_or_synthetic_implementation_under_review",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "2026-11-03 source audit: report_api.py metadata explicitly reports EVENT_LOGGING_NOT_CONNECTED for login/failure logs. Immutable database change-history export/source authorization contract is pending; no live log report deployed.",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "A08",
+      "workstream": "A — Reports Development",
+      "title": "Excel/CSV exports and financial totals validation",
+      "register_execution": "in_progress",
+      "register_verification": "synthetic_contract_ci_passed_real_evidence_pending",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 34,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/34"
+        },
+        {
+          "number": 35,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/35"
+        },
+        {
+          "number": 40,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/40"
+        }
+      ],
+      "source_evidence_note": "Step 18 18-column CREDIT NOTE CSV passed; all financial exports and totals not verified\n2026-11-03 source audit: report_api.py writes 53-column CSV with formula protection; full Excel writer and exact reconciled financial totals remain unverified without approved external source and private ledger.\n2026-11-03: Added of",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "B01",
+      "workstream": "B — Database Update",
+      "title": "Add Single data update tab",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "database_write",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified. Financial/write gate requires independent certification and explicit approval.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "B02",
+      "workstream": "B — Database Update",
+      "title": "SOL-wide Branch Name correction",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "database_write",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified. Financial/write gate requires independent certification and explicit approval.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "B03",
+      "workstream": "B — Database Update",
+      "title": "SOL-wide Client Name correction",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "database_write",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified. Financial/write gate requires independent certification and explicit approval.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "B04",
+      "workstream": "B — Database Update",
+      "title": "Invoice-specific Taxable Amount correction",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "database_write",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified. Financial/write gate requires independent certification and explicit approval.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "B05",
+      "workstream": "B — Database Update",
+      "title": "Use approved existing financial formulas",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "database_write",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified. Financial/write gate requires independent certification and explicit approval.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "B06",
+      "workstream": "B — Database Update",
+      "title": "SOL-wide Mail Id assignment",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "database_write",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified. Financial/write gate requires independent certification and explicit approval.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "B07",
+      "workstream": "B — Database Update",
+      "title": "Full before/after review and impact counts",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "database_write",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified. Financial/write gate requires independent certification and explicit approval.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "B08",
+      "workstream": "B — Database Update",
+      "title": "Mandatory warning and Confirm & Save",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "database_write",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified. Financial/write gate requires independent certification and explicit approval.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "B09",
+      "workstream": "B — Database Update",
+      "title": "Atomic update, audit receipt and rollback protection",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "database_write",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified. Financial/write gate requires independent certification and explicit approval.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "C01",
+      "workstream": "C — Database Backup & Recovery",
+      "title": "Google Drive backup workspace and five subfolders",
+      "register_execution": "in_progress",
+      "register_verification": "structure_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 13,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/13"
+        }
+      ],
+      "source_evidence_note": "Google Drive backup vault and five subfolders created previously; secondary data transfer not verified",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "C02",
+      "workstream": "C — Database Backup & Recovery",
+      "title": "Initial full database baseline snapshot",
+      "register_execution": "in_progress",
+      "register_verification": "export_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 13,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/13"
+        }
+      ],
+      "source_evidence_note": "Firestore full-export metadata in register; restore/completeness validation pending.",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "C03",
+      "workstream": "C — Database Backup & Recovery",
+      "title": "Complete pre-change and post-change snapshots",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "C04",
+      "workstream": "C — Database Backup & Recovery",
+      "title": "Preserve all original database headers and values",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "C05",
+      "workstream": "C — Database Backup & Recovery",
+      "title": "Log username and UTC/IST timestamp",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "C06",
+      "workstream": "C — Database Backup & Recovery",
+      "title": "Snapshot hash and integrity manifest",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "C07",
+      "workstream": "C — Database Backup & Recovery",
+      "title": "Historical CSV download and version comparison",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "C08",
+      "workstream": "C — Database Backup & Recovery",
+      "title": "Protected restoration preview and approval",
+      "register_execution": "in_progress",
+      "register_verification": "isolated_restore_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 15,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/15"
+        }
+      ],
+      "source_evidence_note": "Cloud Shell Batch 3 (2026-11-01): restored Firestore export into temporary named database; dashboard_report_datasets sample 1; import receipts sample 1; invoice rows sample 0; test DB deleted; original default database unchanged. Full record totals, security rules/index recovery and production restore not yet verified.",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "C09",
+      "workstream": "C — Database Backup & Recovery",
+      "title": "Five-minute Cloud Scheduler integrity monitor",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "D01",
+      "workstream": "D — Financial Engine",
+      "title": "Verify full v2.51 engine integration",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "database_write",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified. Financial/write gate requires independent certification and explicit approval.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "D02",
+      "workstream": "D — Financial Engine",
+      "title": "Confirm approved SBI SOL/Branch master",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "database_write",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified. Financial/write gate requires independent certification and explicit approval.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "D03",
+      "workstream": "D — Financial Engine",
+      "title": "Validate historical paid and partial allocation ledger",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "database_write",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified. Financial/write gate requires independent certification and explicit approval.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "D04",
+      "workstream": "D — Financial Engine",
+      "title": "Preserve v2.18 Excel output writer",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "database_write",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified. Financial/write gate requires independent certification and explicit approval.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "D05",
+      "workstream": "D — Financial Engine",
+      "title": "Verify TDS, SBISA, GST, DNM and waterfall rules",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "database_write",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified. Financial/write gate requires independent certification and explicit approval.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "D06",
+      "workstream": "D — Financial Engine",
+      "title": "Consolidated independent financial QA",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "database_write",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified. Financial/write gate requires independent certification and explicit approval.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "D07",
+      "workstream": "D — Financial Engine",
+      "title": "Synthetic deployment rehearsal and rollback",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "database_write",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified. Financial/write gate requires independent certification and explicit approval.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "D08",
+      "workstream": "D — Financial Engine",
+      "title": "Separate financial production release approval",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "finance_release",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified. Financial/write gate requires independent certification and explicit approval.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "E01",
+      "workstream": "E — Deployment & Operations",
+      "title": "Verify Cloud Run active revisions and API contracts",
+      "register_execution": "in_progress",
+      "register_verification": "partial_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "Step 18 new staging Cloud Run service Ready true; live main dashboard and backend revision contracts not verified",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "E02",
+      "workstream": "E — Deployment & Operations",
+      "title": "Verify upload and report endpoint integration",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "E03",
+      "workstream": "E — Deployment & Operations",
+      "title": "Secure application access and role permissions",
+      "register_execution": "in_progress",
+      "register_verification": "separate_production_app_session_contract_unverified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 33,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/33"
+        },
+        {
+          "number": 42,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/42"
+        }
+      ],
+      "source_evidence_note": "Step 18 staging public invoker False; application-level auth/role checks for dashboard not verified Batch 11 only authenticated private staging, main dashboard login/session/role integration still pending. Fail-closed report auth module source published, application login/session wiring not yet run or verified. Owner C",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "E04",
+      "workstream": "E — Deployment & Operations",
+      "title": "Create versioned source backup",
+      "register_execution": "in_progress",
+      "register_verification": "local_backup_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 13,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/13"
+        }
+      ],
+      "source_evidence_note": "Step 12 local source archive created, SHA256 recorded; offsite source recovery not tested",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "E05",
+      "workstream": "E — Deployment & Operations",
+      "title": "Validate monitoring and reporting performance",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "E06",
+      "workstream": "E — Deployment & Operations",
+      "title": "Run consolidated reporting regression checks",
+      "register_execution": "in_progress",
+      "register_verification": "partial_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 34,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/34"
+        },
+        {
+          "number": 35,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/35"
+        }
+      ],
+      "source_evidence_note": "Step 14 synthetic adapter tests and Step 18 staging smoke checks passed; complete cross-feature regression not yet run Published one-run consolidated read-only reporting QA gate (tools/sbi_consolidated_reporting_release_gate.sh) on 2026-11-01; user requested combined tests to accelerate production release. Not executed",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "E07",
+      "workstream": "E — Deployment & Operations",
+      "title": "Complete reporting-only release review",
+      "register_execution": "pending",
+      "register_verification": "batch20_preflight_blocked",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 32,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/32"
+        }
+      ],
+      "source_evidence_note": " Owner combined report gate 2026-11-01 PASS 9/12; blocked: completed_import_completeness_certified, main_report_routes_attached_with_permission, authenticated_real_user_and_anonymous_http_e2e. Published a single next-step guarded script tools/sbi_combined_three_blocker_correction.sh at commit 129ffa273c03e84acac004f30c",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "pending",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "E08",
+      "workstream": "E — Deployment & Operations",
+      "title": "Deploy approved reporting/database features and verify",
+      "register_execution": "in_progress",
+      "register_verification": "private_real_credit_note_staging_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 32,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/32"
+        }
+      ],
+      "source_evidence_note": "Batch 11 private staging completed, real report API passed, tagged candidate no traffic shift; main dashboard unchanged and authenticated integration not verified. Five conflicts remain REVIEW_REQUIRED. Owner Cloud Shell confirmed Batch12: AUTH-REQUIRED REPORT MODULE PREPARED; anonymous and missing session denied in sy",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "F01",
+      "workstream": "F — Intelligent Chatbot",
+      "title": "Embed DIL chatbot inside authenticated main dashboard",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 44,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/44"
+        },
+        {
+          "number": 46,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/46"
+        }
+      ],
+      "source_evidence_note": "PR #44 and #46 merged chatbot shell and dashboard mount; authenticated end-to-end chatbot integration not verified.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "F02",
+      "workstream": "F — Intelligent Chatbot",
+      "title": "Integrate chatbot API with existing application authentication and roles",
+      "register_execution": "in_progress",
+      "register_verification": "partial_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 49,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/49"
+        }
+      ],
+      "source_evidence_note": "Step 18 authenticated Cloud Run invocation returned HTTP 200; dashboard application session/role authorization is not verified",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "F03",
+      "workstream": "F — Intelligent Chatbot",
+      "title": "Verify live Vertex AI model invocation and model permissions",
+      "register_execution": "in_progress",
+      "register_verification": "partial_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 50,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/50"
+        }
+      ],
+      "source_evidence_note": "Step 18 /assistant/chat returned HTTP 200 and a nonempty answer; actual Gemini model and permission chain still requires independent verification",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "F04",
+      "workstream": "F — Intelligent Chatbot",
+      "title": "Enable authorized read-only Firestore invoice and SOL enquiries",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 49,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/49"
+        },
+        {
+          "number": 50,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/50"
+        }
+      ],
+      "source_evidence_note": "Staging data_connected false",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "F05",
+      "workstream": "F — Intelligent Chatbot",
+      "title": "Explain reconciliation findings using approved rulebook and cited invoice evidence",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 50,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/50"
+        }
+      ],
+      "source_evidence_note": "Actual financial evidence retrieval not connected",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "F06",
+      "workstream": "F — Intelligent Chatbot",
+      "title": "Secure session-scoped conversation history, data privacy, and rate limits",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "Not end-to-end verified",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "F07",
+      "workstream": "F — Intelligent Chatbot",
+      "title": "Run automatic knowledge refresh, evaluations and controlled improvement without self-modifying financial code",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "Not implemented or verified",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "F08",
+      "workstream": "F — Intelligent Chatbot",
+      "title": "Consolidated chatbot regression QA, monitoring, staging-to-main integration and separate release review",
+      "register_execution": "in_progress",
+      "register_verification": "partial_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "Step 18 synthetic chatbot and CREDIT NOTE private staging smoke checks passed; full regression, main app integration and release review pending",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "G01",
+      "workstream": "G — UI/UX Engineering",
+      "title": "Responsive mobile layout and accessibility",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 16,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/16"
+        },
+        {
+          "number": 44,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/44"
+        },
+        {
+          "number": 46,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/46"
+        }
+      ],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "G02",
+      "workstream": "G — UI/UX Engineering",
+      "title": "Functional navigation and dashboard cards",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 16,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/16"
+        },
+        {
+          "number": 46,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/46"
+        }
+      ],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "G03",
+      "workstream": "G — UI/UX Engineering",
+      "title": "Account state, logout and error UX",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "G04",
+      "workstream": "G — UI/UX Engineering",
+      "title": "Read-only report UI and provenance",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 16,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/16"
+        }
+      ],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "G05",
+      "workstream": "G — UI/UX Engineering",
+      "title": "Database preview disabled-state controls",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "H01",
+      "workstream": "H — AI Development Automation",
+      "title": "Improvement agent source delta checks and fixes",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "H02",
+      "workstream": "H — AI Development Automation",
+      "title": "Agent state, pause controls and task deduplication",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 13,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/13"
+        },
+        {
+          "number": 28,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/28"
+        }
+      ],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "H03",
+      "workstream": "H — AI Development Automation",
+      "title": "GitHub reviewed draft PR automation",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 1,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/1"
+        },
+        {
+          "number": 13,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/13"
+        }
+      ],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "H04",
+      "workstream": "H — AI Development Automation",
+      "title": "Chatbot knowledge refresh and evaluation",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "H05",
+      "workstream": "H — AI Development Automation",
+      "title": "Agent dashboard and checkpoints",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "I01",
+      "workstream": "I — Performance & Caching",
+      "title": "Bounded concurrency and report job queues",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "I02",
+      "workstream": "I — Performance & Caching",
+      "title": "Idempotency, retry and rate limits",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "I03",
+      "workstream": "I — Performance & Caching",
+      "title": "Cache keys, invalidation and token efficiency",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "I04",
+      "workstream": "I — Performance & Caching",
+      "title": "Synthetic concurrency, p95 latency and memory QA",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "J01",
+      "workstream": "J — GitHub DevOps & CI/CD",
+      "title": "Source-to-deployment provenance and SHA",
+      "register_execution": "in_progress",
+      "register_verification": "aws_source_to_running_image_and_https_version_pass_other_services_pending",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 19,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/19"
+        },
+        {
+          "number": 25,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/25"
+        },
+        {
+          "number": 26,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/26"
+        },
+        {
+          "number": 27,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/27"
+        }
+      ],
+      "source_evidence_note": "Owner-executed external HTTPS probe on 2026-11-03 reports: HTTPS_ANONYMOUS=PASS HTTP=401; HTTPS_HEALTH=PASS HTTP=200; HTTPS_DASHBOARD_LOGIN=PASS HTTP=200; HTTPS_VERSION=PASS HTTP=200 with expected SHA 653a54f5bcef8e686f5a17e8c56725e4a1a5de48 and channel aws-public-preview; HTTPS_TASK_STATUS=PASS HTTP=200; HTTPS_HISTORY",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "J02",
+      "workstream": "J — GitHub DevOps & CI/CD",
+      "title": "Change-scoped QA and CI reuse",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 34,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/34"
+        },
+        {
+          "number": 35,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/35"
+        },
+        {
+          "number": 41,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/41"
+        },
+        {
+          "number": 45,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/45"
+        },
+        {
+          "number": 47,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/47"
+        }
+      ],
+      "source_evidence_note": "GitHub Stage 5B synthetic run 41795959104 passed; prior Stage 5A CI passed; full changed-file selection/invalidation not certified.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "J03",
+      "workstream": "J — GitHub DevOps & CI/CD",
+      "title": "Secrets and branch protection checks",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 42,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/42"
+        },
+        {
+          "number": 45,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/45"
+        }
+      ],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "J04",
+      "workstream": "J — GitHub DevOps & CI/CD",
+      "title": "Release manifest, rollback and evidence",
+      "register_execution": "in_progress",
+      "register_verification": "aws_release_receipt_hash_and_backup_tag_pass_restore_rehearsal_pending",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 25,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/25"
+        },
+        {
+          "number": 26,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/26"
+        }
+      ],
+      "source_evidence_note": "Owner executed versioned read-only AWS attestor merged via PR #25: PUBLIC_RELEASE_ATTESTATION=PASS; RELEASE_VERSION=git-653a54f5bcef; exact source SHA 653a54f5bcef8e686f5a17e8c56725e4a1a5de48; RUNNING_IMAGE=sha256:3046f5e4e7fe1a9998c21961deec30578efecffb43eea25be4f3ca578aa51a81; AUTHENTICATION=PASS; FINANCIAL_API_DENIA",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "J05",
+      "workstream": "J — GitHub DevOps & CI/CD",
+      "title": "Stale image rollback correction",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 36,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/36"
+        }
+      ],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "K01",
+      "workstream": "K — AWS Migration & Hosting",
+      "title": "Protected HTTPS and private containers",
+      "register_execution": "in_progress",
+      "register_verification": "owner_executed_external_https_auth_pass_private_network_review_pending",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 11,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/11"
+        },
+        {
+          "number": 17,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/17"
+        },
+        {
+          "number": 25,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/25"
+        },
+        {
+          "number": 27,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/27"
+        }
+      ],
+      "source_evidence_note": "Owner-supplied 2026-11-04 Docker network inventory: preview/Caddy on aws_lightsail_private_web; agent/dashboard staging on bridge; exposure review remains partial.",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "K02",
+      "workstream": "K — AWS Migration & Hosting",
+      "title": "Secure backend/read-only report integration",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 37,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/37"
+        },
+        {
+          "number": 42,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/42"
+        },
+        {
+          "number": 45,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/45"
+        },
+        {
+          "number": 47,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/47"
+        }
+      ],
+      "source_evidence_note": "Stage 5B synthetic 14/14 PASS; Stage 5C isolated HTTP unsigned=403, invalid=403, valid-but-disabled=503, replay=403. Not deployed to running backend.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "K03",
+      "workstream": "K — AWS Migration & Hosting",
+      "title": "Supervisor monitoring connection",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 13,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/13"
+        }
+      ],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "K04",
+      "workstream": "K — AWS Migration & Hosting",
+      "title": "Migration inventory and cost controls",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "K05",
+      "workstream": "K — AWS Migration & Hosting",
+      "title": "Health, logs and rollback verification",
+      "register_execution": "in_progress",
+      "register_verification": "host_integrity_and_external_health_pass_restore_drill_pending",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 15,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/15"
+        },
+        {
+          "number": 25,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/25"
+        },
+        {
+          "number": 27,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/27"
+        }
+      ],
+      "source_evidence_note": "Public-preview host/version HTTPS evidence in register; no actual rollback restoration rehearsal.",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "L01",
+      "workstream": "L — Data Intelligence & Branch Matching",
+      "title": "SOL master aliases and collisions",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "L02",
+      "workstream": "L — Data Intelligence & Branch Matching",
+      "title": "MXP GST matching audit",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "L03",
+      "workstream": "L — Data Intelligence & Branch Matching",
+      "title": "Invoice keys and GST exception review",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 31,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/31"
+        },
+        {
+          "number": 40,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/40"
+        }
+      ],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "L04",
+      "workstream": "L — Data Intelligence & Branch Matching",
+      "title": "53-column original source validation",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 31,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/31"
+        },
+        {
+          "number": 39,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/39"
+        },
+        {
+          "number": 41,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/41"
+        }
+      ],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "M01",
+      "workstream": "M — Audit, Compliance & Security",
+      "title": "Authenticated RBAC and session lifecycle",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 33,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/33"
+        },
+        {
+          "number": 42,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/42"
+        }
+      ],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "M02",
+      "workstream": "M — Audit, Compliance & Security",
+      "title": "Least-privileged backend access",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 42,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/42"
+        },
+        {
+          "number": 45,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/45"
+        },
+        {
+          "number": 47,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/47"
+        }
+      ],
+      "source_evidence_note": "Stage 5C authentication only, using temporary synthetic signing key; full least-privilege credentials and live service boundary not certified.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "M03",
+      "workstream": "M — Audit, Compliance & Security",
+      "title": "Immutable user/time change receipts",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "M04",
+      "workstream": "M — Audit, Compliance & Security",
+      "title": "Credential rotation and secrets checks",
+      "register_execution": "in_progress",
+      "register_verification": "owner_reported_successful_credential_rotation",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 21,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/21"
+        },
+        {
+          "number": 22,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/22"
+        },
+        {
+          "number": 23,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/23"
+        }
+      ],
+      "source_evidence_note": "Owner shell printed PUBLIC_LOGIN_ROTATION=PASS, PUBLIC_IMAGE_UNCHANGED=PASS, FINANCIAL_WRITES=DISABLED before public dashboard release 2026-11-03. Credential exposure review, browser login proof and policy evaluation pending.",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "M05",
+      "workstream": "M — Audit, Compliance & Security",
+      "title": "Allowed/denied E2E and restore evidence",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 15,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/15"
+        },
+        {
+          "number": 25,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/25"
+        },
+        {
+          "number": 42,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/42"
+        },
+        {
+          "number": 47,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/47"
+        }
+      ],
+      "source_evidence_note": "Stage 5C isolated HTTP 4/4 PASS; no real signed-in multi-role authorization or restore rehearsal.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "N01",
+      "workstream": "N — Release Governance",
+      "title": "Unified A-N backlog with related A-F IDs",
+      "register_execution": "in_progress",
+      "register_verification": "source_implementation_under_review",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 13,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/13"
+        },
+        {
+          "number": 28,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/28"
+        }
+      ],
+      "source_evidence_note": "Source implementation: A–N manual_correction_plan.json covers baseline 69 pending tasks against the authoritative 92-task register; fail-closed tests validate ID/metadata consistency, no premature completion. Needs long-term source-of-truth acceptance.",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "N02",
+      "workstream": "N — Release Governance",
+      "title": "Requirement acceptance before coding",
+      "register_execution": "in_progress",
+      "register_verification": "source_implementation_under_review",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 13,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/13"
+        },
+        {
+          "number": 28,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/28"
+        }
+      ],
+      "source_evidence_note": "Source implementation: every baseline pending task has a manual next action, required evidence and explicit approval/no-write gate in agent/manual_correction_plan.json. Formal acceptance checks per functional feature remain pending.",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "N03",
+      "workstream": "N — Release Governance",
+      "title": "Deduplicate tasks and unchanged tests",
+      "register_execution": "in_progress",
+      "register_verification": "source_implementation_under_review",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 13,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/13"
+        },
+        {
+          "number": 28,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/28"
+        }
+      ],
+      "source_evidence_note": "Source implementation: fail-closed manual audit rejects duplicate task IDs and detects queue drift; reviewed scope allows reusing SHA-bound CI tests and per-task evidence. Broader code deduplication still pending.",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "N04",
+      "workstream": "N — Release Governance",
+      "title": "Release A AWS, B reporting, C finance",
+      "register_execution": "in_progress",
+      "register_verification": "source_implementation_under_review",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 13,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/13"
+        }
+      ],
+      "source_evidence_note": "Source implementation: explicit A/AWS, B/reporting, C/financial lanes assigned across all baseline pending tasks; release gates remain separate and none promoted to financial production.",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "N05",
+      "workstream": "N — Release Governance",
+      "title": "Production label tied to certified evidence",
+      "register_execution": "pending",
+      "register_verification": "not_verified",
+      "approval_gate": "standard",
+      "linked_pull_requests": [],
+      "source_evidence_note": "No accepted completion evidence recorded in source register.",
+      "acceptance_gap": "Independent implementation and task-specific acceptance evidence not verified.",
+      "proposed_execution": "pending",
+      "confidence": "not-independently-verified"
+    },
+    {
+      "id": "N06",
+      "workstream": "N — Release Governance",
+      "title": "Stamp each build with immutable Git SHA and channel; expose deployed version and source in authenticated dashboard",
+      "register_execution": "done",
+      "register_verification": "owner_executed_aws_host_attestor_pass",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 19,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/19"
+        },
+        {
+          "number": 20,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/20"
+        },
+        {
+          "number": 25,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/25"
+        },
+        {
+          "number": 26,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/26"
+        },
+        {
+          "number": 27,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/27"
+        }
+      ],
+      "source_evidence_note": "Task queue marks done within AWS public-preview version/attestation scope; do not infer other releases certified.",
+      "acceptance_gap": "No additional completion inferred; preserve documented limited scope.",
+      "proposed_execution": "done",
+      "confidence": "existing-record-only"
+    },
+    {
+      "id": "N07",
+      "workstream": "N — Release Governance",
+      "title": "Display versioned code changes and staging deployment attempts with timestamp, outcome and GitHub evidence links",
+      "register_execution": "in_progress",
+      "register_verification": "history_endpoint_authenticated_https_pass_payload_review_pending",
+      "approval_gate": "standard",
+      "linked_pull_requests": [
+        {
+          "number": 19,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/19"
+        },
+        {
+          "number": 20,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/20"
+        },
+        {
+          "number": 27,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/27"
+        }
+      ],
+      "source_evidence_note": "Owner-executed external HTTPS probe on 2026-11-03 reports: HTTPS_ANONYMOUS=PASS HTTP=401; HTTPS_HEALTH=PASS HTTP=200; HTTPS_DASHBOARD_LOGIN=PASS HTTP=200; HTTPS_VERSION=PASS HTTP=200 with expected SHA 653a54f5bcef8e686f5a17e8c56725e4a1a5de48 and channel aws-public-preview; HTTPS_TASK_STATUS=PASS HTTP=200; HTTPS_HISTORY",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "N08",
+      "workstream": "N — Release Governance",
+      "title": "Record sanitized public preview release audit receipts with previous/new image and rollback outcome",
+      "register_execution": "in_progress",
+      "register_verification": "aws_release_receipt_hash_and_backup_verified_release_review_pending",
+      "approval_gate": "release_review",
+      "linked_pull_requests": [
+        {
+          "number": 20,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/20"
+        },
+        {
+          "number": 25,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/25"
+        },
+        {
+          "number": 26,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/26"
+        }
+      ],
+      "source_evidence_note": "Owner executed versioned read-only AWS attestor merged via PR #25: PUBLIC_RELEASE_ATTESTATION=PASS; RELEASE_VERSION=git-653a54f5bcef; exact source SHA 653a54f5bcef8e686f5a17e8c56725e4a1a5de48; RUNNING_IMAGE=sha256:3046f5e4e7fe1a9998c21961deec30578efecffb43eea25be4f3ca578aa51a81; AUTHENTICATION=PASS; FINANCIAL_API_DENIA",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    },
+    {
+      "id": "N09",
+      "workstream": "N — Release Governance",
+      "title": "Verify source-to-image version match and deployment change history end to end; final release receipt",
+      "register_execution": "in_progress",
+      "register_verification": "host_and_external_https_e2e_pass_release_history_review_pending",
+      "approval_gate": "mandatory_release",
+      "linked_pull_requests": [
+        {
+          "number": 25,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/25"
+        },
+        {
+          "number": 27,
+          "url": "https://github.com/sujitkumardolui154-ctrl/meghraj-reconciliation/pull/27"
+        }
+      ],
+      "source_evidence_note": "Owner-executed external HTTPS probe on 2026-11-03 reports: HTTPS_ANONYMOUS=PASS HTTP=401; HTTPS_HEALTH=PASS HTTP=200; HTTPS_DASHBOARD_LOGIN=PASS HTTP=200; HTTPS_VERSION=PASS HTTP=200 with expected SHA 653a54f5bcef8e686f5a17e8c56725e4a1a5de48 and channel aws-public-preview; HTTPS_TASK_STATUS=PASS HTTP=200; HTTPS_HISTORY",
+      "acceptance_gap": "Full task-level acceptance evidence not established; partial/source/synthetic evidence alone is insufficient.",
+      "proposed_execution": "in_progress",
+      "confidence": "partial-evidence"
+    }
+  ]
+}

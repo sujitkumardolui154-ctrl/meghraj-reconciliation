@@ -28,4 +28,4 @@ Use existing approved chatbot components, gateway code, reports and UI before bu
 AWS local source differs from GitHub; actual AWS role-aware authentication and monitoring not connected; private source/header/credit-note evidence missing; outstanding financial exceptions; rollback image lifecycle not independently proven; full financial engine not certified.
 
 ## Execution tracking
-All 88 tasks remain in agent/task_queue.json; linked G–N tasks are not new implementations of existing A–F modules. Never mark a task done merely because a command was printed or a Docker container started.
+All 92 tasks remain in agent/task_queue.json; linked G–N tasks are not new implementations of existing A–F modules. Never mark a task done merely because a command was printed or a Docker container started.
