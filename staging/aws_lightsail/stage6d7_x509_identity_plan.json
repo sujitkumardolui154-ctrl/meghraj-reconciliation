@@ -1,0 +1,61 @@
+{
+  "stage": "6D.7",
+  "state": "PROPOSAL_ONLY_NO_EXECUTION",
+  "approved_destination": "EXISTING_LIGHTSAIL",
+  "estimated_new_aws_instances": 0,
+  "existing_cloud_run": "PROTECTED_UNCHANGED",
+  "existing_lightsail_services": "PROTECTED_UNCHANGED",
+  "identity_method": "GOOGLE_X509_WORKLOAD_IDENTITY_FEDERATION",
+  "planned_provider": {
+    "pool": "sbi-lightsail-x509-stage",
+    "provider": "sbi-lightsail-auth-x509",
+    "type": "X509",
+    "state": "NOT_CREATED",
+    "trust_anchor": "NOT_SELECTED",
+    "attribute_mapping": "google.subject=assertion.san.uri",
+    "attribute_condition": "assertion.san.uri == 'spiffe://meghraj-reconciliation/stage/lightsail-auth'",
+    "subject": "spiffe://meghraj-reconciliation/stage/lightsail-auth",
+    "principal_scope": "EXACT_SUBJECT_ONLY",
+    "existing_aws_provider": "UNCHANGED_DISABLED"
+  },
+  "credentials": {
+    "google_service_account_private_key_json": "PROHIBITED",
+    "client_certificate": "NOT_CREATED",
+    "client_private_key": "NOT_CREATED",
+    "ca_private_key_location": "NOT_SELECTED_MUST_REMAIN_OFF_APPLICATION_HOST",
+    "workload_credential_config": "NOT_CREATED",
+    "firebase_admin_external_account_support": "UNVERIFIED",
+    "firebase_admin_session_minting": "NOT_TESTED",
+    "firebase_admin_revocation": "NOT_TESTED",
+    "client_certificate_validity_days_proposed": 90,
+    "certificate_rotation_plan": "PENDING_REVIEW",
+    "revocation_and_compromise_playbook": "PENDING_REVIEW"
+  },
+  "permissions": {
+    "iam_grants": "NONE_CREATED",
+    "service_account": "NOT_SELECTED",
+    "firebase_user_read_scope": "TO_BE_MINIMIZED",
+    "firebase_user_mutations": "DISABLED",
+    "firestore_write": "DENIED",
+    "financial_backend_access": "DENIED",
+    "production_traffic": "UNCHANGED"
+  },
+  "costs": {
+    "additional_aws_hosting": "NONE_PROPOSED",
+    "google_iam_api": "NO_ADDITIONAL_IAM_API_FEE",
+    "managed_ca": "NOT_APPROVED",
+    "ca_ops_and_certificate_custody": "COST_UNQUANTIFIED",
+    "network_and_existing_platform_fees": "NOT_ASSESSED"
+  },
+  "approvals": {
+    "owner_certificate_custody": "PENDING",
+    "owner_iam_x509_provider": "PENDING",
+    "independent_security_review": "PENDING",
+    "least_privilege_permission_review": "PENDING",
+    "firebase_admin_identity_parity": "PENDING",
+    "cost_acceptance": "PENDING"
+  },
+  "financial_database": "NOT_CONNECTED",
+  "real_firebase_login": "NOT_TESTED",
+  "production_cutover": "BLOCKED"
+}
