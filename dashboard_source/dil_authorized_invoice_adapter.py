@@ -82,7 +82,10 @@ def authorized_invoice_reader(
 
     # At most limit candidate rows; anything beyond the limit is a hard error,
     # not a partial hidden authorization failure.
-    rows = read_candidates(question, limit)
+    try:
+        rows = read_candidates(question, limit)
+    except Exception as exc:
+        raise IntelligenceUnavailable("Read-only evidence source unavailable") from exc
     if not isinstance(rows, tuple) or len(rows) > limit:
         raise IntelligenceUnavailable("Invalid read-only evidence response")
     result = []
@@ -98,7 +101,10 @@ def authorized_invoice_reader(
             raise IntelligenceUnavailable("Source scope mismatch")
         # A policy adapter must return an explicit boolean. Truthy strings,
         # objects and numeric values are not authorization decisions.
-        decision = can_read(verified_scope, row)
+        try:
+            decision = can_read(verified_scope, row)
+        except Exception as exc:
+            raise IntelligenceUnavailable("Per-record permission unavailable") from exc
         if decision is not True:
             raise IntelligenceUnavailable("Per-record permission denied")
         # Evidence-first pipeline performs a second strict provenance check.
