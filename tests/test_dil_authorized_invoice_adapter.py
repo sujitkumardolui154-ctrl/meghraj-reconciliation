@@ -225,6 +225,22 @@ class AuthorizedReadAdapterTests(unittest.TestCase):
             )
         self.assertEqual((self.read_count, self.policy_count, self.compose_count), (0, 0, 0))
 
+    def test_falsey_nonboolean_revocation_denied_at_adapter_boundary(self):
+        # Adapter may be invoked independently of the orchestration pipeline.
+        # Falsey claims are not equivalent to an explicitly verified False.
+        for claim in (0, None, "", [], {}):
+            caller = VerifiedCaller(
+                "tester-a", frozenset({"sbi_invoice_reader"}), claim
+            )
+            with self.subTest(claim=claim), self.assertRaises(IntelligenceUnavailable):
+                authorized_invoice_reader(
+                    caller, "Invoice?", (), 25,
+                    verified_scope=self.scope,
+                    read_candidates=self.fetch,
+                    can_read=self.policy,
+                )
+        self.assertEqual((self.read_count, self.policy_count), (0, 0))
+
     def test_no_live_data_or_financial_write(self):
         self.assertEqual(self.row.excerpt, "Synthetic invoice reviewed amount 100")
 
