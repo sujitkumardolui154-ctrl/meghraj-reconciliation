@@ -1,7 +1,7 @@
 # SBI Consolidated Release Design — A–N
 
 Status: DESIGN PREPARED / GITHUB REVIEW REQUIRED. This is not a production certification.
-Source-of-truth: agent/task_queue.json (88 tasks: original A-F 50 + new linked G-N 38).
+Source-of-truth: agent/task_queue.json (92 tasks: original A–F 50 + linked G–N 42 (including N06–N09)).
 
 ## Architecture and ownership
 - Public HTTPS: AWS Lightsail Caddy -> Basic-authenticated isolated preview (working snapshot). Financial API routes remain 403.
