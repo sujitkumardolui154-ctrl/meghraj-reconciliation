@@ -56,3 +56,16 @@ If any element is absent: `ARCHITECTURE_CHANGE=BLOCKED_PENDING_OWNER_APPROVAL`.
 - Change source in a feature branch with CI, evidence and review. A green CI test does not authorize infrastructure changes.
 
 **Current deployment decision: LIGHTSAIL_FIRST; EC2_PROPOSAL_ONLY; FINANCIAL_WRITES_BLOCKED; PRODUCTION_CUTOVER_BLOCKED.**
+
+## Mandatory owner-facing deployment response format (owner direction, 2026-11-04)
+
+For **every future SBI migration/deployment progress response, test command, or stage handoff**, present one concise two-column Markdown table with exactly these four rows, in this order:
+
+| Field | Details |
+| --- | --- |
+| Current Stage | Exact stage and truthful PASS/PENDING/BLOCKED status; distinguish source QA from live tests |
+| Code For Run | One copy/paste-safe combined command or versioned script; write **Not required** when no owner-run code is needed; never invent a command |
+| Requirement for This code | Explicit prerequisites, permissions/approval, expected behavior, no-cost/financial constraints and risks, or **None** if no code |
+| Next Stage | Exact next gate, pending approvals and stop condition |
+
+Use the owner's exact row labels **Current Stage**, **Code For Run**, **Requirement for This code**, **Next Stage**; preserve this order and capitalization. Include necessary compact links or explanatory detail within the cells. Avoid separate lengthy progress lists. When a command is long, put a concise reference to one fenced code block below the table, but do not ask the owner to execute multiple commands. Never use this format to imply unearned live deployment approval.
