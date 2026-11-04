@@ -1,0 +1,80 @@
+name: SBI Three-Gate QA (no financial writes, no deploy)
+on:
+  workflow_dispatch:
+    inputs:
+      run_live:
+        description: Run approved tests on the private read-only runner
+        required: true
+        type: boolean
+        default: false
+  schedule:
+    - cron: '23 2 * * *'
+  pull_request:
+    paths:
+      - 'tools/sbi_three_gate_qa.py'
+      - 'tests/test_sbi_three_gate_qa.py'
+      - '.github/workflows/sbi-three-gate-qa.yml'
+      - 'docs/SBI_THREE_GATE_AUTOMATED_QA.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sbi-three-gate-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  synthetic-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test fail-closed QA runner
+        run: python -B -m unittest discover -s tests -p test_sbi_three_gate_qa.py -v
+      - name: Check synthetic financial reconciliation contracts
+        run: python -B tools/sbi_three_gate_qa.py --mode offline --output "$RUNNER_TEMP/sbi-synthetic-gates.json"
+      - name: Upload aggregate-only safety results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbi-three-gate-synthetic
+          path: ${{ runner.temp }}/sbi-synthetic-gates.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  approved-private-live:
+    if: >-
+      ${{ (github.event_name == 'workflow_dispatch' && inputs.run_live == true)
+          || (github.event_name == 'schedule' && vars.SBI_PRIVATE_QA_ENABLED == 'true') }}
+    runs-on: [self-hosted, sbi-private-financial-qa]
+    timeout-minutes: 40
+    environment: sbi-private-financial-qa
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run real Firebase and read-only source/report checks
+        env:
+          SBI_PRIVATE_QA_APPROVED: ${{ vars.SBI_PRIVATE_QA_APPROVED }}
+          SBI_QA_TEST_ACCOUNT_ISOLATED: ${{ vars.SBI_QA_TEST_ACCOUNT_ISOLATED }}
+          SBI_QA_READONLY_IDENTITY_CONFIRMED: ${{ vars.SBI_QA_READONLY_IDENTITY_CONFIRMED }}
+          SBI_QA_FIREBASE_API_KEY: ${{ secrets.SBI_QA_FIREBASE_API_KEY }}
+          SBI_QA_FIREBASE_EMAIL: ${{ secrets.SBI_QA_FIREBASE_EMAIL }}
+          SBI_QA_FIREBASE_PASSWORD: ${{ secrets.SBI_QA_FIREBASE_PASSWORD }}
+          SBI_QA_DASHBOARD_URL: ${{ vars.SBI_QA_DASHBOARD_URL }}
+          SBI_QA_SOURCE_CSV_PATH: ${{ vars.SBI_QA_SOURCE_CSV_PATH }}
+          SBI_QA_APPROVED_SOURCE_SHA256: ${{ vars.SBI_QA_APPROVED_SOURCE_SHA256 }}
+          SBI_QA_DATASET_ID: ${{ vars.SBI_QA_DATASET_ID }}
+          SBI_QA_REPORT_MANIFEST_PATH: ${{ vars.SBI_QA_REPORT_MANIFEST_PATH }}
+        run: python3 -B tools/sbi_three_gate_qa.py --mode private-live --output "$RUNNER_TEMP/sbi-private-gates.json"
+      - name: Upload aggregate-only private result (never invoice data)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbi-three-gate-private-status
+          path: ${{ runner.temp }}/sbi-private-gates.json
+          if-no-files-found: warn
+          retention-days: 7
