@@ -112,6 +112,7 @@ jobs:
         run: |
           bash -n staging/aws_lightsail/stage6r2_combined_backend_smoke.sh
           python3 -B -m unittest discover -s tests -p test_aws_stage6r2_private_backend.py -v
+          python3 -m compileall -q backend_source staging/aws_lightsail/stage6r2_backend_shell.py
       - name: Stage 6 full app source report (no secrets, no cloud access)
         run: python3 -B staging/aws_lightsail/stage6_source_migration_audit.py --repo . > /tmp/sbi-stage6-inventory.json
       - name: Check explicit release blocking gate
