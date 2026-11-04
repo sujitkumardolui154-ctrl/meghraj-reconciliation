@@ -22,7 +22,7 @@ REQUIRED_SOURCES = {
 }
 
 def parse_version(version):
-    m = re.match(r"^(\\d+)\\.(\\d+)\\.(\\d+)(?:[+.-].*)?$", version)
+    m = re.match(r"^(\d+)\.(\d+)\.(\d+)(?:[+.-].*)?$", version)
     return tuple(int(group) for group in m.groups()) if m else None
 
 def inspect(version_lookup=metadata.version, read_text=None):
