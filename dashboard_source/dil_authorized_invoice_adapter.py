@@ -6,9 +6,16 @@ policy. Never infer financial record ownership from invoice/SOL labels.
 """
 from dataclasses import dataclass
 from typing import Callable
-from dil_invoice_intelligence_pipeline import (
-    EvidenceRecord, IntelligenceUnavailable, VerifiedCaller, MAX_EVIDENCE,
-)
+try:
+    # Normal package import used by synthetic tests.
+    from .dil_invoice_intelligence_pipeline import (
+        EvidenceRecord, IntelligenceUnavailable, VerifiedCaller, MAX_EVIDENCE,
+    )
+except ImportError:
+    # Production gateway may run from dashboard_source as a script root.
+    from dil_invoice_intelligence_pipeline import (
+        EvidenceRecord, IntelligenceUnavailable, VerifiedCaller, MAX_EVIDENCE,
+    )
 
 ALLOWED = frozenset({"invoice", "payment", "branch", "reconciliation", "report", "history"})
 
