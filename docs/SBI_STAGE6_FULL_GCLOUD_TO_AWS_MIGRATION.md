@@ -76,3 +76,5 @@ Expected without credentials: `STAGE6C4_PREFLIGHT=BLOCKED_AUTH_PROFILE` and `STA
 Official docs:
 - https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-other-clouds
 - https://firebase.google.com/docs/admin/setup
+
+**Lightsail-specific blocker:** AWS EC2 instance profiles must not be assumed to be available on a Lightsail instance. Confirm the actual short-lived AWS identity source and metadata support before configuring Google AWS WIF. If the Lightsail host cannot provide a suitable temporary role identity, choose a reviewed identity broker/alternate AWS compute architecture rather than storing permanent AWS access keys or Google service-account keys. No Firebase live authentication should be claimed until this is proven.
