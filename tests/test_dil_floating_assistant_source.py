@@ -2,7 +2,8 @@
 from pathlib import Path
 import unittest
 
-SRC = Path(__file__).resolve().parents[1] / "dashboard_source" / "dil_floating_assistant.js"
+ROOT = Path(__file__).resolve().parents[1] / "dashboard_source"
+SRC = ROOT / "dil_floating_assistant.js"
 
 class FloatingAssistantSourceContract(unittest.TestCase):
     @classmethod
@@ -24,6 +25,15 @@ class FloatingAssistantSourceContract(unittest.TestCase):
         self.assertIn("not yet available", self.source)
         self.assertIn("No financial data was accessed or modified.", self.source)
         self.assertNotIn('fetch(', self.source)
+
+    def test_dashboard_mount_and_serving_contract(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        gateway = (ROOT / "production_gateway.py").read_text(encoding="utf-8")
+        self.assertEqual(html.count('src="/dil_floating_assistant.js"'), 1)
+        self.assertIn('@app.get("/dil_floating_assistant.js")', gateway)
+        self.assertIn('"dil_floating_assistant.js", mimetype="application/javascript"', gateway)
+        self.assertIn('response.headers["X-Content-Type-Options"] = "nosniff"', gateway)
+        self.assertNotIn('@app.post("/api/dil', gateway)
 
     def test_accessibility_and_motion(self):
         self.assertIn("prefers-reduced-motion", self.source)
