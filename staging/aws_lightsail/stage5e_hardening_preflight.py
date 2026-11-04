@@ -23,9 +23,9 @@ CHECKS = (
 )
 RUNTIME_FLAGS = [
     "--rm", "--pull=never", "--network=none", "--read-only",
-    "--tmpfs", "/tmp:rw,noexec,nosuid,size=16m",
-    "--tmpfs", "/data:rw,noexec,nosuid,size=16m",
-    "--tmpfs", "/config:rw,noexec,nosuid,size=16m",
+    "--tmpfs", "/tmp:rw,noexec,nosuid,size=16m,uid=65534,gid=65534,mode=0700",
+    "--tmpfs", "/data:rw,noexec,nosuid,size=16m,uid=65534,gid=65534,mode=0700",
+    "--tmpfs", "/config:rw,noexec,nosuid,size=16m,uid=65534,gid=65534,mode=0700",
     "--user", "65534:65534", "--cap-drop=ALL",
     "--security-opt", "no-new-privileges",
     "--pids-limit", "64", "--memory", "128m", "--cpus", "0.5",
@@ -81,7 +81,11 @@ def inventory() -> list[dict]:
 def smoke() -> list[dict]:
     result = []
     for container, entrypoint, args in CHECKS:
-        command = (["docker", "run", *RUNTIME_FLAGS, "--entrypoint",
+        # Caddy's /usr/bin/caddy has cap_net_bind_service=ep. With all
+        # capabilities dropped, exec fails EPERM under no-new-privileges.
+        # Allow only NET_BIND_SERVICE for the Caddy image (owner-tested).
+        extra = ["--cap-add", "NET_BIND_SERVICE"] if container == "sbi-dashboard-ui-stage" else []
+        command = (["docker", "run", *RUNTIME_FLAGS, *extra, "--entrypoint",
                     entrypoint, EXPECTED[container], *args])
         cp = subprocess.run(
             command, capture_output=True, text=True, timeout=35, check=False
