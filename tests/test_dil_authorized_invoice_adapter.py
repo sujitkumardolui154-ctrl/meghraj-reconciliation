@@ -140,6 +140,21 @@ class AuthorizedReadAdapterTests(unittest.TestCase):
         self.assertEqual(self.policy_count, 0)
         self.assertEqual(self.compose_count, 0)
 
+    def test_missing_provenance_denied_before_policy_callback(self):
+        for field in ("record_id", "version", "observed_at", "excerpt"):
+            values = dict(kind="invoice", record_id="MXP-TEST-001",
+                          version="sha256:abc", observed_at="2026-11-04T00:00:00Z",
+                          excerpt="Synthetic evidence", scope="sbi-approved-group")
+            values[field] = "   "
+            malformed = CandidateRow(**values)
+            with self.subTest(field=field), self.assertRaises(IntelligenceUnavailable):
+                execute_invoice_question(
+                    self.caller, "Invoice?", (),
+                    self.reader(fetch=lambda *_: (malformed,)), self.compose,
+                )
+        self.assertEqual(self.policy_count, 0)
+        self.assertEqual(self.compose_count, 0)
+
     def test_cross_scope_is_never_partially_answered(self):
         different = CandidateRow(
             "invoice", "MXP-TEST-002", "sha256:def", "2026-11-04T00:00:00Z",
