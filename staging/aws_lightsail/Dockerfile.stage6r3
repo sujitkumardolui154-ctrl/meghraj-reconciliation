@@ -1,0 +1,10 @@
+# Stage 6R.3 original non-financial monitoring only. NOT a public API release.
+# Reuse the locally verified 6R.2 source package. No external image pull.
+FROM sbi-stage6r2-recovered:14115d966475
+USER root
+COPY --chown=65534:65534 staging/aws_lightsail/stage6r3_original_monitoring.py /opt/sbi-recovery/stage6r3_original_monitoring.py
+RUN python3 -m compileall -q /opt/sbi-recovery/stage6r3_original_monitoring.py
+USER 65534:65534
+EXPOSE 8082
+LABEL sbi.release.status="PRIVATE_ORIGINAL_STATIC_MONITORING_NO_FINANCE"
+ENTRYPOINT ["python3","/opt/sbi-recovery/stage6r3_original_monitoring.py"]
