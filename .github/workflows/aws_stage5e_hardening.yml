@@ -26,4 +26,4 @@ jobs:
       - name: Stage 5G real-service read-only audit contract
         run: python3 -B -m unittest discover -s tests -p test_aws_stage5g_acceptance_audit.py -v
       - name: Verify no deployment credentials required
-        run: python3 -m py_compile staging/aws_lightsail/stage5e_hardening_preflight.py staging/aws_lightsail/stage5e_combined_readiness.py
+        run: python3 -m py_compile staging/aws_lightsail/stage5e_hardening_preflight.py staging/aws_lightsail/stage5e_combined_readiness.py staging/aws_lightsail/stage5g_acceptance_audit.py
