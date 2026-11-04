@@ -91,7 +91,10 @@ def authorized_invoice_reader(
             raise IntelligenceUnavailable("Unsupported evidence source")
         if not row.scope or row.scope != verified_scope.scope:
             raise IntelligenceUnavailable("Source scope mismatch")
-        if not can_read(verified_scope, row):
+        # A policy adapter must return an explicit boolean. Truthy strings,
+        # objects and numeric values are not authorization decisions.
+        decision = can_read(verified_scope, row)
+        if decision is not True:
             raise IntelligenceUnavailable("Per-record permission denied")
         # Evidence-first pipeline performs a second strict provenance check.
         if not all(
