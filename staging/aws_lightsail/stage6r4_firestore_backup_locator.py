@@ -87,15 +87,20 @@ def inspect_operation(path):
         has_gcs_prefix=isinstance(path_value,str) and path_value.startswith("gs://") and len(path_value)>6
         done=obj.get("done") is True
         errored=bool(obj.get("error"))
-        is_export=bool(obj.get("name") and PROJECT in str(obj.get("name"))) or bool(obj.get("metadata",{}))
-        ready=done and has_gcs_prefix and not errored and is_export
+        operation_name = str(obj.get("name", ""))
+        correct_project=(operation_name.startswith("projects/"+PROJECT+"/databases/")
+                         and "/operations/" in operation_name)
+        kind=str(meta.get("@type", "")) + " " + str(response.get("@type", ""))
+        is_export="ExportDocuments" in kind
+        ready=done and has_gcs_prefix and not errored and correct_project and is_export
         return {
             "status":"DONE_GCS_PREFIX_PRESENT" if ready else "NOT_VERIFIED_COMPLETE",
             "operation_completed":done,
             "has_gcs_prefix":has_gcs_prefix,
             "operation_error":errored,
             "export_prefix_sha256_12":hashlib.sha256(path_value.encode()).hexdigest()[:12] if has_gcs_prefix else None,
-            "source_project_in_operation_name":PROJECT in str(obj.get("name",""))
+            "source_project_in_operation_name":correct_project,
+            "export_operation_type_present":is_export
         }
     except (OSError,ValueError,TypeError,UnicodeError):
         return {"status":"INVALID_STATUS_JSON"}
