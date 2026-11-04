@@ -415,3 +415,8 @@ def _authorize_credit_note_report():
 
 
 app.register_blueprint(create_credit_note_blueprint(_authorize_credit_note_report))
+
+
+# F04: authenticated, CSRF-protected chat transport. No financial data connector.
+from dil_chat_transport import dil_chat
+app.register_blueprint(dil_chat)
