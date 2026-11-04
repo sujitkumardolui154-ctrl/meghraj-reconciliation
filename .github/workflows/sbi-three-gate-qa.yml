@@ -47,9 +47,11 @@ jobs:
 
   approved-private-live:
     if: >-
-      ${{ (github.event_name == 'workflow_dispatch' && inputs.run_live == true)
-          || (github.event_name == 'schedule' && vars.SBI_PRIVATE_QA_ENABLED == 'true') }}
-    runs-on: [self-hosted, sbi-private-financial-qa]
+      ${{ github.repository == 'sujitkumardolui154-ctrl/meghraj-reconciliation'
+          && github.ref == 'refs/heads/main'
+          && ((github.event_name == 'workflow_dispatch' && inputs.run_live == true)
+          || (github.event_name == 'schedule' && vars.SBI_PRIVATE_QA_ENABLED == 'true')) }}
+    runs-on: [self-hosted, linux, sbi-private-financial-qa]
     timeout-minutes: 40
     environment: sbi-private-financial-qa
     permissions:
