@@ -55,3 +55,24 @@ The audit only reports files and known migration dependencies from that local ch
 - Offline synthetic tests exercise valid/invalid/missing origins, original Cloud Run compatibility, unknown profiles and denied AWS backend routes.
 - **Not verified:** actual Firebase credential authority on AWS, origin domain provisioning, private AWS login flow, backend identity federation, authenticated end-to-end sessions, certificate rollover and financial/report parity. No running container, production traffic, Firebase account or financial database was changed.
 
+
+
+## Stage 6C-4 — live Firebase authentication readiness (read-only)
+
+**Current evidence:** Stage 6C-3 offline Flask client tests passed on the owner's AWS Docker image. No authenticated user flow has yet been exercised on AWS, so this is not proof of live Firebase login.
+
+1. **Keyless identity:** Google documents AWS workload identity federation (WIF) for running Google client libraries from AWS without a service-account key. Establish a narrowly scoped Google service account and approved AWS principal, and download an `external_account` application default credentials configuration. Place it outside the repository and mount it read-only; **never paste tokens or credential contents into chat or GitHub**. Restrict access to Firebase Authentication read permissions for the first probe, not Firestore or production Cloud Run finance write.
+2. **Read-only live proof:** `staging/aws_lightsail/stage6c4_firebase_probe.py` rejects missing/invalid/non-WIF ADC configurations, unknown staging profiles and missing explicit test UID. With `--live` it calls only Firebase Admin `get_user` for a nominated test account and prints redacted status. It performs no user creation, role assignment, revocation, financial API call or report query. This verifies **Admin credentials and user-read permission**, not browser login or session issuance.
+3. **Remaining browser acceptance:** Approved private HTTPS origin, Firebase web API key and authorized domain, valid test account with `dil_dashboard` claim, Firebase session-cookie issuance, role checks, CSRF, expiry and logout. The original `production_gateway.py` remains package-only and non-runnable until these prerequisites and the private exposure plan are independently validated.
+4. **Do not run live probe in a public container.** Use the existing Stage 6C image with `--network` only once AWS WIF and controlled egress are authorized. Do not inject AWS access keys, Google private-key JSON, or bank data. This probe never deploys anything.
+
+### Initial no-network preflight on Ubuntu
+From the project's pinned worktree:
+```bash
+python3 staging/aws_lightsail/stage6c4_firebase_probe.py
+```
+Expected without credentials: `STAGE6C4_PREFLIGHT=BLOCKED_AUTH_PROFILE` and `STAGE6C4_LIVE=NOT_PERFORMED`; exit 2 means prerequisites are missing (not a failed deployment).
+
+Official docs:
+- https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-other-clouds
+- https://firebase.google.com/docs/admin/setup
