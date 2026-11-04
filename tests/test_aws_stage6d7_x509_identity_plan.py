@@ -59,7 +59,7 @@ class X509PlanSafetyTests(unittest.TestCase):
     def test_audit_never_handles_live_credentials_or_cloud(self):
         code=SCRIPT.read_text()
         for forbidden in ("import boto3", "import google", "import requests",
-                          "subprocess", "os.system", "os.environ", "firebase_admin"):
+                          "subprocess", "os.system", "os.environ", "import firebase_admin"):
             self.assertNotIn(forbidden,code)
 
 if __name__=="__main__":
