@@ -169,6 +169,26 @@ class AuthorizedReadAdapterTests(unittest.TestCase):
             )
         self.assertEqual(self.compose_count, 0)
 
+    def test_repository_exception_fails_closed_before_policy_or_composition(self):
+        def broken_reader(*_):
+            raise RuntimeError("synthetic repository internal detail")
+        with self.assertRaises(IntelligenceUnavailable):
+            execute_invoice_question(
+                self.caller, "Invoice?", (),
+                self.reader(fetch=broken_reader), self.compose
+            )
+        self.assertEqual((self.policy_count, self.compose_count), (0, 0))
+
+    def test_policy_exception_fails_closed_before_composition(self):
+        def broken_policy(*_):
+            raise RuntimeError("synthetic authorization internal detail")
+        with self.assertRaises(IntelligenceUnavailable):
+            execute_invoice_question(
+                self.caller, "Invoice?", (),
+                self.reader(policy=broken_policy), self.compose
+            )
+        self.assertEqual(self.compose_count, 0)
+
     def test_no_live_data_or_financial_write(self):
         self.assertEqual(self.row.excerpt, "Synthetic invoice reviewed amount 100")
 
