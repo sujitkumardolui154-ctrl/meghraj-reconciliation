@@ -33,6 +33,15 @@ def monitoring_api(endpoint):
     except requests.RequestException:
         return jsonify(error="Supervisor API unavailable"), 502
 
+@app.get("/dil_floating_assistant.js")
+def dil_floating_assistant_script():
+    """Serve only the inert F01 UI; no chatbot API or financial data access."""
+    response = send_from_directory(".", "dil_floating_assistant.js", mimetype="application/javascript")
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
 @app.get("/dashboard.js")
 def dashboard_script():
     return send_from_directory(".", "dashboard.js", mimetype="application/javascript")
