@@ -18,6 +18,8 @@ on:
       - dashboard_source/dashboard_sessions.py
       - dashboard_source/production_gateway.py
       - tests/test_aws_stage6c_auth_profile.py
+      - staging/aws_lightsail/stage6c4_firebase_probe.py
+      - tests/test_aws_stage6c4_firebase_probe.py
 permissions:
   contents: read
 jobs:
@@ -33,6 +35,8 @@ jobs:
         run: python3 -m pip install 'Flask>=3.1,<4'
       - name: Stage 6C exact origins, fail-closed backend and compatibility tests
         run: python3 -B -m unittest discover -s tests -p test_aws_stage6c_auth_profile.py -v
+      - name: Stage 6C-4 AWS WIF Firebase probe fail-closed tests
+        run: python3 -B -m unittest discover -s tests -p test_aws_stage6c4_firebase_probe.py -v
       - name: Stage 6 full app source report (no secrets, no cloud access)
         run: python3 -B staging/aws_lightsail/stage6_source_migration_audit.py --repo . > /tmp/sbi-stage6-inventory.json
       - name: Check explicit release blocking gate
