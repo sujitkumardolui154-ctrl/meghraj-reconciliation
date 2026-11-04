@@ -25,6 +25,8 @@ on:
       - AGENTS.md
       - tests/test_stage6_deployment_governance.py
       - staging/aws_lightsail/stage6d_combined_check.sh
+      - staging/aws_lightsail/stage6d3_local_http_batch.sh
+      - tests/test_aws_stage6d3_http_batch_contract.py
       - dashboard_source/stage6d_private_entry.py
       - staging/aws_lightsail/Dockerfile.stage6d
       - staging/aws_lightsail/Dockerfile.stage6d.dockerignore
@@ -54,6 +56,10 @@ jobs:
         run: python3 -B -m unittest discover -s tests -p test_aws_stage6d_private_candidate.py -v
       - name: Stage 6D combined test runner shell syntax (no Docker execution)
         run: bash -n staging/aws_lightsail/stage6d_combined_check.sh
+      - name: Stage 6D.3 localhost HTTP batch syntax and safety (no server launched)
+        run: |
+          bash -n staging/aws_lightsail/stage6d3_local_http_batch.sh
+          python3 -B -m unittest discover -s tests -p test_aws_stage6d3_http_batch_contract.py -v
       - name: Stage 6 full app source report (no secrets, no cloud access)
         run: python3 -B staging/aws_lightsail/stage6_source_migration_audit.py --repo . > /tmp/sbi-stage6-inventory.json
       - name: Check explicit release blocking gate
