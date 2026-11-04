@@ -88,7 +88,7 @@ def authorized_invoice_reader(
     result = []
     seen = set()
     for row in rows:
-        if not isinstance(row, CandidateRow) or row.kind not in ALLOWED:
+        if (\n            not isinstance(row, CandidateRow)\n            or not isinstance(row.kind, str)\n            or row.kind not in ALLOWED\n        ):
             raise IntelligenceUnavailable("Unsupported evidence source")
         if not isinstance(row.scope, str) or not row.scope.strip() or row.scope != verified_scope.scope:
             raise IntelligenceUnavailable("Source scope mismatch")
@@ -103,7 +103,7 @@ def authorized_invoice_reader(
             for v in (row.record_id, row.version, row.observed_at, row.excerpt)
         ):
             raise IntelligenceUnavailable("Missing evidence provenance")
-        key = (row.kind, row.record_id)
+        # Validate identifiers before hashing; malformed repository output must\n        # raise the controlled unavailable error, never a raw TypeError.\n        key = (row.kind, row.record_id)
         if key in seen:
             raise IntelligenceUnavailable("Duplicate evidence requires review")
         seen.add(key)
