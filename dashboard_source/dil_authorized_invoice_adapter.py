@@ -68,7 +68,8 @@ def authorized_invoice_reader(
         or not isinstance(verified_scope, TrustedScope)
         or verified_scope.verified is not True
         or verified_scope.uid != caller.uid
-        or not verified_scope.scope
+        or not isinstance(verified_scope.scope, str)
+        or not verified_scope.scope.strip()
         or not isinstance(question, str)
         or not question.strip()
         or not isinstance(limit, int)
@@ -89,7 +90,7 @@ def authorized_invoice_reader(
     for row in rows:
         if not isinstance(row, CandidateRow) or row.kind not in ALLOWED:
             raise IntelligenceUnavailable("Unsupported evidence source")
-        if not row.scope or row.scope != verified_scope.scope:
+        if not isinstance(row.scope, str) or not row.scope.strip() or row.scope != verified_scope.scope:
             raise IntelligenceUnavailable("Source scope mismatch")
         # A policy adapter must return an explicit boolean. Truthy strings,
         # objects and numeric values are not authorization decisions.
