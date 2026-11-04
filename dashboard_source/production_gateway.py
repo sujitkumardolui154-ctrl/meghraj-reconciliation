@@ -62,7 +62,7 @@ def excel_upload():
     request.max_content_length = EXCEL_LIMIT + 65536
 
     if (
-        not is_allowed_origin(request.headers.get("Origin"))
+        not is_allowed_origin(request.headers.get("Origin"), cloud_origins={DASHBOARD_ORIGIN, "https://login-v150---sbi-dashboard-ahz6wqeiaq-el.a.run.app"})
         or request.headers.get("X-DIL-Upload") != "1"
     ):
         return jsonify(error="Upload must come from this dashboard"), 403
@@ -294,7 +294,7 @@ def database_import_gateway(part):
 
     if expected_method == "POST":
         if (
-            not is_allowed_origin(request.headers.get("Origin"))
+            not is_allowed_origin(request.headers.get("Origin"), cloud_origins=IMPORT_ORIGINS)
             or request.headers.get("X-DIL-Import") != "1"
         ):
             return import_reply(
