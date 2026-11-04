@@ -51,9 +51,11 @@ def summarize(doc, name):
     networks = sorted((doc.get("NetworkSettings") or {}).get("Networks", {}).keys())
     ports = {}
     for target, bindings in (host.get("PortBindings") or {}).items():
-        ports[target] = sorted({
-            "host_ip": x.get("HostIp"), "host_port": x.get("HostPort")
-        } for x in (bindings or []), key=lambda x: (str(x["host_ip"]), str(x["host_port"])))
+        ports[target] = sorted(
+            ({"host_ip": x.get("HostIp"), "host_port": x.get("HostPort")}
+             for x in (bindings or [])),
+            key=lambda x: (str(x["host_ip"]), str(x["host_port"]))
+        )
     return {
         "name": name, "running": bool(state.get("Running")),
         "image_tag": cfg.get("Image"), "immutable_image_id": image,
