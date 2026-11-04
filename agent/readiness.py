@@ -77,7 +77,7 @@ def main():
         "workstream_count": len(categories_found),
         "execution_states": dict(Counter(t["execution"] for t in tasks)),
         "done_or_approved_tasks": sum(t["execution"] in ("done", "approved") for t in tasks),
-        "user_checklist": dict(Counter(t["user_checklist"] for t in tasks)),
+        "user_checklist": dict(Counter(t.get("user_checklist", "unspecified") for t in tasks)),
         "independently_verified_tasks": sum(
             t["verification"] == "verified" for t in tasks),
         "backend_source_available": source.exists(),
