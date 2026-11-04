@@ -43,6 +43,12 @@ on:
       - staging/aws_lightsail/Dockerfile.stage6r2.dockerignore
       - staging/aws_lightsail/stage6r2_combined_backend_smoke.sh
       - tests/test_aws_stage6r2_private_backend.py
+      - staging/aws_lightsail/stage6r3_original_monitoring.py
+      - staging/aws_lightsail/Dockerfile.stage6r3
+      - staging/aws_lightsail/Dockerfile.stage6r3.dockerignore
+      - staging/aws_lightsail/stage6r3_combined_monitoring.sh
+      - tests/test_aws_stage6r3_original_monitoring.py
+      - docs/SBI_STAGE6R3_ORIGINAL_STATIC_MONITORING_LIGHTSAIL.md
       - docs/SBI_STAGE6R2_RECOVERED_BACKEND_LIGHTSAIL.md
       - docs/SBI_STAGE6R_CLOUD_SHELL_RECOVERY_AWS_LIGHTSAIL.md
       - docs/SBI_STAGE6D8_IDENTITY_APPROVAL_INTAKE.md
@@ -113,6 +119,11 @@ jobs:
           bash -n staging/aws_lightsail/stage6r2_combined_backend_smoke.sh
           python3 -B -m unittest discover -s tests -p test_aws_stage6r2_private_backend.py -v
           python3 -m compileall -q backend_source staging/aws_lightsail/stage6r2_backend_shell.py
+      - name: Stage 6R.3 original nonfinancial backend monitoring source parity (offline)
+        run: |
+          bash -n staging/aws_lightsail/stage6r3_combined_monitoring.sh
+          python3 -B -m unittest discover -s tests -p test_aws_stage6r3_original_monitoring.py -v
+          python3 -m compileall -q staging/aws_lightsail/stage6r3_original_monitoring.py
       - name: Stage 6 full app source report (no secrets, no cloud access)
         run: python3 -B staging/aws_lightsail/stage6_source_migration_audit.py --repo . > /tmp/sbi-stage6-inventory.json
       - name: Check explicit release blocking gate
