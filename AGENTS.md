@@ -37,6 +37,17 @@ If any element is absent: `ARCHITECTURE_CHANGE=BLOCKED_PENDING_OWNER_APPROVAL`.
 - Do not mark a test PASS without executed evidence. Distinguish source audit, synthetic test, isolated Docker build, real Firebase session test, AWS deployment and financial production acceptance.
 - Keep Cloud Run and existing Lightsail live until a separately approved, feature-parity-verified cutover.
 
+
+## Mandatory consolidated test execution (owner direction, 2026-11-04)
+
+- **Always combine compatible checks into one executable batch** where possible. Plan checks before asking the owner to run commands; give a single copy/paste-safe one-line command or one versioned repository script instead of repeatedly requesting nearly identical commands and "next" messages.
+- One batch should run relevant startup/config preflight, source/security contract checks, synthetic authentication, route-denial tests, existing-container and resource checks (read-only), and summarized outcomes **when these can safely share the same environment**. Do not combine stages with incompatible permissions or risk profiles.
+- Clearly state any prerequisites, whether the batch starts a process or uses network access, its expected cost, cleanup/rollback and what is *not* verified. Default to offline/no-network/no-finance/no-deployment; never elevate a test to live production merely to combine steps.
+- Each batch must return individual check results, one final `BATCH_QA=PASS|FAIL|BLOCKED` marker, meaningful nonzero exit status on failure, and `NEXT_GATE`. A partial pass must not be labeled a whole-batch PASS. Archive only non-sensitive test evidence; do not leak secrets, PII, auth tokens or financial records.
+- Avoid rerunning previously passed checks unless source, dependencies or environment have changed or an acceptance gate specifically requires retesting. Use pinned commits and unique image tags to avoid stale artifact tests.
+- If a prerequisite is unknown, let the combined script check it and report `BLOCKED` with a specific next action rather than asking the owner to repeat an earlier test. Do not hide any skipped or unexecuted checks.
+- Preserve separate explicit approval gates for paid infrastructure, cloud IAM/WIF changes, real Firebase Admin login, financial reads/writes, production traffic changes and cutover. **Test consolidation never grants authorization.**
+
 ## Practical engineering workflow
 
 - Prefer one consolidated safe test over repeated small copy/paste shell commands. Commands to the owner should be single-line where practical because multiline commands previously broke in the Lightsail browser terminal.
