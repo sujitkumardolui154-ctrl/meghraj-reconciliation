@@ -48,7 +48,7 @@ echo "CONTAINER_START=PASS"
 # Inspect only this uniquely named container; no existing services are touched.
 network="$(docker inspect "$NAME" --format '{{.HostConfig.NetworkMode}}' 2>/dev/null || true)"
 ports="$(docker inspect "$NAME" --format '{{json .HostConfig.PortBindings}}' 2>/dev/null || true)"
-if [ "$network" != "none" ] || [ "$ports" != "{}" ] && [ "$ports" != "null" ]; then
+if [ "$network" != "none" ] || { [ "$ports" != "{}" ] && [ "$ports" != "null" ]; }; then
   echo "NO_PUBLIC_NETWORK=FAIL"
   echo "BATCH_QA=FAIL"
   echo "NEXT_GATE=REVIEW_ISOLATION"
