@@ -52,7 +52,7 @@ def inspect(root):
         "stage": "6D.4",
         "source_contract": "PASS" if source_contract else "FAIL",
         "findings": findings,
-        "lighsail_approved_host": True,
+        "lightsail_approved_host": True,
         "firebase_web_key_available_on_host": "NOT_VERIFIED",
         "firebase_admin_keyless_runtime_identity": "BLOCKED_NOT_ESTABLISHED",
         "firebase_real_login": "NOT_TESTED",
