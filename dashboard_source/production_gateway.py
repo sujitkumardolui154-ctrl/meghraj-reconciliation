@@ -3,8 +3,11 @@ import requests
 from flask import Flask, jsonify, send_from_directory, g
 from cloud_auth import get_backend_token
 from sbi_report_access import can_view_report
+from stage6_origin_policy import is_allowed_origin
+from stage6_aws_guard import install_aws_private_guard
 
 app = Flask(__name__, static_folder=None)
+install_aws_private_guard(app)
 BACKEND = "https://sbi-supervisor-backend-109590290120.asia-south1.run.app"
 ENDPOINTS = {"health", "qa", "supervisor", "agents"}
 
@@ -59,7 +62,7 @@ def excel_upload():
     request.max_content_length = EXCEL_LIMIT + 65536
 
     if (
-        request.headers.get("Origin") not in {DASHBOARD_ORIGIN, "https://login-v150---sbi-dashboard-ahz6wqeiaq-el.a.run.app"}
+        not is_allowed_origin(request.headers.get("Origin"))
         or request.headers.get("X-DIL-Upload") != "1"
     ):
         return jsonify(error="Upload must come from this dashboard"), 403
@@ -291,7 +294,7 @@ def database_import_gateway(part):
 
     if expected_method == "POST":
         if (
-            request.headers.get("Origin") not in IMPORT_ORIGINS
+            not is_allowed_origin(request.headers.get("Origin"))
             or request.headers.get("X-DIL-Import") != "1"
         ):
             return import_reply(
