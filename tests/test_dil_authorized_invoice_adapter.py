@@ -124,6 +124,22 @@ class AuthorizedReadAdapterTests(unittest.TestCase):
                 )
         self.assertEqual(self.compose_count, 0)
 
+    def test_malformed_unhashable_evidence_kind_fails_closed(self):
+        # Repository bugs must never escape as raw TypeError or reach composer.
+        for kind in (["invoice"], {"kind": "invoice"}):
+            bad = CandidateRow(
+                kind, "MXP-TEST-001", "sha256:abc",
+                "2026-11-04T00:00:00Z", "Synthetic invoice",
+                "sbi-approved-group",
+            )
+            with self.subTest(kind=kind), self.assertRaises(IntelligenceUnavailable):
+                execute_invoice_question(
+                    self.caller, "Invoice?", (),
+                    self.reader(fetch=lambda *_: (bad,)), self.compose,
+                )
+        self.assertEqual(self.policy_count, 0)
+        self.assertEqual(self.compose_count, 0)
+
     def test_cross_scope_is_never_partially_answered(self):
         different = CandidateRow(
             "invoice", "MXP-TEST-002", "sha256:def", "2026-11-04T00:00:00Z",
