@@ -77,6 +77,8 @@ class InvoiceIntelligencePipelineTests(unittest.TestCase):
         for rows in (
             (self.evidence, self.evidence),
             (replace(self.evidence, kind="external_url"),),
+            (replace(self.evidence, kind=[]),),
+            (replace(self.evidence, kind={}),),
             (replace(self.evidence, version=""),),
             (replace(self.evidence, excerpt=""),),
         ):
