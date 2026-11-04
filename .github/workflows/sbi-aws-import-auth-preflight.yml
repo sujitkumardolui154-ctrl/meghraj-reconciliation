@@ -1,0 +1,24 @@
+name: SBI AWS Import Auth Preflight (offline)
+
+on:
+  pull_request:
+    paths:
+      - 'staging/aws_lightsail/aws_import_auth_preflight.py'
+      - 'tests/test_aws_import_auth_preflight.py'
+      - '.github/workflows/sbi-aws-import-auth-preflight.yml'
+  push:
+    branches:
+      - feature/sbi-aws-auth-contract-20261104
+
+permissions:
+  contents: read
+
+jobs:
+  offline-aws-auth-preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Synthetic fail-closed contract
+        run: python -m unittest discover -s tests -p 'test_aws_import_auth_preflight.py' -v
+      - name: Import authentication regression
+        run: python -m unittest discover -s tests -p 'test_import_authorization_guards.py' -v
