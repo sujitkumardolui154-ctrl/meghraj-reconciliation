@@ -18,8 +18,40 @@ def main():
     data = json.loads(QUEUE.read_text(encoding="utf-8"))
     tasks = data["tasks"]
     ids = [task["id"] for task in tasks]
-    if len(tasks) != 50 or len(ids) != len(set(ids)):
-        raise ValueError("Task queue failed 50-item unique-ID validation")
+    # Validate the authoritative A–N register without hard-coding an obsolete
+    # 50-task or 88-task count. A new ID is never proof of completion.
+    expected_categories = {
+        "A": "A — Reports Development",
+        "B": "B — Database Update",
+        "C": "C — Database Backup & Recovery",
+        "D": "D — Financial Engine",
+        "E": "E — Deployment & Operations",
+        "F": "F — Intelligent Chatbot",
+        "G": "G — UI/UX Engineering",
+        "H": "H — AI Development Automation",
+        "I": "I — Performance & Caching",
+        "J": "J — GitHub DevOps & CI/CD",
+        "K": "K — AWS Migration & Hosting",
+        "L": "L — Data Intelligence & Branch Matching",
+        "M": "M — Audit, Compliance & Security",
+        "N": "N — Release Governance",
+    }
+    if (not tasks or len(ids) != len(set(ids))
+            or any(not isinstance(task_id, str) or len(task_id) != 3
+                   or task_id[0] not in expected_categories
+                   or not task_id[1:].isdigit() for task_id in ids)):
+        raise ValueError("A–N task queue has duplicate or malformed IDs")
+    categories_found = set()
+    for task in tasks:
+        category = task.get("category")
+        letter = task["id"][0]
+        if category != expected_categories[letter]:
+            raise ValueError("Task ID/workstream mismatch: " + task["id"])
+        if task.get("execution") not in ("pending", "in_progress", "blocked", "done", "approved"):
+            raise ValueError("Unrecognized task execution state: " + task["id"])
+        categories_found.add(letter)
+    if categories_found != set(expected_categories):
+        raise ValueError("Missing required A–N workstream in task queue")
     policy = data["policy"]
     if (policy["live_database_writes"] != "disabled"
             or policy["financial_execution"] != "restricted"
@@ -42,6 +74,9 @@ def main():
         "project": data["project"],
         "read_only": True,
         "task_total": len(tasks),
+        "workstream_count": len(categories_found),
+        "execution_states": dict(Counter(t["execution"] for t in tasks)),
+        "done_or_approved_tasks": sum(t["execution"] in ("done", "approved") for t in tasks),
         "user_checklist": dict(Counter(t["user_checklist"] for t in tasks)),
         "independently_verified_tasks": sum(
             t["verification"] == "verified" for t in tasks),
