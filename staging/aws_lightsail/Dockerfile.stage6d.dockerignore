@@ -1,0 +1,14 @@
+**
+!dashboard_source/
+!dashboard_source/**
+!staging/
+!staging/aws_lightsail/
+!staging/aws_lightsail/stage6b_build_guard.py
+**/.env
+**/.env.*
+**/*secret*
+**/*credential*
+**/*.pem
+**/*.key
+**/__pycache__/
+**/*.pyc
