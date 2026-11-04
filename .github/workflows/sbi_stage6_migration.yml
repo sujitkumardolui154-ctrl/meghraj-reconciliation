@@ -22,6 +22,8 @@ on:
       - tests/test_aws_stage6c4_firebase_probe.py
       - staging/aws_lightsail/stage6d_lightsail_integration_audit.py
       - tests/test_aws_stage6d_lightsail_integration.py
+      - AGENTS.md
+      - tests/test_stage6_deployment_governance.py
 permissions:
   contents: read
 jobs:
@@ -41,6 +43,8 @@ jobs:
         run: python3 -B -m unittest discover -s tests -p test_aws_stage6c4_firebase_probe.py -v
       - name: Stage 6D Lightsail full-app integration audit (offline)
         run: python3 -B -m unittest discover -s tests -p test_aws_stage6d_lightsail_integration.py -v
+      - name: Enforce owner Lightsail-first governance
+        run: python3 -B -m unittest discover -s tests -p test_stage6_deployment_governance.py -v
       - name: Stage 6 full app source report (no secrets, no cloud access)
         run: python3 -B staging/aws_lightsail/stage6_source_migration_audit.py --repo . > /tmp/sbi-stage6-inventory.json
       - name: Check explicit release blocking gate
