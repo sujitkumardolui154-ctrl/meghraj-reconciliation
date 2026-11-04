@@ -1,0 +1,14 @@
+**
+!backend_source/
+!backend_source/**
+!staging/
+!staging/aws_lightsail/
+!staging/aws_lightsail/stage6r2_backend_shell.py
+**/.env
+**/.env.*
+**/*secret*
+**/*credential*
+**/*.pem
+**/*.key
+**/__pycache__/
+**/*.pyc
