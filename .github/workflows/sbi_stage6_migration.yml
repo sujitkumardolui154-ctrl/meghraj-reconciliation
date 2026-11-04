@@ -34,6 +34,9 @@ on:
       - staging/aws_lightsail/stage6d7_x509_identity_plan.json
       - staging/aws_lightsail/stage6d7_validate_identity_plan.py
       - tests/test_aws_stage6d7_x509_identity_plan.py
+      - staging/aws_lightsail/stage6d8_review_gate.py
+      - tests/test_aws_stage6d8_review_gate.py
+      - docs/SBI_STAGE6D8_IDENTITY_APPROVAL_INTAKE.md
       - docs/SBI_STAGE6D7_LIGHTSAIL_X509_IDENTITY_APPROVAL_GATE.md
       - docs/SBI_STAGE6D5_X509_LIGHTSAIL_FEASIBILITY.md
       - docs/SBI_STAGE6D4_LIGHTSAIL_FIREBASE_IDENTITY_DECISION.md
@@ -84,6 +87,13 @@ jobs:
           grep -Fxq 'BATCH_QA=PASS' /tmp/stage6d7-plan.txt
           grep -Fxq 'IAM_CHANGE=NOT_PERFORMED' /tmp/stage6d7-plan.txt
           grep -Fxq 'PRODUCTION_DEPLOYMENT=BLOCKED' /tmp/stage6d7-plan.txt
+      - name: Stage 6D.8 consolidated security approval intake (offline only)
+        run: |
+          python3 -B -m unittest discover -s tests -p test_aws_stage6d8_review_gate.py -v
+          python3 -B staging/aws_lightsail/stage6d8_review_gate.py --repo . > /tmp/stage6d8-approval.txt
+          grep -Fxq 'BATCH_QA=PASS' /tmp/stage6d8-approval.txt
+          grep -Fxq 'IDENTITY_PROVISIONING=NOT_PERFORMED' /tmp/stage6d8-approval.txt
+          grep -Fxq 'PRODUCTION_CUTOVER=BLOCKED' /tmp/stage6d8-approval.txt
       - name: Stage 6 full app source report (no secrets, no cloud access)
         run: python3 -B staging/aws_lightsail/stage6_source_migration_audit.py --repo . > /tmp/sbi-stage6-inventory.json
       - name: Check explicit release blocking gate
