@@ -1,7 +1,8 @@
 name: SBI AWS Private QA Bridge (no deployment)
 
-# AWS jobs run ONLY from the protected main branch, after review/merge,
-# or a deliberate manual dispatch from main. No PR code runs on AWS.
+# AWS jobs run only on protected main. The runner may share the existing
+# Lightsail host but must have a DEDICATED non-privileged OS user.
+# Never grant runner access to Docker, sudo, service data or finance secrets.
 on:
   workflow_dispatch:
   push:
@@ -24,9 +25,9 @@ concurrency:
 jobs:
   aws-private-qa:
     if: github.ref == 'refs/heads/main' && github.repository == 'sujitkumardolui154-ctrl/meghraj-reconciliation'
-    # Register a runner with this unique label on a SEPARATE disposable
-    # AWS QA instance. Never install it on the production Lightsail host.
-    runs-on: [self-hosted, linux, x64, sbi-aws-qa-isolated]
+    # Dedicated low-privilege runner on the EXISTING Lightsail host.
+    # This is weaker than separate-host isolation; run trusted main ONLY.
+    runs-on: [self-hosted, linux, x64, sbi-aws-qa-samehost]
     timeout-minutes: 10
     env:
       PYTHONDONTWRITEBYTECODE: '1'
@@ -43,13 +44,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "${SBI_AWS_QA_ISOLATED:-}" = "true"
+          test "${SBI_AWS_QA_SAMEHOST_ACK:-}" = "true"
+          test "$(id -u)" != "0"
+          test "$(id -un)" = "sbi-qa-runner"
+          ! id -nG | grep -Eq "(^| )(docker|sudo|adm|lxd)( |$)"
+          test -z "${DOCKER_HOST:-}"
+          test ! -S /var/run/docker.sock || test ! -w /var/run/docker.sock
           test "${SBI_AWS_FINANCE_ACCESS:-}" != "true"
           test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
           test -z "${AWS_ACCESS_KEY_ID:-}"
           test -z "${AWS_SECRET_ACCESS_KEY:-}"
           command -v python3
-          echo 'QA_HOST_ISOLATION_DECLARATION=PASS'
+          echo 'QA_SAMEHOST_RESTRICTED_ACCOUNT_CHECK=PASS'
       - name: Stage 5A and 5B synthetic contract tests
         shell: bash
         run: |
@@ -78,6 +84,6 @@ jobs:
           {
             echo '## SBI AWS Private QA'
             echo "- GitHub commit: \`${GITHUB_SHA}\`"
-            echo '- No deployments, Docker actions, cloud credentials or financial writes requested.'
+            echo '- Same-host restricted user; no deployment, Docker, cloud credentials or financial writes requested.'
             echo '- Examine individual workflow steps for PASS/FAIL.'
           } >> "${GITHUB_STEP_SUMMARY}"
