@@ -48,6 +48,9 @@ on:
       - staging/aws_lightsail/Dockerfile.stage6r3.dockerignore
       - staging/aws_lightsail/stage6r3_combined_monitoring.sh
       - tests/test_aws_stage6r3_original_monitoring.py
+      - staging/aws_lightsail/stage6r4_firestore_backup_locator.py
+      - tests/test_aws_stage6r4_firestore_backup_locator.py
+      - docs/SBI_STAGE6R4_FIRESTORE_BACKUP_LOCATOR.md
       - docs/SBI_STAGE6R3_ORIGINAL_STATIC_MONITORING_LIGHTSAIL.md
       - docs/SBI_STAGE6R2_RECOVERED_BACKEND_LIGHTSAIL.md
       - docs/SBI_STAGE6R_CLOUD_SHELL_RECOVERY_AWS_LIGHTSAIL.md
@@ -124,6 +127,11 @@ jobs:
           bash -n staging/aws_lightsail/stage6r3_combined_monitoring.sh
           python3 -B -m unittest discover -s tests -p test_aws_stage6r3_original_monitoring.py -v
           python3 -m compileall -q staging/aws_lightsail/stage6r3_original_monitoring.py
+      - name: Stage 6R.4 Firestore export evidence locator (offline only)
+        run: |
+          python3 -B -m unittest discover -s tests -p test_aws_stage6r4_firestore_backup_locator.py -v
+          python3 -B staging/aws_lightsail/stage6r4_firestore_backup_locator.py --source-root . > /tmp/stage6r4-locator.json
+          python3 -c 'import json; d=json.load(open("/tmp/stage6r4-locator.json")); assert d["discovery_audit"] == "PASS" and d["financial_writes"] == 0 and d["production_cutover"] == "BLOCKED" and d["recovery_gate"] == "BLOCKED_PENDING_AUTHORIZED_GCS_EXPORT_AND_PARITY"'
       - name: Stage 6 full app source report (no secrets, no cloud access)
         run: python3 -B staging/aws_lightsail/stage6_source_migration_audit.py --repo . > /tmp/sbi-stage6-inventory.json
       - name: Check explicit release blocking gate
