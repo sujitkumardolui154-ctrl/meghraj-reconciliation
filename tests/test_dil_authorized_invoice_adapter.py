@@ -204,6 +204,27 @@ class AuthorizedReadAdapterTests(unittest.TestCase):
             )
         self.assertEqual(self.compose_count, 0)
 
+    def test_malformed_identity_and_permissions_denied_before_repository_read(self):
+        # String permissions can satisfy Python substring membership but are not
+        # verified permission sets. Blank identities cannot establish ownership.
+        bad_callers = (
+            VerifiedCaller("tester-a", "sbi_invoice_reader"),
+            VerifiedCaller("tester-a", ["sbi_invoice_reader"]),
+            VerifiedCaller("   ", frozenset({"sbi_invoice_reader"})),
+        )
+        for caller in bad_callers:
+            with self.subTest(caller=caller), self.assertRaises(IntelligenceUnavailable):
+                execute_invoice_question(
+                    caller, "Invoice?", (), self.reader(), self.compose
+                )
+        bad_scope = TrustedScope("   ", "sbi-approved-group", True)
+        with self.assertRaises(IntelligenceUnavailable):
+            execute_invoice_question(
+                VerifiedCaller("   ", frozenset({"sbi_invoice_reader"})),
+                "Invoice?", (), self.reader(scope=bad_scope), self.compose
+            )
+        self.assertEqual((self.read_count, self.policy_count, self.compose_count), (0, 0, 0))
+
     def test_no_live_data_or_financial_write(self):
         self.assertEqual(self.row.excerpt, "Synthetic invoice reviewed amount 100")
 
