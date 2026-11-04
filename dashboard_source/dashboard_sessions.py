@@ -6,6 +6,7 @@ from datetime import timedelta
 import firebase_admin
 from firebase_admin import auth
 from flask import g, jsonify, redirect, request
+from stage6_origin_policy import is_allowed_origin
 
 PROJECT = "meghraj-reconciliation"
 MASTER_UID = "bcaH2nt62se1D6pZvTFAvW5UO3B2"
@@ -53,7 +54,7 @@ def csrf_valid():
     cookie = request.cookies.get(CSRF_COOKIE, "")
     header = request.headers.get("X-DIL-CSRF", "")
     return (
-        request.headers.get("Origin") in ORIGINS
+        is_allowed_origin(request.headers.get("Origin"))
         and len(cookie) == 64
         and len(header) == 64
         and secrets.compare_digest(cookie, header)
@@ -91,7 +92,7 @@ def install_sessions(app):
     @app.before_request
     def protect_dashboard():
         if request.method not in {"GET", "HEAD", "OPTIONS"}:
-            if request.headers.get("Origin") not in ORIGINS:
+            if not is_allowed_origin(request.headers.get("Origin")):
                 return jsonify(error="Untrusted request origin"), 403
 
         if request.path in PUBLIC_PATHS:
