@@ -16,7 +16,7 @@ import subprocess
 import sys
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
-from urllib.request import Request, build_opener, HTTPCookieProcessor
+from urllib.request import Request, build_opener, HTTPCookieProcessor, HTTPRedirectHandler
 
 ROOT = Path(__file__).resolve().parents[1]
 OFFLINE = (
@@ -32,6 +32,10 @@ HOSTS = {
 }
 class Blocked(Exception):
     pass
+
+class DenyRedirects(HTTPRedirectHandler):
+    def redirect_request(self, request, fp, code, message, headers, newurl):
+        return None
 
 def required(name):
     value = os.environ.get(name, "").strip()
@@ -70,7 +74,7 @@ def real_auth():
     if (email.lower() == "sujitkumardolui154@gmail.com"
             or not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email)):
         raise Blocked("UNSAFE_QA_IDENTITY")
-    opener = build_opener(HTTPCookieProcessor(http.cookiejar.CookieJar()))
+    opener = build_opener(DenyRedirects(), HTTPCookieProcessor(http.cookiejar.CookieJar()))
     base = "https://identitytoolkit.googleapis.com/v1/accounts:"
     result = req_json(opener, base + "signInWithPassword?key=" + key,
                       {"email": email, "password": password, "returnSecureToken": True})
