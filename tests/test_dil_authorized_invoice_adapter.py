@@ -70,6 +70,18 @@ class AuthorizedReadAdapterTests(unittest.TestCase):
             )
         self.assertEqual(self.read_count, 0)
 
+    def test_truthy_nonboolean_scope_verification_is_denied_before_read(self):
+        # A string, number or object must never stand in for verified auth.
+        for value in ("verified", 1, {"verified": True}):
+            with self.subTest(value=value), self.assertRaises(IntelligenceUnavailable):
+                execute_invoice_question(
+                    self.caller, "Invoice?", (),
+                    self.reader(scope=TrustedScope("tester-a", "sbi-approved-group", value)),
+                    self.compose,
+                )
+        self.assertEqual((self.read_count, self.policy_count, self.compose_count),
+                         (0, 0, 0))
+
     def test_negative_per_record_policy_denied_before_composition(self):
         with self.assertRaises(IntelligenceUnavailable):
             execute_invoice_question(
