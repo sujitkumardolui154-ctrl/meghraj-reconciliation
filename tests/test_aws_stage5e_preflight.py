@@ -72,6 +72,17 @@ class Stage5ETests(unittest.TestCase):
                               "compose", "--mount", "/var/run/docker.sock"):
                 self.assertNotIn(forbidden, argv)
         self.assertTrue(all(x["result"] == "PASS" for x in result))
+        agent, caddy = commands
+        self.assertNotIn("--cap-add", agent)
+        self.assertIn("--cap-add", caddy)
+        self.assertEqual(caddy[caddy.index("--cap-add") + 1], "NET_BIND_SERVICE")
+        for argv in commands:
+            for dest in ("/tmp", "/data", "/config"):
+                self.assertTrue(any(
+                    x.startswith(dest + ":") and "uid=65534" in x
+                    and "gid=65534" in x and "mode=0700" in x
+                    for x in argv
+                ))
 
     def test_no_autorun_and_runtime_production_changes(self):
         source = PATH.read_text()
