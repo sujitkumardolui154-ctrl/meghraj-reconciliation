@@ -1,0 +1,12 @@
+**
+!staging/
+!staging/aws_lightsail/
+!staging/aws_lightsail/stage6r3_original_monitoring.py
+**/.env
+**/.env.*
+**/*secret*
+**/*credential*
+**/*.pem
+**/*.key
+**/__pycache__/
+**/*.pyc
