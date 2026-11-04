@@ -99,6 +99,13 @@ def authorized_invoice_reader(
             raise IntelligenceUnavailable("Unsupported evidence source")
         if not isinstance(row.scope, str) or not row.scope.strip() or row.scope != verified_scope.scope:
             raise IntelligenceUnavailable("Source scope mismatch")
+        # Reject malformed repository evidence before invoking policy callbacks.
+        # Policy must never process untrusted or incomplete source metadata.
+        if not all(
+            isinstance(v, str) and v.strip()
+            for v in (row.record_id, row.version, row.observed_at, row.excerpt)
+        ):
+            raise IntelligenceUnavailable("Missing evidence provenance")
         # A policy adapter must return an explicit boolean. Truthy strings,
         # objects and numeric values are not authorization decisions.
         try:
@@ -107,12 +114,6 @@ def authorized_invoice_reader(
             raise IntelligenceUnavailable("Per-record permission unavailable") from exc
         if decision is not True:
             raise IntelligenceUnavailable("Per-record permission denied")
-        # Evidence-first pipeline performs a second strict provenance check.
-        if not all(
-            isinstance(v, str) and v.strip()
-            for v in (row.record_id, row.version, row.observed_at, row.excerpt)
-        ):
-            raise IntelligenceUnavailable("Missing evidence provenance")
         # Validate identifiers before hashing; malformed repository output must
         # raise the controlled unavailable error, never a raw TypeError.
         key = (row.kind, row.record_id)
