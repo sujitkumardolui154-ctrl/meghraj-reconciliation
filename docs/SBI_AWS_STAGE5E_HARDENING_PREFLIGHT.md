@@ -29,3 +29,14 @@ This creates only temporary network-disabled Docker test instances (--rm), with 
 5. Require separate explicit release approval. Financial execution remains restricted.
 
 This is a security preflight, not migration of the existing Cloud Run dashboard UI.
+
+## 4 Nov combined AWS QA evidence
+
+Owner-reported isolated Caddy run: UID=65534, /data=PASS, /config=PASS,
+ /tmp=PASS, Caddy config valid, v2.11.7, STAGE5E_COMBINED_QA=PASS.
+The initial cap-drop ALL test yielded EPERM because /usr/bin/caddy
+has cap_net_bind_service=ep. A repeat with only NET_BIND_SERVICE added passed.
+Stage 5E's updated candidate adds this capability ONLY for the Caddy
+disposable test and gives UID=65534/GID=65534 ownership to test tmpfs.
+Existing containers/finance not changed. This does not prove persistent
+certificates, production application functions, or full HTTP readiness.
