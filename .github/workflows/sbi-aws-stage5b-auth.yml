@@ -1,0 +1,39 @@
+name: SBI AWS Stage 5B Signed Import Auth (synthetic)
+
+on:
+  pull_request:
+    paths:
+      - 'backend_source/aws_import_verifier.py'
+      - 'backend_source/main.py'
+      - 'dashboard_source/aws_import_signer.py'
+      - 'dashboard_source/production_gateway.py'
+      - 'tests/test_aws_import_signed_requests.py'
+      - '.github/workflows/sbi-aws-stage5b-auth.yml'
+  push:
+    branches:
+      - feature/sbi-aws-signed-import-auth-stage5b-20261104
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-signed-import-auth:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Offline signed import security tests
+        run: python -m unittest discover -s tests -p 'test_aws_import_signed_requests.py' -v
+      - name: Prior AWS preflight regression
+        run: python -m unittest discover -s tests -p 'test_aws_import_auth_preflight.py' -v
+      - name: Compile affected source
+        run: python -m py_compile backend_source/main.py backend_source/aws_import_verifier.py dashboard_source/aws_import_signer.py dashboard_source/production_gateway.py
+      - name: Verify AWS financial route remains disabled
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          src = Path("backend_source/main.py").read_text()
+          assert 'if mode == "aws-hmac-v1":' in src
+          assert '"AWS invoice import execution disabled"' in src
+          assert src.index('"AWS invoice import execution disabled"') < src.index('from invoice_import_api import handle_imports')
+          print("AWS_IMPORT_EXECUTION_GUARD=PASS")
+          PY
