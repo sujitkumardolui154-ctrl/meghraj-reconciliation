@@ -13,6 +13,11 @@ on:
       - staging/aws_lightsail/Dockerfile.stage6b.dockerignore
       - staging/aws_lightsail/stage6b_build_guard.py
       - tests/test_aws_stage6b_dashboard_package.py
+      - dashboard_source/stage6_origin_policy.py
+      - dashboard_source/stage6_aws_guard.py
+      - dashboard_source/dashboard_sessions.py
+      - dashboard_source/production_gateway.py
+      - tests/test_aws_stage6c_auth_profile.py
 permissions:
   contents: read
 jobs:
@@ -24,6 +29,10 @@ jobs:
         run: python3 -B -m unittest discover -s tests -p test_aws_stage6_source_migration.py -v
       - name: Stage 6B full dashboard package source contract
         run: python3 -B -m unittest discover -s tests -p test_aws_stage6b_dashboard_package.py -v
+      - name: Stage 6C AWS authentication profile dependencies (offline tests only)
+        run: python3 -m pip install 'Flask>=3.1,<4'
+      - name: Stage 6C exact origins, fail-closed backend and compatibility tests
+        run: python3 -B -m unittest discover -s tests -p test_aws_stage6c_auth_profile.py -v
       - name: Stage 6 full app source report (no secrets, no cloud access)
         run: python3 -B staging/aws_lightsail/stage6_source_migration_audit.py --repo . > /tmp/sbi-stage6-inventory.json
       - name: Check explicit release blocking gate
