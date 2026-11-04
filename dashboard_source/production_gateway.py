@@ -346,61 +346,45 @@ def database_import_gateway(part):
     auth_mode = os.environ.get("SBI_IMPORT_AUTH_MODE", "google-oidc")
     if auth_mode not in ("google-oidc", "aws-hmac-v1"):
         return import_reply({"error": "Import service auth mode unavailable"}, 503)
-    if auth_mode == "aws-hmac-v1":
-        # Strictly constrain private AWS routing; never use a public HTTP host.
-        from urllib.parse import urlsplit
-        target = urlsplit(import_target)
-        if (target.scheme != "http" or target.hostname not in ("127.0.0.1", "localhost")
-                or target.username or target.password or target.path or target.query
-                or target.fragment):
-            return import_reply({"error": "Private AWS import target required"}, 503)
-        from aws_import_signer import sign_prepared_import
-        try:
-            with requests.Session() as session:
-                outbound = requests.Request(
-                    expected_method, import_target + "/imports/" + part,
-                    params=params, files=files).prepare()
-                sign_prepared_import(outbound)
-                response = session.send(outbound, timeout=(10, 120),
-                                        allow_redirects=False)
-        except (ValueError, OSError):
-            app.logger.exception("AWS import signing unavailable")
-            return import_reply({"error": "Import signing unavailable"}, 503)
-    else:
-        try:
-            token = get_backend_token(import_target)
-        except Exception:
-            app.logger.exception("Import backend authentication failed")
-            return import_reply({"error": "Backend authentication unavailable"}, 503)
-        try:
-            response = requests.request(
-                expected_method,
-                import_target + "/imports/" + part,
-                headers={"Authorization": "Bearer " + token},
-                params=params,
-                files=files,
-                timeout=(10, 120),
-                allow_redirects=False,
-            )
-        except requests.Timeout:
-            return import_reply({
-                "error": "Request timed out; outcome is unknown. Check receipt status."
-            }, 504)
-        except requests.RequestException:
-            return import_reply({"error": "Backend connection failed"}, 502)
 
+    try:
+        if auth_mode == "aws-hmac-v1":
+            # AWS deployment must keep this gateway/backend hop on loopback.
+            # Do not use public HTTP or reuse the preview Basic Auth password.
+            from urllib.parse import urlsplit
+            target = urlsplit(import_target)
+            if (target.scheme != "http"
+                    or target.hostname not in ("127.0.0.1", "localhost")
+                    or target.username or target.password
+                    or target.path or target.query or target.fragment):
+                return import_reply({"error": "Private AWS import target required"}, 503)
+            from aws_import_signer import sign_prepared_import
+            outbound = requests.Request(
+                expected_method, import_target + "/imports/" + part,
+                params=params, files=files).prepare()
+            sign_prepared_import(outbound)
+            with requests.Session() as session:
+                response = session.send(outbound, timeout=(10, 120),
+                                        allow_redirects=False, proxies={})
+        else:
+            token = get_backend_token(import_target)
+            response = requests.request(
+                expected_method, import_target + "/imports/" + part,
+                headers={"Authorization": "Bearer " + token},
+                params=params, files=files,
+                timeout=(10, 120), allow_redirects=False,
+            )
     except requests.Timeout:
         return import_reply({
-            "error": (
-                "Request timed out; outcome is unknown. "
-                "Check the saved receipt before retrying. "
-                "If preview returned no receipt, check server logs."
-            )
+            "error": "Request timed out; outcome is unknown. Check receipt status."
         }, 504)
     except requests.RequestException:
-        return import_reply({
-            "error": "Backend connection failed. Check receipt status before retrying."
-        }, 502)
+        return import_reply({"error": "Backend connection failed"}, 502)
+    except (ValueError, OSError):
+        return import_reply({"error": "Import service authentication unavailable"}, 503)
+    except Exception:
+        app.logger.exception("Import service authentication failed")
+        return import_reply({"error": "Import backend unavailable"}, 503)
 
     if 300 <= response.status_code < 400:
         return import_reply({"error": "Unexpected backend redirect"}, 502)
