@@ -29,6 +29,9 @@ on:
       - tests/test_aws_stage6d3_http_batch_contract.py
       - staging/aws_lightsail/stage6d4_identity_readiness.py
       - tests/test_aws_stage6d4_identity_readiness.py
+      - staging/aws_lightsail/stage6d5_x509_feasibility.py
+      - tests/test_aws_stage6d5_x509_feasibility.py
+      - docs/SBI_STAGE6D5_X509_LIGHTSAIL_FEASIBILITY.md
       - docs/SBI_STAGE6D4_LIGHTSAIL_FIREBASE_IDENTITY_DECISION.md
       - dashboard_source/stage6d_private_entry.py
       - staging/aws_lightsail/Dockerfile.stage6d
@@ -68,6 +71,8 @@ jobs:
           python3 -B -m unittest discover -s tests -p test_aws_stage6d4_identity_readiness.py -v
           python3 -B staging/aws_lightsail/stage6d4_identity_readiness.py --repo . > /tmp/stage6d4-identity.json
           python3 -c 'import json; d=json.load(open("/tmp/stage6d4-identity.json")); assert d["batch_qa"] == "PASS" and d["production_deployment"] == "BLOCKED" and d["firebase_real_login"] == "NOT_TESTED" and d["financial_writes"] == 0'
+      - name: Stage 6D.5 certificate federation library preflight source tests (offline)
+        run: python3 -B -m unittest discover -s tests -p test_aws_stage6d5_x509_feasibility.py -v
       - name: Stage 6 full app source report (no secrets, no cloud access)
         run: python3 -B staging/aws_lightsail/stage6_source_migration_audit.py --repo . > /tmp/sbi-stage6-inventory.json
       - name: Check explicit release blocking gate
