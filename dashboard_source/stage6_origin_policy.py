@@ -38,7 +38,7 @@ def private_aws_origin(env=None):
         return None
     return origin
 
-def is_allowed_origin(origin, env=None):
+def is_allowed_origin(origin, env=None, cloud_origins=None):
     env = os.environ if env is None else env
     profile = env.get("SBI_STAGE6_AUTH_PROFILE", "")
     if profile == AWS_PROFILE:
@@ -46,7 +46,7 @@ def is_allowed_origin(origin, env=None):
         return bool(valid and origin == valid)
     if profile:  # unknown profile never enables a new origin
         return False
-    return origin in CLOUD_RUN_ORIGINS
+    return origin in (CLOUD_RUN_ORIGINS if cloud_origins is None else cloud_origins)
 
 def aws_private_mode(env=None):
     env = os.environ if env is None else env
