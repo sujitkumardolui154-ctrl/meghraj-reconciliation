@@ -1,4 +1,5 @@
 """Stage 6C AWS private staging guard: fail closed for all backend routes."""
+import os
 from flask import jsonify, request
 from stage6_origin_policy import aws_private_mode, private_aws_origin
 
@@ -9,6 +10,9 @@ def install_aws_private_guard(app):
 
     @app.before_request
     def stage6_backend_gate():
+        profile = os.environ.get("SBI_STAGE6_AUTH_PROFILE", "")
+        if profile not in ("", "aws-private-staging"):
+            return jsonify(error="Unknown Stage 6 authentication profile"), 503
         if not aws_private_mode():
             return None
         if private_aws_origin() is None:
