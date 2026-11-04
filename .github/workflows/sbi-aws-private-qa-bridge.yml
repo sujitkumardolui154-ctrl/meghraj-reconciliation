@@ -1,0 +1,83 @@
+name: SBI AWS Private QA Bridge (no deployment)
+
+# AWS jobs run ONLY from the protected main branch, after review/merge,
+# or a deliberate manual dispatch from main. No PR code runs on AWS.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - backend_source/aws_import_verifier.py
+      - backend_source/main.py
+      - dashboard_source/aws_import_signer.py
+      - tests/test_aws_import_signed_requests.py
+      - tests/test_aws_import_auth_preflight.py
+      - .github/workflows/sbi-aws-private-qa-bridge.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sbi-aws-qa-bridge
+  cancel-in-progress: false
+
+jobs:
+  aws-private-qa:
+    if: github.ref == 'refs/heads/main' && github.repository == 'sujitkumardolui154-ctrl/meghraj-reconciliation'
+    # Register a runner with this unique label on a SEPARATE disposable
+    # AWS QA instance. Never install it on the production Lightsail host.
+    runs-on: [self-hosted, linux, x64, sbi-aws-qa-isolated]
+    timeout-minutes: 10
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      SBI_IMPORT_AUTH_MODE: 'aws-hmac-v1'
+      SBI_AWS_IMPORT_KEY_FILE: ''
+      SBI_AWS_IMPORT_REPLAY_DB: ''
+    steps:
+      - name: Checkout trusted main (no stored credentials)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          clean: true
+      - name: Confirm isolated QA host
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${SBI_AWS_QA_ISOLATED:-}" = "true"
+          test "${SBI_AWS_FINANCE_ACCESS:-}" != "true"
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${AWS_ACCESS_KEY_ID:-}"
+          test -z "${AWS_SECRET_ACCESS_KEY:-}"
+          command -v python3
+          echo 'QA_HOST_ISOLATION_DECLARATION=PASS'
+      - name: Stage 5A and 5B synthetic contract tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B -m unittest discover -s tests -p 'test_aws_import_auth_preflight.py' -v
+          python3 -B -m unittest discover -s tests -p 'test_aws_import_signed_requests.py' -v
+          python3 -B -m py_compile backend_source/main.py backend_source/aws_import_verifier.py dashboard_source/aws_import_signer.py
+          echo 'AWS_PRIVATE_SYNTHETIC_QA=PASS'
+      - name: Enforce financial import block
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B - <<'PY'
+          from pathlib import Path
+          data = Path('backend_source/main.py').read_text()
+          expected = 'return respond({"error": "AWS invoice import execution disabled"}, 503)'
+          assert 'if mode == "aws-hmac-v1":' in data
+          assert expected in data
+          assert data.index(expected) < data.index('from invoice_import_api import handle_imports')
+          print('AWS_FINANCIAL_IMPORT_BLOCK=PASS')
+          PY
+      - name: Publish minimal run summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '## SBI AWS Private QA'
+            echo "- GitHub commit: \`${GITHUB_SHA}\`"
+            echo '- No deployments, Docker actions, cloud credentials or financial writes requested.'
+            echo '- Examine individual workflow steps for PASS/FAIL.'
+          } >> "${GITHUB_STEP_SUMMARY}"
