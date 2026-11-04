@@ -22,8 +22,17 @@ def supervisor_api(request):
     # DIL v1.4.0 database import API
     if request.path.startswith("/imports/"):
         # Independent service-to-service verification before ANY Firestore client.
-        from invoice_import_security import authorized_import_caller
-        if not authorized_import_caller(request):
+        import os
+        mode = os.environ.get("SBI_IMPORT_AUTH_MODE", "google-oidc")
+        if mode == "aws-hmac-v1":
+            from aws_import_verifier import verify_aws_import_request
+            allowed = verify_aws_import_request(request)
+        elif mode == "google-oidc":
+            from invoice_import_security import authorized_import_caller
+            allowed = authorized_import_caller(request)
+        else:
+            allowed = False
+        if not allowed:
             return respond({"error": "Import service authentication required"}, 403)
         from invoice_import_api import handle_imports
         return handle_imports(request)
