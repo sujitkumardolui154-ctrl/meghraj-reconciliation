@@ -11,6 +11,7 @@ REQUIRED = (
     "dashboard_account_pages.py", "cloud_auth.py",
     "sbi_report_access.py", "sbi_credit_report_auth.py",
     "dil_floating_assistant.js", "dashboard.js", "login.html",
+    "stage6_origin_policy.py", "stage6_aws_guard.py",
 )
 
 def verify(root=ROOT):
@@ -20,7 +21,9 @@ def verify(root=ROOT):
     data = (root/"production_gateway.py").read_text()
     for marker in ("install_sessions(app)", "install_user_management(app)",
                    "database_import_gateway", "reconciliation_change_gateway",
-                   "create_credit_note_blueprint"):
+                   "create_credit_note_blueprint",
+                   "install_aws_private_guard(app)"):
+
         if marker not in data:
             raise ValueError("Full dashboard gateway missing source contract: " + marker)
     return True
