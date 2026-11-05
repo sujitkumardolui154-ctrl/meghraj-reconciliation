@@ -245,6 +245,7 @@ def completed_import_rows(db):
 
 # DIL payment reports v1.4.2
 from payment_report_rules import payment_report_kind
+from report_invoice_exception_rules import route_payment_report
 
 PAYMENT_REPORTS = ("unpaid", "ok", "error-value")
 REPORT_NAMES_V142 = PAYMENT_REPORTS + ("balance-review",)
@@ -311,7 +312,7 @@ def load_report_rows_v142(db):
         baseline.append({
             **row,
             "export_values": list(values),
-            "payment_report": payment_report_kind(row),
+            "payment_report": route_payment_report(row, payment_report_kind(row))[0],
         })
 
     if source_rows != set(range(2, 14376)):
@@ -321,7 +322,9 @@ def load_report_rows_v142(db):
     # Existing receipt, source and invoice-key checks remain in use.
     imported = completed_import_rows(db)
     for row in imported:
-        row["payment_report"] = payment_report_kind(row)
+        row["payment_report"] = route_payment_report(
+            row, payment_report_kind(row)
+        )[0]
     return baseline, imported
 
 def report_groups_v142(rows):
