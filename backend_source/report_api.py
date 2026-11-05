@@ -140,7 +140,10 @@ import re
 from flask import current_app
 from invoice_source_schema import HEADERS_53, row_layout, export_values_53
 from invoice_import_store import invoice_fields
-from report_source_integrity import validate_receipt_source_positions
+from report_source_integrity import (
+    validate_receipt_source_positions,
+    validate_completed_receipt_source_sheet,
+)
 
 
 def completed_import_rows(db):
@@ -200,6 +203,7 @@ def completed_import_rows(db):
         # Completed receipts must map each physical source worksheet row once.
         # Fail closed before any report content is returned.
         validate_receipt_source_positions(entries)
+        validate_completed_receipt_source_sheet(receipt, entries)
 
         for document_id, row in entries:
             width, invoice_index, _, _, source_headers = row_layout(row)
