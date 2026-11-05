@@ -5,7 +5,7 @@ The HTTP integration must supply a revocation-verified session user and
 server-side entitlement, then authorize each retrieved record separately.
 """
 import re
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, localcontext
 
 MAX_QUESTION = 2000
 MAX_CONTEXT = 8
@@ -83,6 +83,7 @@ def decimal_total(values):
     if not isinstance(values, (list, tuple)) or len(values) > MAX_EVIDENCE:
         raise QueryDenied("AMOUNT_LIMIT")
     total = Decimal("0")
+    parsed = []
     for value in values:
         # Reject exponential notation, huge integers and precision bombs before
         # Decimal parsing or formatting. Amounts are not rounded or rewritten.
@@ -95,5 +96,11 @@ def decimal_total(values):
             raise QueryDenied("INVALID_AMOUNT") from exc
         if not number.is_finite():
             raise QueryDenied("INVALID_AMOUNT")
-        total += number
+        parsed.append(number)
+    # Maximum 18 integer + 12 fractional digits, plus carry from 20 terms.
+    # Decimal default precision (28) would silently round valid inputs.
+    with localcontext() as context:
+        context.prec = 40
+        for number in parsed:
+            total += number
     return str(total)
