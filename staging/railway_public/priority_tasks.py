@@ -126,7 +126,7 @@ def _get(conn, task_id):
 def _request_github(method, suffix, payload=None):
     token = os.environ["SBI_GITHUB_ISSUES_TOKEN"]
     body = json.dumps(payload).encode("utf-8") if payload is not None else None
-    req = Request(API + suffix, data=body, method=method, headers={
+    endpoint = ("https://api.github.com" if suffix.startswith("/search/issues?") else API)\n    req = Request(endpoint + suffix, data=body, method=method, headers={
         "Accept": "application/vnd.github+json",
         "Authorization": "Bearer " + token,
         "X-GitHub-Api-Version": "2022-11-28",
