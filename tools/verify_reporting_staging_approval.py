@@ -4,7 +4,8 @@ import os
 import re
 import sys
 
-_SHA = re.compile(r"^[a-f0-9]{64}$")
+_COMMIT_SHA = re.compile(r"^[a-f0-9]{40}$")
+_DATASET_SHA = re.compile(r"^[a-f0-9]{64}$")
 
 def approved(raw, commit_sha):
     try:
@@ -14,12 +15,12 @@ def approved(raw, commit_sha):
     if not isinstance(value, dict):
         return False
     return (
-        isinstance(commit_sha, str) and bool(_SHA.fullmatch(commit_sha))
+        isinstance(commit_sha, str) and bool(_COMMIT_SHA.fullmatch(commit_sha))
         and value.get("release_scope") == "reporting_only"
         and value.get("decision") == "APPROVED_FOR_PRIVATE_STAGING"
         and value.get("source_sha") == commit_sha
         and isinstance(value.get("dataset_sha256"), str)
-        and bool(_SHA.fullmatch(value["dataset_sha256"]))
+        and bool(_DATASET_SHA.fullmatch(value["dataset_sha256"]))
         and isinstance(value.get("reviewer"), str)
         and bool(value["reviewer"].strip())
         and value.get("private_evidence_verified") is True
