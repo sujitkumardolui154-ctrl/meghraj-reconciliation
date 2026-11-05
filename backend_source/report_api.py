@@ -62,9 +62,7 @@ def handle_snapshot_reports(request):
             metadata.get("original_columns_state") != "READY"
             or metadata.get("original_column_count") != 53
             or metadata.get("original_columns_row_count") != 14374
-            or not isinstance(headers, list)
-            or len(headers) != 53
-            or not all(isinstance(item, str) for item in headers)
+            or headers != HEADERS_53
         ):
             return jsonify(error="Original report columns are not ready"), 503
 
