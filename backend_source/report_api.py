@@ -140,6 +140,7 @@ import re
 from flask import current_app
 from invoice_source_schema import HEADERS_53, row_layout, export_values_53
 from invoice_import_store import invoice_fields
+from report_source_integrity import validate_receipt_source_positions
 
 
 def completed_import_rows(db):
@@ -195,6 +196,10 @@ def completed_import_rows(db):
             or receipt.get("finance_processed") is not False
         ):
             raise ValueError("Completed import counts are inconsistent")
+
+        # Completed receipts must map each physical source worksheet row once.
+        # Fail closed before any report content is returned.
+        validate_receipt_source_positions(entries)
 
         for document_id, row in entries:
             width, invoice_index, _, _, source_headers = row_layout(row)
