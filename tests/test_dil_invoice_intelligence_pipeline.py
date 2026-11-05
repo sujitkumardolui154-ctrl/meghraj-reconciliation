@@ -49,6 +49,24 @@ class InvoiceIntelligencePipelineTests(unittest.TestCase):
                 execute_invoice_question(caller, "Find invoices", (), self.reader, self.composer)
         self.assertEqual(self.calls, [])
 
+    def test_malformed_caller_fails_closed_before_any_read(self):
+        # Untrusted session claims must not rely on substring membership,
+        # truthiness, or raise raw TypeError before the authorization boundary.
+        malformed = (
+            VerifiedCaller("user-one", "sbi_invoice_reader"),
+            VerifiedCaller("user-one", ["sbi_invoice_reader"]),
+            VerifiedCaller("user-one", None),
+            VerifiedCaller("   ", frozenset({"sbi_invoice_reader"})),
+            VerifiedCaller("user-one", frozenset({"sbi_invoice_reader"}), "false"),
+            VerifiedCaller("user-one", frozenset({"sbi_invoice_reader"}), 0),
+        )
+        for caller in malformed:
+            with self.subTest(caller=caller), self.assertRaises(IntelligenceUnavailable):
+                execute_invoice_question(
+                    caller, "Find invoices", (), self.reader, self.composer
+                )
+        self.assertEqual(self.calls, [])
+
     def test_no_evidence_does_not_call_model(self):
         reader = lambda *_: ()
         with self.assertRaises(IntelligenceUnavailable):
@@ -59,6 +77,8 @@ class InvoiceIntelligencePipelineTests(unittest.TestCase):
         for rows in (
             (self.evidence, self.evidence),
             (replace(self.evidence, kind="external_url"),),
+            (replace(self.evidence, kind=[]),),
+            (replace(self.evidence, kind={}),),
             (replace(self.evidence, version=""),),
             (replace(self.evidence, excerpt=""),),
         ):

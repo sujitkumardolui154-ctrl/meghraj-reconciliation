@@ -87,8 +87,9 @@ def execute_invoice_question(
     checks, rate limits and financial calculation engines remain separate gates.
     """
     if (not isinstance(caller, VerifiedCaller)
-            or not isinstance(caller.uid, str) or not caller.uid
-            or caller.session_revoked
+            or not isinstance(caller.uid, str) or not caller.uid.strip()
+            or caller.session_revoked is not False
+            or not isinstance(caller.permissions, frozenset)
             or "sbi_invoice_reader" not in caller.permissions):
         raise IntelligenceUnavailable("Invoice access denied")
     if (not isinstance(question, str) or not question.strip()
@@ -115,6 +116,7 @@ def execute_invoice_question(
     by_id = {}
     for row in records:
         if (not isinstance(row, EvidenceRecord)
+                or not isinstance(row.kind, str)
                 or row.kind not in SOURCE_KINDS
                 or not isinstance(row.record_id, str)
                 or not ID_RE.fullmatch(row.record_id)
