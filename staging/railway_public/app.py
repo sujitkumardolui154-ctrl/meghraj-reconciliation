@@ -99,6 +99,115 @@ def pipeline_status():
     return jsonify(snapshot)
 
 
+
+# Project-management-only editor. Never forwards to financial APIs or Firestore.
+# In addition to the preview login, every write requires a separate owner key,
+# same-origin JSON request and server-only issue-scoped GitHub credentials.
+from urllib.parse import urlsplit
+from priority_tasks import (
+    InvalidTask, StaleTask, authorized as task_owner_authorized,
+    enabled as task_editor_enabled, list_tasks as list_priority_tasks,
+    retry_task as retry_priority_task, save_task as save_priority_task,
+)
+
+
+@app.get("/api/priority-tasks")
+def get_priority_tasks():
+    try:
+        tasks = list_priority_tasks()
+    except (OSError, ValueError, RuntimeError):
+        return jsonify(error="Task database unavailable"), 503
+    return jsonify(
+        tasks=tasks, editor_available=task_editor_enabled(),
+        source="dedicated_nonfinancial_sqlite", github="public_reviewable_issues",
+        financial_database_connected=False,
+    )
+
+
+def _require_task_owner():
+    if not task_editor_enabled():
+        return jsonify(error="Owner task editor has not been configured"), 503
+    origin = request.headers.get("Origin", "")
+    parsed = urlsplit(origin)
+    # Basic Auth alone is not a write permission; reject cross-site and
+    # originless writes to prevent CSRF and accidental non-browser mutation.
+    if (parsed.scheme not in ("https", "http")
+            or parsed.netloc.lower() != request.host.lower()
+            or parsed.path not in ("", "/")):
+        return jsonify(error="Same-origin request required"), 403
+    if not task_owner_authorized(request.headers.get("X-SBI-Task-Owner", "")):
+        return jsonify(error="Task owner authorization required"), 403
+    if request.content_length is not None and request.content_length > 8192:
+        return jsonify(error="Task request too large"), 413
+    if not request.is_json:
+        return jsonify(error="JSON request required"), 415
+    return None
+
+
+def _task_reply(task, created=False):
+    if task["sync_state"] != "synced":
+        return jsonify(
+            task=task, message="Saved to task database. GitHub pending: retry sync."
+        ), 202
+    return jsonify(task=task, message="Saved to task database and GitHub issue"), (
+        201 if created else 200
+    )
+
+
+@app.post("/api/priority-tasks/unlock")
+def unlock_priority_tasks():
+    denial = _require_task_owner()
+    if denial is not None:
+        return denial
+    return jsonify(owner_authorized=True, financial_writes=False)
+
+
+@app.post("/api/priority-tasks")
+def create_priority_task():
+    denial = _require_task_owner()
+    if denial is not None:
+        return denial
+    data = request.get_json(silent=True)
+    try:
+        task = save_priority_task(data)
+    except InvalidTask as exc:
+        return jsonify(error=str(exc)), 422
+    except (OSError, RuntimeError, ValueError):
+        return jsonify(error="Task database unavailable"), 503
+    return _task_reply(task, created=True)
+
+
+@app.patch("/api/priority-tasks/<task_id>")
+def edit_priority_task(task_id):
+    denial = _require_task_owner()
+    if denial is not None:
+        return denial
+    data = request.get_json(silent=True)
+    try:
+        task = save_priority_task(data, task_id=task_id)
+    except StaleTask:
+        return jsonify(error="Task changed elsewhere; reload before editing"), 409
+    except InvalidTask as exc:
+        return jsonify(error=str(exc)), 422
+    except (OSError, RuntimeError, ValueError):
+        return jsonify(error="Task database unavailable"), 503
+    return _task_reply(task)
+
+
+@app.post("/api/priority-tasks/<task_id>/sync")
+def retry_priority_task_sync(task_id):
+    denial = _require_task_owner()
+    if denial is not None:
+        return denial
+    try:
+        task = retry_priority_task(task_id)
+    except InvalidTask as exc:
+        return jsonify(error=str(exc)), 404
+    except (OSError, RuntimeError, ValueError):
+        return jsonify(error="Task database unavailable"), 503
+    return _task_reply(task)
+
+
 @app.route("/api/<path:subpath>",
            methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
 def disabled_financial_api(subpath):
