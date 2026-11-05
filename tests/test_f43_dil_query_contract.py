@@ -91,6 +91,15 @@ class DilQueryContractTests(unittest.TestCase):
         with self.assertRaises(QueryDenied):
             decimal_total([0.1])
 
+    def test_decimal_bounds_and_exponent_rejected(self):
+        for values in (["1e999999"], ["9" * 1000], ["0.1234567890123"],
+                       ["1"] * 21, "100", [None]):
+            with self.subTest(values=str(values)[:35]), self.assertRaises(QueryDenied):
+                decimal_total(values)
+
+    def test_decimal_signed_exact_amounts(self):
+        self.assertEqual(decimal_total(["+100.25", "-0.20", "0.05"]), "100.10")
+
     def test_no_financial_mutation_or_network(self):
         import inspect
         import dil_query_contract
