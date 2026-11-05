@@ -42,13 +42,16 @@ class GitHubUnavailable(Exception):
     pass
 
 
-def enabled():
+def storage_available():
     path = os.environ.get("SBI_PRIORITY_DB_PATH", "")
+    return (bool(path) and Path(path).is_absolute()
+            and Path(path).parent.is_dir())
+
+
+def enabled():
     owner_key = os.environ.get("SBI_TASK_OWNER_KEY", "")
     github_key = os.environ.get("SBI_GITHUB_ISSUES_TOKEN", "")
-    return (bool(path) and Path(path).is_absolute()
-            and Path(path).parent.is_dir()
-            and len(owner_key) >= 32 and len(github_key) >= 20)
+    return storage_available() and len(owner_key) >= 32 and len(github_key) >= 20
 
 
 def authorized(owner_key):
@@ -84,7 +87,7 @@ def _row(row):
 
 
 def list_tasks():
-    if not enabled():
+    if not storage_available():
         return []
     with LOCK:
         with _db() as conn:
