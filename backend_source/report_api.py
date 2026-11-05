@@ -138,7 +138,7 @@ def handle_snapshot_reports(request):
 import hashlib
 import re
 from flask import current_app
-from invoice_source_schema import HEADERS_53, row_layout
+from invoice_source_schema import HEADERS_53, row_layout, export_values_53
 from invoice_import_store import invoice_fields
 
 
@@ -225,12 +225,7 @@ def completed_import_rows(db):
                 if row.get(field) is not derived[field]:
                     raise ValueError("Imported report filter mismatch")
 
-            if width == 53:
-                export_values = list(values)
-            else:
-                export_values = [""] * 53
-                export_values[:8] = values[:8]
-                export_values[11:37] = values[8:]
+            export_values = export_values_53(row)
             result.append({
                 **row,
                 "export_values": export_values,
