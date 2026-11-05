@@ -245,7 +245,7 @@ def completed_import_rows(db):
 
 # DIL payment reports v1.4.2
 from payment_report_rules import payment_report_kind
-from report_invoice_exception_rules import route_payment_report
+from report_invoice_exception_rules import route_payment_report, exception_evidence_coverage
 
 PAYMENT_REPORTS = ("unpaid", "ok", "error-value")
 REPORT_NAMES_V142 = PAYMENT_REPORTS + ("balance-review",)
@@ -367,6 +367,9 @@ def handle_reports(request):
                 completed_import_rows=len(imported),
                 total_invoice_rows=len(baseline) + len(imported),
                 payment_report_basis="PAYMENT_RECEIVED_BLANK_ZERO_NUMERIC_OR_ERROR",
+                exception_evidence_coverage=exception_evidence_coverage(
+                    baseline + imported
+                ),
                 reports={
                     name: {
                         "rows": len(base_groups[name]) + len(import_groups[name]),
