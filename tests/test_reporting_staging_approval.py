@@ -8,7 +8,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from verify_reporting_staging_approval import approved
 
-SHA = "a" * 64
+SHA = "a" * 40
 GOOD = dict(release_scope="reporting_only", decision="APPROVED_FOR_PRIVATE_STAGING",
             source_sha=SHA, dataset_sha256="b" * 64, reviewer="independent-reviewer",
             private_evidence_verified=True, financial_execution="RESTRICTED",
@@ -32,6 +32,15 @@ class ApprovalGateTests(unittest.TestCase):
                            ("production_traffic_change",True), ("financial_database_writes",True)]:
             with self.subTest(key=key):
                 self.assertFalse(approved(json.dumps({**GOOD,key:value}), SHA))
+
+    def test_gh_sha_format_is_40_hex(self):
+        self.assertEqual(len(SHA), 40)
+        self.assertTrue(approved(json.dumps(GOOD), SHA))
+        self.assertFalse(approved(json.dumps(GOOD), "a" * 64))
+
+    def test_source_sha_mismatch_or_dataset_length_blocks(self):
+        self.assertFalse(approved(json.dumps({**GOOD, "source_sha": "c" * 40}), SHA))
+        self.assertFalse(approved(json.dumps({**GOOD, "dataset_sha256": "b" * 40}), SHA))
 
     def test_malformed_and_missing_fail(self):
         for raw in ("", "{}", "[]", "null", "{broken}"):
