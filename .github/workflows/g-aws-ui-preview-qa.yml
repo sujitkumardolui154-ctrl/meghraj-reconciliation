@@ -8,6 +8,7 @@ on:
       - "dashboard_source/dashboard_sessions.py"
       - "tests/test_g_*"
       - "tools/g_aws_ui_preview_readonly_attest.sh"
+      - "tools/g_aws_ui_preview_readonly_attest.py"
       - ".github/workflows/g-aws-ui-preview-qa.yml"
   workflow_dispatch:
 
@@ -34,4 +35,4 @@ jobs:
       - name: Live attestor syntax only (no cloud requests)
         run: bash -n tools/g_aws_ui_preview_readonly_attest.sh
       - name: Python syntax
-        run: python -m py_compile staging/railway_public/app.py tests/test_g_*.py
+        run: python -m py_compile staging/railway_public/app.py tests/test_g_*.py tools/g_aws_ui_preview_readonly_attest.py
