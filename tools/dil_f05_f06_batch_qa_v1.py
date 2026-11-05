@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """F05/F06 consolidated offline QA. Never opens network or financial data."""
-import importlib.util
 import json
 import pathlib
-import subprocess
 import sys
 import unittest
 
@@ -33,7 +31,7 @@ def main():
             "tests.test_dil_authorized_invoice_adapter",
         ])
         result = unittest.TextTestRunner(verbosity=0).run(suite)
-        record("synthetic_auth_and_no_write", result.wasSuccessful(),
+        record("synthetic_auth_and_no_write", result.wasSuccessful() and result.testsRun > 0,
                f"ran={result.testsRun} errors={len(result.errors)} failures={len(result.failures)}")
     else:
         CHECKS["synthetic_auth_and_no_write"] = {"status": "BLOCKED", "detail": "syntax failed"}
