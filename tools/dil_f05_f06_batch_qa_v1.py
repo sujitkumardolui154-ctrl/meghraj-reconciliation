@@ -31,7 +31,7 @@ def main():
             "tests.test_dil_authorized_invoice_adapter",
         ])
         result = unittest.TextTestRunner(verbosity=0).run(suite)
-        record("synthetic_auth_and_no_write", result.wasSuccessful() and result.testsRun > len(result.skipped),
+        record("synthetic_auth_and_no_write", result.wasSuccessful() and result.testsRun >= 2 and not result.skipped,
                f"ran={result.testsRun} skipped={len(result.skipped)} errors={len(result.errors)} failures={len(result.failures)}")
     else:
         CHECKS["synthetic_auth_and_no_write"] = {"status": "BLOCKED", "detail": "syntax failed"}
@@ -42,7 +42,7 @@ def main():
     failed = any(value["status"] != "PASS" for value in offline_checks.values())
     print(json.dumps({"version": "F05-F06-BATCH-QA-v1", "checks": CHECKS,
                       "BATCH_QA": "FAIL" if failed else "PASS_OFFLINE_ONLY",
-                      "NEXT_GATE": "INDEPENDENT_REVIEW_AND_APPROVED_PRIVATE_STAGING"},
+                      "NEXT_GATE": ("REPAIR_OFFLINE_QA" if failed else "INDEPENDENT_REVIEW_AND_APPROVED_PRIVATE_STAGING")},
                      indent=2))
     return 1 if failed else 0
 
