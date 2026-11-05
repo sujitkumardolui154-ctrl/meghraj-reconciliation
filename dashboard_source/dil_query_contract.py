@@ -80,7 +80,7 @@ def evidence_envelope(*, records, principal_uid, source_version):
 
 def decimal_total(values):
     """Exact bounded arithmetic on plain decimal strings; no float conversion."""
-    if not isinstance(values, (list, tuple)) or len(values) > MAX_EVIDENCE:
+    if not isinstance(values, (list, tuple)) or not values or len(values) > MAX_EVIDENCE:
         raise QueryDenied("AMOUNT_LIMIT")
     total = Decimal("0")
     parsed = []
