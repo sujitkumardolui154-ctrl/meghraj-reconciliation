@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r staging/railway_public/requirements.txt
-      - run: python -m unittest -v test_app
+      - run: python -m unittest -v test_app test_priority_tasks
         working-directory: staging/railway_public
       - name: Ensure no automatic external deployment
         run: echo 'RAILWAY_DEPLOYMENT=MANUAL; GOOGLE_CLOUD_PRODUCTION=UNCHANGED'
