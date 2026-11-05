@@ -6,6 +6,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    volumes:
+      - priority_task_db:/var/lib/sbi-priority
     expose:
       - "8080"
     networks: [private_web]
@@ -28,3 +30,4 @@ networks:
 volumes:
   caddy_data:
   caddy_config:
+  priority_task_db:
