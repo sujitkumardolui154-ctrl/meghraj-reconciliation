@@ -38,7 +38,8 @@ def main():
     for name in ("real_firebase_login", "live_financial_parity", "production_cutover"):
         CHECKS[name] = {"status": "BLOCKED", "detail": "requires independent approval; not attempted"}
     offline_checks = {name: value for name, value in CHECKS.items()
-                      if name.startswith("syntax:") or name == "synthetic_auth_and_no_write"}\n    failed = any(value["status"] != "PASS" for value in offline_checks.values())
+                      if name.startswith("syntax:") or name == "synthetic_auth_and_no_write"}
+    failed = any(value["status"] != "PASS" for value in offline_checks.values())
     print(json.dumps({"version": "F05-F06-BATCH-QA-v1", "checks": CHECKS,
                       "BATCH_QA": "FAIL" if failed else "PASS_OFFLINE_ONLY",
                       "NEXT_GATE": "INDEPENDENT_REVIEW_AND_APPROVED_PRIVATE_STAGING"},
