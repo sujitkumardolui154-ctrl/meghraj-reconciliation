@@ -56,9 +56,11 @@ basic
 EOF
 }
 # Quotes/backslashes/newlines in the credential would break curl's config grammar.
-if [[ "${PREVIEW_USERNAME}${PREVIEW_PASSWORD}" == *[\"\\$'\n'$'\r']* ]]; then
-  echo "ATTEST=BLOCKED REASON=UNSUPPORTED_CREDENTIAL_CHARACTERS"; exit 2
-fi
+case "${PREVIEW_USERNAME}${PREVIEW_PASSWORD}" in
+  *\\*|*\"*|*$'\\n'*|*$'\\r'*)
+    echo "ATTEST=BLOCKED REASON=UNSUPPORTED_CREDENTIAL_CHARACTERS"; exit 2;;
+esac
+
 auth_check() {
   local label="$1" path="$2" expected="$3" got
   got="$(auth_curl --output /dev/null --write-out '%{http_code}' "${STAGING_URL}${path}")"
