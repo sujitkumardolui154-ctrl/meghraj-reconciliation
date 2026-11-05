@@ -68,6 +68,10 @@ class DilQueryContractTests(unittest.TestCase):
             principal_uid="owner-1", source_version="v1"
         )[0]["source_id"], "INV-001")
 
+    def test_empty_evidence_cannot_be_presented_as_verified(self):
+        with self.assertRaisesRegex(QueryDenied, "EVIDENCE_LIMIT"):
+            evidence_envelope(records=[], principal_uid="owner-1", source_version="v1")
+
     def test_cross_user_evidence_denied(self):
         with self.assertRaises(QueryDenied):
             evidence_envelope(records=[{"authorized_uid": "other", "authorized": True,
