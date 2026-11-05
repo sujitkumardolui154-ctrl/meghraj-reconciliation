@@ -51,3 +51,23 @@ def row_layout(row):
 
 def invoice_number(row):
     return row["original_values"][row_layout(row)[1]]
+
+
+def export_values_53(row):
+    """Project an approved source layout into the legacy 53-column report.
+
+    Preserve both original Branch Code fields in the 35-column source.
+    Synthetic/model fields are blank; never fabricate reconciliation data.
+    """
+    width, _, _, _, _ = row_layout(row)
+    values = row["original_values"]
+    if width == 53:
+        return list(values)
+    output = [""] * 53
+    output[:8] = values[:8]
+    if width == 35:
+        output[10] = values[8]  # Second original Branch Code
+        output[11:37] = values[9:]
+    else:  # Approved 34-column source
+        output[11:37] = values[8:]
+    return output
