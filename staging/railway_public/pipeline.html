@@ -56,6 +56,27 @@ button{font:inherit;cursor:pointer}.btn{padding:10px 16px;border-radius:10px;bor
 .priority-summary strong{color:#ffe8bf}
 @media(max-width:1050px){.priority-board{grid-template-columns:repeat(2,minmax(0,1fr))}.priority-card.p0{grid-column:1/-1}}
 @media(max-width:690px){.priority-board{grid-template-columns:1fr}.priority-card.p0{grid-column:auto}.priority-card{padding:17px}.priority-gate-list li{flex-wrap:wrap}}
+
+/* Owner project-task editor: separate from financial database and source task register. */
+.priority-edit-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.priority-editor{padding:20px;margin:12px 0 16px;border:1px solid #496082;border-radius:13px;background:#12213a}
+.priority-editor h3{margin:0 0 9px;font-size:16px}
+.priority-editor p{color:var(--muted);font-size:13px}
+.priority-editor form{display:grid;gap:12px;max-width:850px}
+.priority-editor label{display:grid;gap:5px;font-size:12px;color:#d2e4ff;font-weight:700}
+.priority-editor input,.priority-editor select,.priority-editor textarea{border:1px solid #497098;border-radius:8px;background:#0c172b;color:#f0f7ff;padding:11px 12px;font:inherit;width:100%}
+.priority-editor textarea{min-height:96px;resize:vertical}
+.priority-editor .edit-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.priority-editor button:disabled,.priority-edit-tools button:disabled{opacity:.48;cursor:not-allowed}
+.priority-owner-items{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.priority-owner-item{padding:15px 16px;min-width:0;border:1px solid #38516f;border-radius:12px;background:#102139}
+.priority-owner-item h4{font-size:14px;margin:8px 0;overflow-wrap:anywhere}
+.priority-owner-item p{color:var(--muted);font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.priority-owner-item .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;color:#b1c9e8;font-size:11px}
+.priority-owner-item .edit-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.priority-owner-item button{padding:7px 11px;font-size:12px}
+#priority-owner-status{min-height:20px}
+@media(max-width:690px){.priority-editor{padding:15px}.priority-owner-items{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -80,9 +101,29 @@ button{font:inherit;cursor:pointer}.btn{padding:10px 16px;border-radius:10px;bor
   </section>
 
   <section class="section" id="priorities" aria-labelledby="priorities-title">
-    <div class="section-head"><h2 id="priorities-title">Project priorities &amp; release monitor</h2><p>What matters now · What can wait · No new release stages</p></div>
+    <div class="section-head"><h2 id="priorities-title">Project priorities &amp; release monitor</h2><div class="priority-edit-tools"><p>What matters now · What can wait</p><button class="btn" id="priority-edit-toggle" type="button" disabled aria-controls="priority-owner-editor" aria-expanded="false">Edit / Add Task</button></div></div>
     <div class="priority-summary" role="status"><strong id="priority-release-state">Reporting release: independent verification pending.</strong>
       A green source test never authorizes a deployment, financial processing or database change.</div>
+
+    <div class="panel priority-editor" id="priority-owner-editor" hidden>
+      <h3>Owner task editor <span class="bubble neutral">Separate task database</span></h3>
+      <p>Only owner-added project tasks can be edited here. The six mandatory P0 release gates, approved 92-task register, and financial database remain protected. Task descriptions are published to a public GitHub issue. Do not enter customer names, bank details or credentials.</p>
+      <form id="priority-owner-unlock-form">
+        <label for="priority-owner-password">Owner editing key (additional to preview login)</label>
+        <input id="priority-owner-password" type="password" autocomplete="off" required minlength="32" placeholder="Enter your separate task-editor key">
+        <div class="edit-actions"><button type="submit" class="btn">Unlock editing</button><button type="button" id="priority-owner-lock" class="btn">Lock / Close</button></div>
+      </form>
+      <form id="priority-task-form" hidden>
+        <h3 id="priority-task-form-title">Add a new project task</h3>
+        <label for="priority-task-phase">Priority phase<select id="priority-task-phase" required><option value="P0">P0 — essential release tasks</option><option value="P1">P1 — improvements after release</option><option value="P2">P2 — later / separate release</option></select></label>
+        <label for="priority-task-name">Task title<input id="priority-task-name" type="text" required minlength="5" maxlength="140" placeholder="Describe the work to be done"></label>
+        <label for="priority-task-description">Task details<textarea id="priority-task-description" maxlength="1500" placeholder="Scope, evidence required and next action (no private financial data)"></textarea></label>
+        <label for="priority-task-state">Owner work status<select id="priority-task-state"><option value="pending">Pending</option><option value="in_progress">In progress</option><option value="done">Done (owner note, not release approval)</option></select></label>
+        <label><input id="priority-public-confirm" type="checkbox" required> I understand this task text will be published to a public GitHub Issue.</label>
+        <div class="edit-actions"><button type="submit" class="btn" id="priority-save">Save to task DB &amp; GitHub</button><button type="button" id="priority-task-cancel" class="btn">Cancel edit</button></div>
+      </form>
+      <p id="priority-owner-status" role="status" aria-live="polite"></p>
+    </div>
     <div class="priority-board">
       <article class="panel priority-card p0" aria-labelledby="priority-p0-title">
         <span class="priority-label">P0 · Essential — complete first</span>
@@ -124,6 +165,12 @@ button{font:inherit;cursor:pointer}.btn{padding:10px 16px;border-radius:10px;bor
         <div class="priority-foot"><span class="bubble bad">FINANCE RESTRICTED</span> Payment matching, allocations and live writes remain disabled.</div>
       </article>
     </div>
+
+    <div class="section-head" style="margin-top:22px">
+      <h3>Owner-added priority tasks</h3><p id="priority-task-count">Checking task database…</p>
+    </div>
+    <div id="priority-owner-items" class="priority-owner-items" aria-live="polite"><div class="empty">Checking saved tasks…</div></div>
+    <p class="sub">Each owner task is stored in a separate, persistent non-financial database and mirrored to a public GitHub Issue when synchronization succeeds. “GitHub pending” is not success. Manual task status is never financial or deployment certification.</p>
     <p class="sub">Priority order is the agreed development plan. Source checks refresh with the existing GitHub pipeline feed (90-second browser refresh, up to 5-minute server cache); real deployment approvals require independent evidence.</p>
   </section>
   <section class="section" id="pipeline">
@@ -215,6 +262,109 @@ button{font:inherit;cursor:pointer}.btn{padding:10px 16px;border-radius:10px;bor
     // Never promote release state solely from Actions status or a task checkbox.
     $("priority-release-state").textContent="Reporting release: independent verification pending.";
   }
+
+  // Dedicated project task management (not the financial data/update API).
+  var ownerKey="", ownerTasks=[], taskEditingId=null, editorConfigured=false;
+  function ownerMessage(message){ $("priority-owner-status").textContent=message; }
+  function resetTaskForm(){
+    taskEditingId=null;$("priority-task-form-title").textContent="Add a new project task";
+    $("priority-task-form").reset();$("priority-task-phase").value="P0";
+  }
+  function renderOwnerTasks(){
+    var box=$("priority-owner-items");clear(box);
+    $("priority-task-count").textContent=ownerTasks.length+" owner-added tasks · Source: separate task database";
+    if(!ownerTasks.length){box.appendChild(txt("div","No owner-added tasks yet. Use Edit / Add Task after administrator setup.","empty"));return;}
+    ownerTasks.forEach(function(t){
+      var item=txt("article","","priority-owner-item");
+      var meta=txt("div","","meta");
+      meta.appendChild(txt("span",t.priority,"bubble "+(t.priority==="P0"?"warn":"neutral")));
+      meta.appendChild(txt("span",t.status.replaceAll("_"," ")));
+      meta.appendChild(txt("span",t.sync_state==="synced"?"GitHub synced":"GitHub pending","bubble "+(t.sync_state==="synced"?"ok":"warn")));
+      item.appendChild(meta);item.appendChild(txt("h4",t.title));
+      if(t.details)item.appendChild(txt("p",t.details));
+      var actions=txt("div","","edit-actions");
+      if(t.github_url)actions.appendChild(safeGithubLink(t.github_url,"GitHub issue #"+t.github_number));
+      if(ownerKey){
+        var edit=txt("button","Edit task");edit.type="button";edit.onclick=function(){
+          taskEditingId=t.id;$("priority-task-form").hidden=false;$("priority-task-form-title").textContent="Edit "+t.id;
+          $("priority-task-phase").value=t.priority;$("priority-task-name").value=t.title;
+          $("priority-task-description").value=t.details;$("priority-task-state").value=t.status;
+          $("priority-public-confirm").checked=false;
+          $("priority-task-name").focus();ownerMessage("Editing saved task "+t.id+". Mandatory release gates cannot be edited.");
+        };actions.appendChild(edit);
+        if(t.sync_state!=="synced"){var retry=txt("button","Retry GitHub sync");retry.type="button";
+          retry.onclick=async function(){await writeOwnerTask("/api/priority-tasks/"+encodeURIComponent(t.id)+"/sync","POST",{});};
+          actions.appendChild(retry);}
+      }
+      item.appendChild(actions);box.appendChild(item);
+    });
+  }
+  async function loadOwnerTasks(){
+    try{
+      var resp=await fetch("/api/priority-tasks",{cache:"no-store",credentials:"same-origin"});
+      if(!resp.ok)throw new Error("Task database HTTP "+resp.status);
+      var data=await resp.json();
+      if(!data||!Array.isArray(data.tasks))throw new Error("Invalid task response");
+      ownerTasks=data.tasks;editorConfigured=data.editor_available===true;
+      $("priority-edit-toggle").disabled=!editorConfigured;
+      $("priority-edit-toggle").title=editorConfigured?"Owner task editor":"Owner editor needs server configuration and persistent storage";
+      renderOwnerTasks();
+    }catch(e){ownerTasks=[];editorConfigured=false;$("priority-edit-toggle").disabled=true;
+      $("priority-task-count").textContent="Task database unavailable";$("priority-owner-items").textContent="Saved owner tasks cannot be verified. No sync is assumed.";}
+  }
+  async function writeOwnerTask(path,method,data){
+    if(!ownerKey){ownerMessage("Unlock owner editing first.");return;}
+    $("priority-save").disabled=true;
+    try{
+      var r=await fetch(path,{method:method,credentials:"same-origin",cache:"no-store",
+        headers:{"Content-Type":"application/json","X-SBI-Task-Owner":ownerKey},
+        body:JSON.stringify(data)});
+      var out=await r.json();
+      if(!r.ok && r.status!==202)throw new Error(out.error||"Task save failed (HTTP "+r.status+")");
+      ownerMessage(out.message||"Task saved. Verify GitHub sync status below.");
+      resetTaskForm();await loadOwnerTasks();
+    }catch(e){ownerMessage("Task operation failed: "+e.message);}
+    finally{$("priority-save").disabled=false;}
+  }
+  $("priority-edit-toggle").addEventListener("click",function(){
+    var panel=$("priority-owner-editor");panel.hidden=!panel.hidden;
+    this.setAttribute("aria-expanded",String(!panel.hidden));
+    if(!panel.hidden){$("priority-owner-password").focus();ownerMessage("Enter your separate owner editing key to unlock.");}
+  });
+  $("priority-owner-lock").addEventListener("click",function(){
+    ownerKey="";$("priority-owner-password").value="";
+    $("priority-task-form").hidden=true;$("priority-owner-unlock-form").hidden=false;
+    $("priority-owner-editor").hidden=true;$("priority-edit-toggle").setAttribute("aria-expanded","false");
+    resetTaskForm();renderOwnerTasks();
+  });
+  $("priority-owner-unlock-form").addEventListener("submit",async function(event){
+    event.preventDefault();
+    var key=$("priority-owner-password").value;
+    if(key.length<32){ownerMessage("Owner key must be at least 32 characters.");return;}
+    try{
+      var r=await fetch("/api/priority-tasks/unlock",{method:"POST",cache:"no-store",credentials:"same-origin",
+        headers:{"Content-Type":"application/json","X-SBI-Task-Owner":key},body:"{}"});
+      if(!r.ok)throw new Error("Owner editing not authorized (HTTP "+r.status+")");
+      ownerKey=key;$("priority-owner-password").value="";
+      this.hidden=true;$("priority-task-form").hidden=false;
+      resetTaskForm();ownerMessage("Owner editing enabled. Add a task or select Edit on an existing owner task.");
+      renderOwnerTasks();
+    }catch(e){ownerKey="";ownerMessage(e.message);}
+  });
+  $("priority-task-cancel").addEventListener("click",function(){resetTaskForm();ownerMessage("Ready to add a new task.");});
+  $("priority-task-form").addEventListener("submit",async function(event){
+    event.preventDefault();
+    if(!$("priority-public-confirm").checked){ownerMessage("Confirm that the task text may be public on GitHub.");return;}
+    var data={priority:$("priority-task-phase").value,status:$("priority-task-state").value,
+      title:$("priority-task-name").value,details:$("priority-task-description").value};
+    var url="/api/priority-tasks", method="POST";
+    if(taskEditingId){
+      var currentTask=ownerTasks.find(function(t){return t.id===taskEditingId;});
+      if(!currentTask){ownerMessage("Task changed. Reload before editing.");return;}
+      data.expected_revision=currentTask.revision;url+="/"+encodeURIComponent(taskEditingId);method="PATCH";
+    }
+    await writeOwnerTask(url,method,data);
+  });
   function issue(id,title,description){
     var el=txt("div","","issue");var sign=txt("span","!","symbol");sign.setAttribute("aria-hidden","true");
     var body=document.createElement("div");body.appendChild(txt("small",id));body.appendChild(txt("strong",title));body.appendChild(txt("p",description));
@@ -312,7 +462,7 @@ button{font:inherit;cursor:pointer}.btn{padding:10px 16px;border-radius:10px;bor
       var response=await fetch("/api/pipeline/status",{method:"GET",credentials:"same-origin",cache:"no-store"});
       if(!response.ok)throw new Error("Monitoring API returned HTTP "+response.status);
       var data=await response.json();if(!data || typeof data!=="object" || !data.sources)throw new Error("Unexpected monitoring response");
-      render(data);
+      render(data);await loadOwnerTasks();
     }catch(err){
       $("data-mode").textContent="● Source unavailable";
       $("last-sync").textContent="Refresh failed: "+err.message;
