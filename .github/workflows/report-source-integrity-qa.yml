@@ -6,6 +6,9 @@ on:
       - 'backend_source/report_api.py'
       - 'backend_source/report_source_integrity.py'
       - 'backend_source/test_report_source_integrity.py'
+      - 'backend_source/test_report_header_contract.py'
+      - 'backend_source/invoice_source_schema.py'
+      - 'backend_source/invoice_import_contract.json'
       - '.github/workflows/report-source-integrity-qa.yml'
   push:
     branches:
@@ -14,6 +17,9 @@ on:
       - 'backend_source/report_api.py'
       - 'backend_source/report_source_integrity.py'
       - 'backend_source/test_report_source_integrity.py'
+      - 'backend_source/test_report_header_contract.py'
+      - 'backend_source/invoice_source_schema.py'
+      - 'backend_source/invoice_import_contract.json'
       - '.github/workflows/report-source-integrity-qa.yml'
 
 permissions:
@@ -29,7 +35,7 @@ jobs:
       - name: Run offline Python integrity regression
         run: |
           cd backend_source
-          python3 -m unittest -v test_report_source_integrity
+          python3 -m unittest -v test_report_source_integrity test_report_header_contract
       - name: Verify syntax without importing cloud modules
         run: |
           python3 -m py_compile backend_source/report_api.py backend_source/report_source_integrity.py
