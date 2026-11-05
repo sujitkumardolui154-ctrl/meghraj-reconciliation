@@ -52,30 +52,51 @@ jobs:
           python -m unittest discover -s tests -p 'test_reporting_staging_approval.py' -v
           python -m unittest discover -s tests -p 'test_reporting_canary_package.py' -v
           python -m unittest discover -s tests -p 'test_private_reporting_evidence.py' -v
-      - name: Check candidate prerequisites
+      - name: Check candidate source prerequisites (no approval secret in PR CI)
         id: readiness
         shell: bash
-        env:
-          REPORTING_APPROVAL_JSON: ${{ secrets.REPORTING_APPROVAL_JSON }}
         run: |
-          # Reporting-only candidate has an independent gate. It MUST NOT
-          # consume or bypass the separate financial-engine certification.
-          # The independent approval must be provisioned as a protected secret,
-          # not committed to the public repository.
+          set -euo pipefail
           candidate=deployment/reporting_staging
           if [[ -f "$candidate/Dockerfile" &&
                 -f "$candidate/requirements.txt" &&
-                -n "$REPORTING_APPROVAL_JSON" ]]; then
-            python tools/verify_reporting_staging_approval.py
+                -f "$candidate/app.py" ]]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Private reporting candidate image and independently reviewed reporting evidence are missing; deployment remains disabled."
+            echo "::notice::Private reporting candidate source is missing."
           fi
 
-  zero-traffic-candidate:
+  private-approval-gate:
     needs: consolidated-source-qa
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && needs.consolidated-source-qa.outputs.deploy_ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: staging
+    permissions:
+      contents: read
+    outputs:
+      approved: ${{ steps.verify.outputs.approved }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify protected independent staging approval
+        id: verify
+        env:
+          REPORTING_APPROVAL_JSON: ${{ secrets.REPORTING_APPROVAL_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$REPORTING_APPROVAL_JSON" ]]; then
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::REPORTING_APPROVAL_JSON not configured in protected staging environment. Deployment blocked."
+            exit 0
+          fi
+          python tools/verify_reporting_staging_approval.py
+          echo "approved=true" >> "$GITHUB_OUTPUT"
+
+  zero-traffic-candidate:
+    needs: [consolidated-source-qa, private-approval-gate]
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && needs.private-approval-gate.outputs.approved == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 35
     environment: staging
