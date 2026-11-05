@@ -43,6 +43,7 @@ class LoginAwsMergeContract(unittest.TestCase):
     def test_aws_docker_remains_separate_from_cloud_login(self):
         dockerfile = self.read(AWS, "Dockerfile")
         self.assertIn("COPY app.py pipeline_data.py pipeline.html priority_tasks.py", dockerfile)
+        self.assertIn("ui_preview.html ui_preview.css", dockerfile)
         self.assertNotIn("dashboard_sessions.py", dockerfile)
         self.assertNotIn("firebase_admin", self.read(AWS, "app.py"))
 
