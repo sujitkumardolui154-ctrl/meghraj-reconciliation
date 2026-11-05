@@ -57,7 +57,7 @@ def evidence_envelope(*, records, principal_uid, source_version):
         raise QueryDenied("AUTH_REQUIRED")
     if not isinstance(source_version, str) or not SAFE_ID.fullmatch(source_version):
         raise QueryDenied("SOURCE_VERSION_REQUIRED")
-    if not isinstance(records, list) or len(records) > MAX_EVIDENCE:
+    if not isinstance(records, list) or not records or len(records) > MAX_EVIDENCE:
         raise QueryDenied("EVIDENCE_LIMIT")
     result = []
     seen = set()
