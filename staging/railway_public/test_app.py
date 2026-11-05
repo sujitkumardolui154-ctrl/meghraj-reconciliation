@@ -94,6 +94,32 @@ class PreviewTests(unittest.TestCase):
         self.assertIn(b"running-version", response.data)
 
 
+    def test_preview_priority_monitor_is_protected_clear_and_source_only(self):
+        self.assertEqual(self.client.get("/#priorities").status_code, 401)
+        page = self.client.get("/", headers=self.auth())
+        self.assertEqual(page.status_code, 200)
+        html = page.get_data(as_text=True)
+        self.assertEqual(html.count('id="priorities"'), 1)
+        self.assertIn('href="#priorities"', html)
+        self.assertLess(html.index('id="priorities"'), html.index('id="pipeline"'))
+        for heading in ("P0 · Essential — complete first",
+                        "P1 · After first release",
+                        "P2 · Defer / separate release",
+                        "Secure dashboard login",
+                        "Complete and consistent source data",
+                        "Backup &amp; rollback evidence",
+                        "Independent release approval",
+                        "Full v2.51 reconciliation engine"):
+            with self.subTest(heading=heading):
+                self.assertIn(heading, html)
+        # Source QA can update its own badge but cannot certify live finance.
+        self.assertIn('id="priority-qa-badge"', html)
+        self.assertIn('renderPriorities(data)', html)
+        self.assertIn('Reporting release: independent verification pending.', html)
+        self.assertIn('real invoice-value parity', html)
+        self.assertIn('Payment matching, allocations and live writes remain disabled.', html)
+        self.assertNotIn('fetch("/api/reconciliation/', html)
+
     def test_git_change_log_does_not_claim_code_deployed(self):
         import pipeline_data
         sha = "b" * 40
