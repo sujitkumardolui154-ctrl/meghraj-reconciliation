@@ -5,6 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend_source"))
 from invoice_source_schema import HEADERS_34, HEADERS_35, HEADERS_53, export_values_53
+from credit_note_report import generate_credit_note_report_from_source_layout, HEADERS as CREDIT_HEADERS
 
 
 class HeaderProjectionTests(unittest.TestCase):
@@ -41,6 +42,29 @@ class HeaderProjectionTests(unittest.TestCase):
         headers[8], headers[9] = headers[9], headers[8]
         with self.assertRaises(ValueError):
             export_values_53({"original_values": ["x"] * 35, "original_headers": headers})
+
+
+    def test_35_credit_note_report_keeps_18_headers_and_correct_values(self):
+        values = [f"v{i}" for i in range(35)]
+        values[18] = "CREDIT NOTE"
+        row = {"original_headers": HEADERS_35, "original_values": values}
+        report, summary = generate_credit_note_report_from_source_layout(
+            [row], approved_headers=HEADERS_35
+        )
+        self.assertEqual(len(CREDIT_HEADERS), 18)
+        self.assertEqual(list(report[0]), CREDIT_HEADERS)
+        self.assertEqual(report[0]["Invoice No"], values[10])
+        self.assertEqual(report[0]["Branch Code"], values[6])
+        self.assertEqual(report[0]["Credi note"], "CREDIT NOTE")
+        self.assertEqual(summary["source_projection"], "ORIGINAL_35_POSITIONAL")
+        self.assertFalse(summary["independent_source_approval"])
+
+    def test_35_credit_note_header_mismatch_denied(self):
+        row = {"original_headers": HEADERS_35, "original_values": ["x"] * 35}
+        with self.assertRaises(ValueError):
+            generate_credit_note_report_from_source_layout(
+                [row], approved_headers=HEADERS_34
+            )
 
 
 if __name__ == "__main__":
