@@ -4,6 +4,7 @@ Independently repeated labels are intentionally retained: this test MUST NOT
 derive its approved expected headers from invoice_import_contract.json.
 Synthetic and source-only: no external access or invoice records.
 """
+import ast
 import csv
 import io
 import json
@@ -89,6 +90,26 @@ class Legacy53HeaderFreezeTest(unittest.TestCase):
         csv.writer(stream).writerow(APPROVED_LEGACY_53_HEADERS)
         stream.seek(0)
         self.assertEqual(next(csv.reader(stream)), APPROVED_LEGACY_53_HEADERS)
+
+    def test_legacy_snapshot_endpoint_rejects_any_header_drift(self):
+        # Static AST check avoids importing a live Firestore-backed Flask app.
+        tree = ast.parse(Path(__file__).with_name("report_api.py").read_text())
+        function = next(node for node in tree.body
+                        if isinstance(node, ast.FunctionDef)
+                        and node.name == "handle_snapshot_reports")
+        comparisons = [
+            node for node in ast.walk(function)
+            if isinstance(node, ast.Compare)
+            and isinstance(node.left, ast.Name)
+            and node.left.id == "headers"
+            and len(node.ops) == 1
+            and isinstance(node.ops[0], ast.NotEq)
+            and len(node.comparators) == 1
+            and isinstance(node.comparators[0], ast.Name)
+            and node.comparators[0].id == "HEADERS_53"
+        ]
+        self.assertEqual(len(comparisons), 1,
+                         "Legacy snapshot exporter must fail closed on exact header mismatch")
 
     def test_35_source_projection_does_not_replace_53_csv_headers(self):
         projected = export_values_53({
