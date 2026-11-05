@@ -1,0 +1,103 @@
+name: G69 AMD64 image archive (no deployment)
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/g69-amd64-image-build.yml"
+      - "staging/railway_public/**"
+      - "tests/test_g_*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-attest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      PINNED_SHA: 1ff9658af246a66fdc3f467da403795b09abd1e0
+      IMAGE: sbi-g69-ui-stage:1ff9658
+    steps:
+      - name: Checkout immutable approved source
+        uses: actions/checkout@v4
+        with:
+          ref: 1ff9658af246a66fdc3f467da403795b09abd1e0
+          persist-credentials: false
+
+      - name: Verify exact source revision and AMD64 runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$PINNED_SHA"
+          test "$(uname -m)" = "x86_64"
+          test -f staging/railway_public/ui_preview.html
+          test -f staging/railway_public/ui_preview.css
+          echo "PINNED_SOURCE_SHA=$PINNED_SHA"
+          echo "BUILD_PLATFORM=linux/amd64"
+
+      - name: Python QA environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run UI source and authentication regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -r staging/railway_public/requirements.txt
+          python -m unittest discover -s tests -p 'test_g_login_aws_merge_contract.py' -v
+          python -m unittest discover -s tests -p 'test_g_aws_ui_preview.py' -v
+          python -m unittest discover -s tests -p 'test_g_aws_ui_preview_http.py' -v
+          python -m py_compile staging/railway_public/app.py
+
+      - name: Build image only (no push and no AWS access)
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --platform linux/amd64 \
+            --build-arg "SBI_SOURCE_SHA=$PINNED_SHA" \
+            --build-arg SBI_RELEASE_CHANNEL=aws-staging \
+            --tag "$IMAGE" \
+            --file staging/railway_public/Dockerfile \
+            staging/railway_public
+          test "$(docker image inspect --format '{{.Architecture}}' "$IMAGE")" = amd64
+          test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$IMAGE")" = "$PINNED_SHA"
+
+      - name: Verify container without network or financial access
+        shell: bash
+        run: |
+          set -euo pipefail
+          id="$(docker run -d --rm --network none --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid --cap-drop ALL \
+            --security-opt no-new-privileges --memory 128m \
+            -e PREVIEW_USERNAME=g69-qa \
+            -e PREVIEW_PASSWORD=synthetic-qa-only-password-123456 "$IMAGE")"
+          trap 'docker rm -f "$id" >/dev/null 2>&1 || true' EXIT
+          sleep 3
+          docker exec "$id" python -c 'from app import app; c=app.test_client(); assert c.get("/ui-preview").status_code==401; assert c.get("/ui-preview.css").status_code==401; assert c.get("/healthz").json["financial_data_connected"] is False'
+          echo "CONTAINER_NETWORK_NONE=PASS"
+          echo "ANONYMOUS_DENIAL=PASS"
+          echo "FINANCIAL_DATA_DISCONNECTED=PASS"
+
+      - name: Generate immutable archive, provenance and SHA256
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          docker save "$IMAGE" | gzip -1 > dist/sbi-g69-ui-stage-1ff9658-linux-amd64.tar.gz
+          (cd dist && sha256sum sbi-g69-ui-stage-1ff9658-linux-amd64.tar.gz > SHA256SUMS)
+          (cd dist && sha256sum --check SHA256SUMS)
+          printf 'source_sha=%s\nimage_tag=%s\nplatform=linux/amd64\nchannel=aws-staging\nfinancial_api_connected=false\n' \
+            "$PINNED_SHA" "$IMAGE" > dist/BUILD_PROVENANCE.txt
+          docker image inspect --format '{{.Id}}' "$IMAGE" > dist/IMAGE_ID.txt
+          gzip -t dist/sbi-g69-ui-stage-1ff9658-linux-amd64.tar.gz
+          echo "ARCHIVE_SHA256_VERIFIED=PASS"
+
+      - name: Upload verified Docker image archive (no deploy)
+        uses: actions/upload-artifact@v4
+        with:
+          name: g69-linux-amd64-image-1ff9658
+          path: dist/
+          if-no-files-found: error
+          retention-days: 3
