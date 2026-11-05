@@ -87,7 +87,7 @@ def decimal_total(values):
         # Reject exponential notation, huge integers and precision bombs before
         # Decimal parsing or formatting. Amounts are not rounded or rewritten.
         if (not isinstance(value, str) or len(value) > 64
-                or not re.fullmatch(r"[+-]?[0-9]{1,18}(?:\\.[0-9]{1,12})?", value)):
+                or not re.fullmatch(r"[+-]?[0-9]{1,18}(?:\.[0-9]{1,12})?", value)):
             raise QueryDenied("INVALID_AMOUNT")
         try:
             number = Decimal(value)
