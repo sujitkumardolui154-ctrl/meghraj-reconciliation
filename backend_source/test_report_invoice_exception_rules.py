@@ -5,6 +5,7 @@ from report_invoice_exception_rules import (
     CONDITIONAL_MULTIPLE_ALLOCATION_INVOICES,
     FORCED_ERROR_INVOICES,
     invoice_report_error_reason,
+    exception_evidence_coverage,
     route_payment_report,
 )
 
@@ -113,6 +114,39 @@ class OwnerInvoiceExceptionRoutingTest(unittest.TestCase):
         snapshot = dict(row)
         route_payment_report(row, "ok")
         self.assertEqual(row, snapshot)
+
+    def test_exception_evidence_coverage_discloses_only_counts(self):
+        rows = [
+            {"invoice_no": "MXP/2025-2026-04"},
+            {"invoice_no": "MXP12345",
+             "verified_allocation_count": 2,
+             "allocation_verification": "VERIFIED"},
+            {"invoice_no": "MXP6789",
+             "verified_reconciliation_stage_count": 2,
+             "reconciliation_stage_verification": "VERIFIED",
+             "reconciliation_conflict": True,
+             "conflict_verification": "VERIFIED"},
+            {"invoice_no": "MXP99999",
+             "allocation_verification": "PENDING"},
+        ]
+        result = exception_evidence_coverage(rows)
+        self.assertEqual(result, {
+            "total_rows": 4,
+            "verified_allocation_evidence_rows": 1,
+            "verified_stage_evidence_rows": 1,
+            "verified_conflict_evidence_rows": 1,
+            "rule_routed_error_rows": 3,
+        })
+        self.assertNotIn("MXP12345", str(result))
+
+    def test_no_evidence_reports_zero_coverage(self):
+        result = exception_evidence_coverage(
+            [{"invoice_no": "MXP99998"}]
+        )
+        self.assertEqual(result["total_rows"], 1)
+        self.assertEqual(result["verified_allocation_evidence_rows"], 0)
+        self.assertEqual(result["verified_stage_evidence_rows"], 0)
+        self.assertEqual(result["verified_conflict_evidence_rows"], 0)
 
     def test_exact_owner_invoice_rules(self):
         self.assertEqual(FORCED_ERROR_INVOICES, {"MXP/2025-2026-04"})
