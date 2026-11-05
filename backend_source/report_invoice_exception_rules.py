@@ -14,9 +14,10 @@ CONDITIONAL_MULTIPLE_ALLOCATION_INVOICES = frozenset({
 def invoice_report_error_reason(row):
     """Return a report exception reason or None.
 
-    A conditional invoice is escalated only on explicit, verified allocation
-    evidence from an authorized source, not on a duplicate invoice number or
-    credit-note narration. Unverified evidence never clears any existing error.
+    All invoice numbers are eligible for error routing on explicit, verified
+    multiple allocations, reconciliation stages or conflicts. Duplicate invoice
+    numbers and credit-note narration alone are not evidence of these events.
+    Unverified evidence never clears any existing error.
     """
     if not isinstance(row, dict):
         raise ValueError("Invoice report row must be a dictionary")
@@ -28,11 +29,23 @@ def invoice_report_error_reason(row):
     if invoice in FORCED_ERROR_INVOICES:
         return "OWNER_FLAGGED_INVOICE_COUNT_ERROR"
 
-    if invoice in CONDITIONAL_MULTIPLE_ALLOCATION_INVOICES:
-        count = row.get("verified_allocation_count")
-        verified = row.get("allocation_verification") == "VERIFIED"
-        if verified and type(count) is int and count > 1:
-            return "VERIFIED_MULTIPLE_ALLOCATION"
+    # Apply the same rule to ANY invoice: verified multi-allocation or
+    # multi-stage reconciliation warrants Error Report review.
+    allocation_count = row.get("verified_allocation_count")
+    if (row.get("allocation_verification") == "VERIFIED"
+            and type(allocation_count) is int and allocation_count > 1):
+        return "VERIFIED_MULTIPLE_ALLOCATION"
+
+    stage_count = row.get("verified_reconciliation_stage_count")
+    if (row.get("reconciliation_stage_verification") == "VERIFIED"
+            and type(stage_count) is int and stage_count > 1):
+        return "VERIFIED_MULTISTAGE_RECONCILIATION"
+
+    # Only an affirmative, explicitly verified conflict is actionable;
+    # missing/unknown conflict status is not proof of a conflict.
+    if (row.get("conflict_verification") == "VERIFIED"
+            and row.get("reconciliation_conflict") is True):
+        return "VERIFIED_RECONCILIATION_CONFLICT"
     return None
 
 
