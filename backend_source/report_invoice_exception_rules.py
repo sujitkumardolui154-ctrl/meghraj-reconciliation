@@ -55,3 +55,36 @@ def route_payment_report(row, original_kind):
         raise ValueError("Unsupported payment report category")
     reason = invoice_report_error_reason(row)
     return ("error-value" if reason else original_kind), reason
+
+
+def exception_evidence_coverage(rows):
+    """Aggregate only: never exposes invoice identifiers or financial values.
+
+    Use these counts to avoid presenting unverified exception detection as
+    completed live reconciliation screening.
+    """
+    from collections import Counter
+
+    counts = Counter()
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("Invalid source row in evidence coverage")
+        counts["total_rows"] += 1
+        if row.get("allocation_verification") == "VERIFIED":
+            counts["verified_allocation_evidence_rows"] += 1
+        if row.get("reconciliation_stage_verification") == "VERIFIED":
+            counts["verified_stage_evidence_rows"] += 1
+        if row.get("conflict_verification") == "VERIFIED":
+            counts["verified_conflict_evidence_rows"] += 1
+        reason = invoice_report_error_reason(row)
+        if reason:
+            counts["rule_routed_error_rows"] += 1
+    return {
+        key: counts[key] for key in (
+            "total_rows",
+            "verified_allocation_evidence_rows",
+            "verified_stage_evidence_rows",
+            "verified_conflict_evidence_rows",
+            "rule_routed_error_rows",
+        )
+    }
