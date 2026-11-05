@@ -157,9 +157,15 @@ class PriorityEditorTests(unittest.TestCase):
         self.assertEqual(priority_tasks.list_tasks(), [])
 
     def test_editor_disabled_when_credentials_not_configured(self):
+        with patch("priority_tasks._request_github", side_effect=self.gh):
+            created = self.client.post(
+                "/api/priority-tasks", headers=self.headers, json=self.payload)
+        self.assertEqual(created.status_code, 201)
         with patch.dict(os.environ, {"SBI_GITHUB_ISSUES_TOKEN": ""}):
             r = self.client.get("/api/priority-tasks", headers=self.read_headers)
             self.assertFalse(r.json["editor_available"])
+            self.assertEqual(len(r.json["tasks"]), 1)
+            self.assertEqual(r.json["tasks"][0]["title"], self.payload["title"])
             self.assertEqual(self.client.post("/api/priority-tasks",
                 headers=self.headers, json=self.payload).status_code, 503)
 
