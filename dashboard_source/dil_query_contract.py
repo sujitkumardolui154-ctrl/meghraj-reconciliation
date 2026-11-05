@@ -103,4 +103,6 @@ def decimal_total(values):
         context.prec = 40
         for number in parsed:
             total += number
-    return str(total)
+    # Fixed-point representation preserves exact small financial differences.
+    # Decimal.__str__ may emit exponent notation (e.g. 1E-12).
+    return format(total, "f")
