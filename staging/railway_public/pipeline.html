@@ -62,10 +62,13 @@ button{font:inherit;cursor:pointer}.btn{padding:10px 16px;border-radius:10px;bor
 .priority-editor{padding:20px;margin:12px 0 16px;border:1px solid #496082;border-radius:13px;background:#12213a}
 .priority-editor h3{margin:0 0 9px;font-size:16px}
 .priority-editor p{color:var(--muted);font-size:13px}
+.priority-editor [hidden]{display:none!important}
 .priority-editor form{display:grid;gap:12px;max-width:850px}
 .priority-editor label{display:grid;gap:5px;font-size:12px;color:#d2e4ff;font-weight:700}
 .priority-editor input,.priority-editor select,.priority-editor textarea{border:1px solid #497098;border-radius:8px;background:#0c172b;color:#f0f7ff;padding:11px 12px;font:inherit;width:100%}
 .priority-editor textarea{min-height:96px;resize:vertical}
+.priority-editor input[type="checkbox"]{width:auto;min-width:16px;height:16px;accent-color:var(--teal)}
+.priority-editor .priority-checkbox{display:flex;flex-direction:row;align-items:flex-start;gap:9px}
 .priority-editor .edit-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .priority-editor button:disabled,.priority-edit-tools button:disabled{opacity:.48;cursor:not-allowed}
 .priority-owner-items{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
@@ -119,7 +122,7 @@ button{font:inherit;cursor:pointer}.btn{padding:10px 16px;border-radius:10px;bor
         <label for="priority-task-name">Task title<input id="priority-task-name" type="text" required minlength="5" maxlength="140" placeholder="Describe the work to be done"></label>
         <label for="priority-task-description">Task details<textarea id="priority-task-description" maxlength="1500" placeholder="Scope, evidence required and next action (no private financial data)"></textarea></label>
         <label for="priority-task-state">Owner work status<select id="priority-task-state"><option value="pending">Pending</option><option value="in_progress">In progress</option><option value="done">Done (owner note, not release approval)</option></select></label>
-        <label><input id="priority-public-confirm" type="checkbox" required> I understand this task text will be published to a public GitHub Issue.</label>
+        <label class="priority-checkbox"><input id="priority-public-confirm" type="checkbox" required> I understand this task text will be published to a public GitHub Issue.</label>
         <div class="edit-actions"><button type="submit" class="btn" id="priority-save">Save to task DB &amp; GitHub</button><button type="button" id="priority-task-cancel" class="btn">Cancel edit</button></div>
       </form>
       <p id="priority-owner-status" role="status" aria-live="polite"></p>
