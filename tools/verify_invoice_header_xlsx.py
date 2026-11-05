@@ -34,11 +34,11 @@ def _xml(zf, name):
 
 
 def _col_index(cell_reference):
-    letters = re.match(r"^[A-Z]+", cell_reference or "")
+    letters = re.fullmatch(r"([A-Z]+)1", cell_reference or "")
     if not letters:
         raise ValueError("Invalid source header cell coordinate")
     index = 0
-    for ch in letters.group():
+    for ch in letters.group(1):
         index = index * 26 + ord(ch) - 64
     return index - 1
 
@@ -119,8 +119,11 @@ def verify(path, expected_sha):
     expected = expected_sha.lower()
     if not re.fullmatch(r"[a-f0-9]{64}", expected):
         raise ValueError("Expected original SHA-256 must be supplied")
-    data = Path(path).read_bytes()
-    digest = hashlib.sha256(data).hexdigest()
+    hasher = hashlib.sha256()
+    with Path(path).open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            hasher.update(chunk)
+    digest = hasher.hexdigest()
     if digest != expected:
         raise ValueError("Original workbook SHA-256 mismatch")
     with ZipFile(path) as zf:
@@ -144,7 +147,7 @@ def main():
     args = parser.parse_args()
     try:
         print(json.dumps(verify(args.source_xlsx, args.expected_sha256), sort_keys=True))
-    except (ValueError, KeyError, OSError, ET.ParseError, BadZipFile) as exc:
+    except (ValueError, KeyError, OSError, ET.ParseError, BadZipFile, IndexError) as exc:
         # Do not print filenames, invoice headers or raw source values.
         print(json.dumps({"status": "FAIL", "reason": type(exc).__name__,
                           "financial_values_compared": False}), file=sys.stderr)
