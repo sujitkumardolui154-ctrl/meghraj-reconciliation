@@ -79,10 +79,15 @@ def evidence_envelope(*, records, principal_uid, source_version):
 
 
 def decimal_total(values):
-    """Exact arithmetic on verified decimal strings; no float conversion."""
+    """Exact bounded arithmetic on plain decimal strings; no float conversion."""
+    if not isinstance(values, (list, tuple)) or len(values) > MAX_EVIDENCE:
+        raise QueryDenied("AMOUNT_LIMIT")
     total = Decimal("0")
     for value in values:
-        if not isinstance(value, str):
+        # Reject exponential notation, huge integers and precision bombs before
+        # Decimal parsing or formatting. Amounts are not rounded or rewritten.
+        if (not isinstance(value, str) or len(value) > 64
+                or not re.fullmatch(r"[+-]?[0-9]{1,18}(?:\\.[0-9]{1,12})?", value)):
             raise QueryDenied("INVALID_AMOUNT")
         try:
             number = Decimal(value)
