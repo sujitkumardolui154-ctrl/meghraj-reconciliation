@@ -147,3 +147,35 @@ def generate_credit_note_report_from_53(source_rows, *, approved_53_headers):
     summary["exact_header_match_to_caller_reference"] = True
     summary["independent_source_approval"] = False
     return report, summary
+
+
+def generate_credit_note_report_from_source_layout(source_rows, *, approved_headers):
+    """Read-only 34/35/53 source adapter for the approved 18-column report.
+
+    The caller must provide the exact approved ordered source headers. This
+    adapter does not certify that approval or authorize financial release.
+    """
+    from invoice_source_schema import (
+        HEADERS_34, HEADERS_35, HEADERS_53, export_values_53,
+    )
+
+    if not isinstance(approved_headers, list):
+        raise ValueError("Approved source header proof is missing")
+    if approved_headers not in (HEADERS_34, HEADERS_35, HEADERS_53):
+        raise ValueError("Unrecognized source header order")
+    if not isinstance(source_rows, list):
+        raise ValueError("Source rows must be a list")
+    converted = []
+    for row in source_rows:
+        if not isinstance(row, dict) or row.get("original_headers") != approved_headers:
+            raise ValueError("Source row header proof mismatch")
+        converted.append({
+            "original_headers": HEADERS_53,
+            "original_values": export_values_53(row),
+        })
+    result, summary = generate_credit_note_report_from_53(
+        converted, approved_53_headers=HEADERS_53
+    )
+    summary["source_projection"] = f"ORIGINAL_{len(approved_headers)}_POSITIONAL"
+    summary["independent_source_approval"] = False
+    return result, summary
