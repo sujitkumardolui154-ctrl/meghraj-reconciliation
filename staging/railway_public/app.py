@@ -69,6 +69,25 @@ def build_identity():
     }
 
 
+@app.get("/ui-preview")
+def ui_preview():
+    """Protected UI-only preview; the existing Basic Auth guard runs first."""
+    response = send_file(Path(__file__).with_name("ui_preview.html"),
+                         mimetype="text/html; charset=utf-8")
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'none'; style-src 'self'; img-src 'self'; "
+        "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    )
+    return response
+
+
+@app.get("/ui-preview.css")
+def ui_preview_css():
+    """CSS is also protected by the global preview authentication guard."""
+    return send_file(Path(__file__).with_name("ui_preview.css"),
+                     mimetype="text/css; charset=utf-8")
+
+
 @app.get("/api/pipeline/version")
 def pipeline_version():
     return jsonify(build_identity())
