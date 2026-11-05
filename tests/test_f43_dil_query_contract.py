@@ -97,6 +97,10 @@ class DilQueryContractTests(unittest.TestCase):
             with self.subTest(values=str(values)[:35]), self.assertRaises(QueryDenied):
                 decimal_total(values)
 
+    def test_empty_amounts_do_not_fabricate_zero(self):
+        with self.assertRaises(QueryDenied):
+            decimal_total([])
+
     def test_decimal_signed_exact_amounts(self):
         self.assertEqual(decimal_total(["+100.25", "-0.20", "0.05"]), "100.10")
 
