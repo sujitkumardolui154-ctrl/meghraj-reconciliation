@@ -1,0 +1,61 @@
+name: G69 release remediation QA (no deploy)
+
+on:
+  pull_request:
+    paths:
+      - "staging/railway_public/**"
+      - ".github/workflows/g69-release-remediation-qa.yml"
+      - "tests/test_meghraj_complete_auth.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  nonroot-and-auth-baseline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build disposable non-root image (no push)
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --platform linux/amd64 -f staging/railway_public/Dockerfile -t g69-nonroot-qa:local staging/railway_public
+          test "$(docker image inspect -f '{{.Config.User}}' g69-nonroot-qa:local)" = "10001:10001"
+          test "$(docker image inspect -f '{{.Os}}/{{.Architecture}}' g69-nonroot-qa:local)" = "linux/amd64"
+      - name: Runtime anonymous denial and effective UID (network none)
+        shell: bash
+        run: |
+          set -euo pipefail
+          id="$(docker run -d --network none --read-only --memory 192m --memory-swap 192m --cap-drop ALL --security-opt no-new-privileges:true --tmpfs /tmp:rw,noexec,nosuid,size=32m -e PREVIEW_USERNAME=qa-only -e PREVIEW_PASSWORD=synthetic-test-password-12345 g69-nonroot-qa:local)"
+          trap 'docker rm -f "$id" >/dev/null 2>&1 || true' EXIT
+          sleep 3
+          docker exec "$id" python -c 'import os; from app import app; assert os.geteuid()==10001; c=app.test_client(); assert c.get("/ui-preview").status_code==401; assert c.get("/ui-preview.css").status_code==401; assert c.get("/healthz").json["financial_data_connected"] is False'
+          test "$(docker inspect -f '{{.HostConfig.NetworkMode}}' "$id")" = none
+          echo "NONROOT_ISOLATED_RUNTIME=PASS"
+      - name: Restore historical authentication fixtures for QA only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p backups/login_ui_step84
+          for name in login.js cloud_auth.py dashboard_login_pages.py; do
+            git cat-file blob "e61b7f1:dashboard_source/$name" > "backups/login_ui_step84/$name"
+            cmp "backups/login_ui_step84/$name" "dashboard_source/$name"
+          done
+          echo "AUTH_BASELINE_FROM_GIT=PASS"
+      - name: Synthetic authentication regression (skipped gates remain blocked)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -r dashboard_source/requirements.txt
+          python -m unittest discover -s tests -p 'test_meghraj_complete_auth.py' -v
+          python -m unittest discover -s tests -p 'test_credit_note_auth_contract.py' -v
+          echo "SYNTHETIC_AUTH_REGRESSION=PASS"
+          echo "LIVE_LOGIN_LOGOUT_EXPIRY_COOKIE=NOT_VERIFIED"
