@@ -31,8 +31,8 @@ def main():
             "tests.test_dil_authorized_invoice_adapter",
         ])
         result = unittest.TextTestRunner(verbosity=0).run(suite)
-        record("synthetic_auth_and_no_write", result.wasSuccessful() and result.testsRun > 0,
-               f"ran={result.testsRun} errors={len(result.errors)} failures={len(result.failures)}")
+        record("synthetic_auth_and_no_write", result.wasSuccessful() and result.testsRun > len(result.skipped),
+               f"ran={result.testsRun} skipped={len(result.skipped)} errors={len(result.errors)} failures={len(result.failures)}")
     else:
         CHECKS["synthetic_auth_and_no_write"] = {"status": "BLOCKED", "detail": "syntax failed"}
     for name in ("real_firebase_login", "live_financial_parity", "production_cutover"):
