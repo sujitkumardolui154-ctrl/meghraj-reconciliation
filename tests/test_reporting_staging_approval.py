@@ -42,6 +42,19 @@ class ApprovalGateTests(unittest.TestCase):
         self.assertFalse(approved(json.dumps({**GOOD, "source_sha": "c" * 40}), SHA))
         self.assertFalse(approved(json.dumps({**GOOD, "dataset_sha256": "b" * 40}), SHA))
 
+    def test_staging_workflow_gates_manual_deploy_on_protected_approval(self):
+        workflow = (Path(__file__).resolve().parents[1] / ".github" / "workflows" /
+                    "sbi-autonomous-deploy.yml").read_text(encoding="utf-8")
+        self.assertIn("\n  private-approval-gate:", workflow)
+        self.assertIn("needs.private-approval-gate.outputs.approved == 'true'", workflow)
+        self.assertIn("environment: staging", workflow)
+        source_stage = workflow.split("\n  private-approval-gate:", 1)[0]
+        self.assertNotIn("secrets.REPORTING_APPROVAL_JSON", source_stage)
+        self.assertIn("secrets.REPORTING_APPROVAL_JSON",
+                      workflow.split("\n  private-approval-gate:", 1)[1])
+        self.assertIn("--no-traffic", workflow)
+        self.assertIn("--no-allow-unauthenticated", workflow)
+
     def test_malformed_and_missing_fail(self):
         for raw in ("", "{}", "[]", "null", "{broken}"):
             self.assertFalse(approved(raw, SHA))
