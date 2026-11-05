@@ -57,7 +57,7 @@ EOF
 }
 # Quotes/backslashes/newlines in the credential would break curl's config grammar.
 case "${PREVIEW_USERNAME}${PREVIEW_PASSWORD}" in
-  *\\*|*\"*|**|**)
+  *\\*|*\"*|*$'\n'*|*$'\r'*)
     echo "ATTEST=BLOCKED REASON=UNSUPPORTED_CREDENTIAL_CHARACTERS"; exit 2;;
 esac
 
