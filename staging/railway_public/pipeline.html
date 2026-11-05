@@ -34,13 +34,35 @@ button{font:inherit;cursor:pointer}.btn{padding:10px 16px;border-radius:10px;bor
 .release-meta{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .release-version{font:700 25px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--teal);overflow-wrap:anywhere}
 @media(max-width:880px){.release-grid{grid-template-columns:1fr}}
+
+/* Priorities clarify release sequence; source QA is never financial approval. */
+.priority-board{display:grid;grid-template-columns:minmax(0,1.65fr) repeat(2,minmax(0,1fr));gap:16px}
+.priority-card{padding:22px;min-width:0}
+.priority-card.p0{border-color:#497c79;background:linear-gradient(150deg,#133c43,#14263a 65%)}
+.priority-card h3{font-size:18px;margin:12px 0 8px}
+.priority-card p{font-size:13px;color:var(--muted);margin:0 0 14px}
+.priority-label{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#9fbfe0}
+.priority-card.p0 .priority-label{color:#75eed3}
+.priority-gate-list{list-style:none;display:grid;gap:8px;margin:16px 0 12px;padding:0}
+.priority-gate-list li{border:1px solid #35506a;background:#102235;padding:10px 12px;border-radius:9px;display:flex;gap:10px;justify-content:space-between;align-items:flex-start}
+.priority-gate-list strong{font-size:13px;display:block}
+.priority-gate-list small{font-size:12px;color:var(--muted);display:block;margin-top:4px}
+.priority-gate-list .bubble{flex-shrink:0}
+.priority-next-list{margin:12px 0 16px;padding-left:18px;color:#d5e5f9;font-size:13px}
+.priority-next-list li{margin:9px 0}
+.priority-foot{font-size:12px;color:var(--muted);padding-top:10px;border-top:1px solid #33475f}
+.priority-foot a{font-weight:650}
+.priority-summary{padding:12px 15px;margin:0 0 16px;border:1px solid #67522c;border-radius:10px;background:#352a1d99;color:#f7dbac;font-size:13px}
+.priority-summary strong{color:#ffe8bf}
+@media(max-width:1050px){.priority-board{grid-template-columns:repeat(2,minmax(0,1fr))}.priority-card.p0{grid-column:1/-1}}
+@media(max-width:690px){.priority-board{grid-template-columns:1fr}.priority-card.p0{grid-column:auto}.priority-card{padding:17px}.priority-gate-list li{flex-wrap:wrap}}
 </style>
 </head>
 <body>
 <header class="top">
   <div class="shell inner">
     <div class="brand"><span class="mark" aria-hidden="true">SBI</span><div><strong>Reconciliation Control Center</strong><small>Meghraj Express · Engineering Pipeline</small></div></div>
-    <nav class="nav" aria-label="Sections"><a href="#overview">Overview</a><a href="#pipeline">Stages</a><a href="#obstructions">Obstructions</a><a href="#tasks">Task pipeline</a><a href="#versions">Version log</a></nav>
+    <nav class="nav" aria-label="Sections"><a href="#overview">Overview</a><a href="#priorities">Priorities</a><a href="#pipeline">Stages</a><a href="#obstructions">Obstructions</a><a href="#tasks">Task pipeline</a><a href="#versions">Version log</a></nav>
     <div class="head-actions"><span class="live-tag" id="data-mode">● Checking source</span><button class="btn" id="refresh" type="button">↻ Refresh</button></div>
   </div>
 </header>
@@ -55,6 +77,54 @@ button{font:inherit;cursor:pointer}.btn{padding:10px 16px;border-radius:10px;bor
     <div class="panel metric"><div class="label">Done / approved</div><div class="value" id="done">—</div><div class="hint">Register execution states</div></div>
     <div class="panel metric"><div class="label">Pending + in progress</div><div class="value" id="pending">—</div><div class="hint">Work remaining in pipeline</div></div>
     <div class="panel metric"><div class="label">Blocked tasks</div><div class="value" id="blocked">—</div><div class="hint">Plus mandatory release gates below</div></div>
+  </section>
+
+  <section class="section" id="priorities" aria-labelledby="priorities-title">
+    <div class="section-head"><h2 id="priorities-title">Project priorities &amp; release monitor</h2><p>What matters now · What can wait · No new release stages</p></div>
+    <div class="priority-summary" role="status"><strong id="priority-release-state">Reporting release: independent verification pending.</strong>
+      A green source test never authorizes a deployment, financial processing or database change.</div>
+    <div class="priority-board">
+      <article class="panel priority-card p0" aria-labelledby="priority-p0-title">
+        <span class="priority-label">P0 · Essential — complete first</span>
+        <h3 id="priority-p0-title">Phase 1 · Safe reporting dashboard</h3>
+        <p>Release only a usable, secure, read-only reporting app. Each item needs real evidence before it can be marked complete.</p>
+        <ol class="priority-gate-list">
+          <li><div><strong>1. Secure dashboard login &amp; permissions</strong><small>Verify authentication, session expiry and report roles on the actual host.</small></div><span class="bubble warn">VERIFY LIVE</span></li>
+          <li><div><strong>2. Accurate invoice, payment &amp; CREDIT NOTE reports</strong><small id="priority-qa-detail">Checking source QA; independent invoice-value parity still required.</small><span id="priority-qa-evidence"></span></div><span class="bubble neutral" id="priority-qa-badge">CHECKING QA</span></li>
+          <li><div><strong>3. Complete and consistent source data</strong><small>Validate import ledger, row identities, duplicates and source-to-report totals.</small></div><span class="bubble warn">VERIFY DATA</span></li>
+          <li><div><strong>4. Backup &amp; rollback evidence</strong><small>Confirm protected snapshots and actual restore/rollback rehearsal.</small></div><span class="bubble warn">VERIFY RECOVERY</span></li>
+          <li><div><strong>5. Private staging &amp; real-user HTTP tests</strong><small>Test authorized, denied and revoked sessions without enabling financial writes.</small></div><span class="bubble warn">VERIFY STAGING</span></li>
+          <li><div><strong>6. Independent release approval</strong><small>Require a SHA-bound approval, deployment receipt and host verification.</small></div><span class="bubble warn">APPROVAL PENDING</span></li>
+        </ol>
+        <div class="priority-foot">Next action: close the earliest unverified P0 release gate. <a href="#obstructions">See critical obstructions</a> · <a href="#tasks">All source-backed tasks</a>.</div>
+      </article>
+      <article class="panel priority-card" aria-labelledby="priority-p1-title">
+        <span class="priority-label">P1 · After first release</span>
+        <h3 id="priority-p1-title">Phase 2 · Useful improvements</h3>
+        <p>Keep these in development, but do not make them blockers for the initial reporting-only launch.</p>
+        <ul class="priority-next-list">
+          <li>Read-only DIL intelligent chatbot and authorized invoice search</li>
+          <li>Database Update tools with a separate approval gate</li>
+          <li>Additional consolidated reports and exports</li>
+          <li>Measured performance, caching and concurrency improvements</li>
+          <li>Accessibility, mobile and UI/UX enhancements</li>
+        </ul>
+        <div class="priority-foot">Scheduling recommendation, not a claim that these features are already deployed.</div>
+      </article>
+      <article class="panel priority-card" aria-labelledby="priority-p2-title">
+        <span class="priority-label">P2 · Defer / separate release</span>
+        <h3 id="priority-p2-title">Phase 3 · Advanced features</h3>
+        <p>Not required to prove the first reporting dashboard is safe to use.</p>
+        <ul class="priority-next-list">
+          <li>Advanced predictive analytics and optional AI features</li>
+          <li>Additional hosting platforms and avoidable cloud migrations</li>
+          <li>Cosmetic chatbot animations and optional agents</li>
+          <li><strong>Full v2.51 reconciliation engine</strong> — independently certified financial release only</li>
+        </ul>
+        <div class="priority-foot"><span class="bubble bad">FINANCE RESTRICTED</span> Payment matching, allocations and live writes remain disabled.</div>
+      </article>
+    </div>
+    <p class="sub">Priority order is the agreed development plan. Source checks refresh with the existing GitHub pipeline feed (90-second browser refresh, up to 5-minute server cache); real deployment approvals require independent evidence.</p>
   </section>
   <section class="section" id="pipeline">
     <div class="section-head"><h2>Deployment & engineering stages</h2><p>Latest workflow evidence, not continuous agent telemetry</p></div>
@@ -129,6 +199,21 @@ button{font:inherit;cursor:pointer}.btn{padding:10px 16px;border-radius:10px;bor
     $(prefix+"-detail").textContent=run ? "Last workflow: "+s[0]+". Run recorded "+dateText(run.updated_at)+".":"Workflow source unavailable. No success is assumed.";
     var foot=$(prefix+"-foot");clear(foot);
     if(run && run.url){foot.appendChild(safeGithubLink(run.url,"View GitHub workflow evidence"));}else{foot.textContent="GitHub Actions · No result available";}
+  }
+
+  function renderPriorities(data){
+    var run=data.qa && data.qa.run;
+    var success=run && run.status==="completed" && run.conclusion==="success";
+    var badge=$("priority-qa-badge");
+    badge.textContent=success?"SOURCE QA PASS": "QA NOT VERIFIED";
+    badge.className="bubble "+(success?"ok":"warn");
+    $("priority-qa-detail").textContent=success
+      ?"Source tests passed at "+dateText(run.updated_at)+"; real invoice-value parity is still unverified."
+      :"Source QA is not confirmed passing; real invoice-value parity is also unverified.";
+    var evidence=$("priority-qa-evidence");clear(evidence);
+    if(run && run.url){var small=txt("small","");small.appendChild(safeGithubLink(run.url,"View source QA evidence"));evidence.appendChild(small);}
+    // Never promote release state solely from Actions status or a task checkbox.
+    $("priority-release-state").textContent="Reporting release: independent verification pending.";
   }
   function issue(id,title,description){
     var el=txt("div","","issue");var sign=txt("span","!","symbol");sign.setAttribute("aria-hidden","true");
@@ -218,7 +303,7 @@ button{font:inherit;cursor:pointer}.btn{padding:10px 16px;border-radius:10px;bor
     $("data-mode").textContent=Object.values(data.sources||{}).every(function(s){return s==="available";})?"● GitHub connected":"● Partial source outage";
     $("last-sync").textContent="Last source fetch: "+dateText(data.generated_at_utc);
     $("source-age").textContent="Source-backed status · refresh every 90s · cached "+data.cache_seconds+"s";
-    workflow(data.qa,"qa");workflow(data.staging,"stage");renderIssues(data);renderCategories(data);renderTasks();renderHistory(data);
+    workflow(data.qa,"qa");workflow(data.staging,"stage");renderPriorities(data);renderIssues(data);renderCategories(data);renderTasks();renderHistory(data);
   }
   var busy=false;
   async function refresh(){
