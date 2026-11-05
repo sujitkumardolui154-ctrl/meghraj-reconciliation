@@ -58,8 +58,48 @@ class OwnerInvoiceExceptionRoutingTest(unittest.TestCase):
             route_payment_report({"invoice_no": "MXP12345",
                                   "verified_allocation_count": 4,
                                   "allocation_verification": "VERIFIED"}, "ok"),
-            ("ok", None),
+            ("error-value", "VERIFIED_MULTIPLE_ALLOCATION"),
         )
+
+    def test_any_invoice_multistage_verified_routes_to_error(self):
+        for invoice in ("MXP12345", "MXP9014", "MXP/2026-2027-77"):
+            row = {
+                "invoice_no": invoice,
+                "verified_reconciliation_stage_count": 2,
+                "reconciliation_stage_verification": "VERIFIED",
+            }
+            self.assertEqual(
+                route_payment_report(row, "ok"),
+                ("error-value", "VERIFIED_MULTISTAGE_RECONCILIATION"),
+            )
+            row["reconciliation_stage_verification"] = "PENDING"
+            self.assertEqual(route_payment_report(row, "ok"), ("ok", None))
+            row["reconciliation_stage_verification"] = "VERIFIED"
+            row["verified_reconciliation_stage_count"] = 1
+            self.assertEqual(route_payment_report(row, "ok"), ("ok", None))
+
+    def test_any_invoice_verified_conflict_routes_to_error(self):
+        row = {"invoice_no": "MXP76543",
+               "conflict_verification": "VERIFIED",
+               "reconciliation_conflict": True}
+        self.assertEqual(
+            route_payment_report(row, "unpaid"),
+            ("error-value", "VERIFIED_RECONCILIATION_CONFLICT"),
+        )
+        row["reconciliation_conflict"] = False
+        self.assertEqual(route_payment_report(row, "unpaid"), ("unpaid", None))
+        row["reconciliation_conflict"] = True
+        row["conflict_verification"] = "UNKNOWN"
+        self.assertEqual(route_payment_report(row, "unpaid"), ("unpaid", None))
+
+    def test_unsupported_multistage_evidence_is_not_accepted(self):
+        for count in (True, "2", -1, 0, 1.5):
+            row = {
+                "invoice_no": "MXP6789",
+                "reconciliation_stage_verification": "VERIFIED",
+                "verified_reconciliation_stage_count": count,
+            }
+            self.assertEqual(route_payment_report(row, "ok"), ("ok", None))
 
     def test_fail_closed_on_missing_invoice(self):
         with self.assertRaises(ValueError):
