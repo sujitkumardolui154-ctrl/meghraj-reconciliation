@@ -1,0 +1,36 @@
+name: SBI Credit Note Annotation QA (offline only)
+
+on:
+  pull_request:
+    paths:
+      - 'backend_source/credit_note_53_adapter.py'
+      - 'tests/test_credit_note_annotation_qa.py'
+      - '.github/workflows/sbi-credit-note-annotation-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  credit-note-synthetic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact PR head without token persistence
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run annotation regression with no financial writes
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p 'test_credit_note_annotation_qa.py' -v
+          python -m py_compile backend_source/credit_note_53_adapter.py tests/test_credit_note_annotation_qa.py
+          echo 'QA_SCOPE=CREDIT_NOTE_LABEL_SYNTHETIC_ONLY'
+          echo 'FINANCIAL_AMOUNT_PARITY=NOT_VERIFIED'
+          echo 'FINANCIAL_WRITES=0'
+          echo 'PRODUCTION_RELEASE=BLOCKED'
