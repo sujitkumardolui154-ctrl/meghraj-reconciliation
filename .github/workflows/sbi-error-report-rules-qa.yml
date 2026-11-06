@@ -1,0 +1,36 @@
+name: SBI Error Report 12-rule source QA
+
+on:
+  pull_request:
+    paths:
+      - 'backend_source/error_report_rules.py'
+      - 'tests/test_sbi_error_report_rules.py'
+      - '.github/workflows/sbi-error-report-rules-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-error-report:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact proposed commit (no deployment)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline synthetic Error Report regression
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p 'test_sbi_error_report_rules.py' -v
+          python -m py_compile backend_source/error_report_rules.py tests/test_sbi_error_report_rules.py
+          echo 'ERR_REPORT_QA_SCOPE=OFFLINE_SYNTHETIC'
+          echo 'FINANCIAL_WRITES=0'
+          echo 'LIVE_PARITY=NOT_VERIFIED'
+          echo 'PRODUCTION_DEPLOY=BLOCKED'
