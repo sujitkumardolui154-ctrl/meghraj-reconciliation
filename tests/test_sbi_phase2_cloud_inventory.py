@@ -178,5 +178,72 @@ class Phase2SafeCloudInventoryTests(unittest.TestCase):
         self.assertTrue(all(p["api_enabled"][x] is True for x in c.API_NAMES))
 
 
+    def test_21_reuse_existing_canonical_report_without_cloud_scan(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as folder:
+            location=Path(folder)/"SBI_PHASE2_GCP_READINESS_20261106T183155Z.json"
+            report=self.run_collect(stage=True)
+            location.write_text(c.render(report),encoding="utf-8")
+            path, loaded=c.validate_existing_report_path(location, inventory_dir=folder)
+            self.assertEqual(path,location)
+            self.assertEqual(loaded,report)
+
+    def test_22_existing_report_rejects_extra_sensitive_fields(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as folder:
+            location=Path(folder)/"SBI_PHASE2_GCP_READINESS_20261106T183155Z.json"
+            report=self.run_collect()
+            report["UNAPPROVED_FREE_TEXT"]="made-up-extra-field"
+            location.write_text(c.render(report),encoding="utf-8")
+            with self.assertRaisesRegex(ValueError,"UNEXPECTED_REPORT_FIELDS"):
+                c.validate_existing_report_path(location,inventory_dir=folder)
+
+    def test_23_existing_report_rejects_symlink(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as folder:
+            report=self.run_collect()
+            good=Path(folder)/"original.json"
+            good.write_text(c.render(report))
+            link=Path(folder)/"SBI_PHASE2_GCP_READINESS_20261106T183155Z.json"
+            link.symlink_to(good)
+            with self.assertRaisesRegex(ValueError,"OUTSIDE_PRIVATE_INVENTORY"):
+                c.validate_existing_report_path(link,inventory_dir=folder)
+
+    def test_24_upload_uses_explicit_origin_main_refspec_in_shallow_clone(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as folder:
+            root=Path(folder)
+            file=root/"SBI_PHASE2_GCP_READINESS_20261106T183155Z.json"
+            file.write_text(c.render(self.run_collect()))
+            called=[]
+            def fake_invoke(argv, **kwargs):
+                called.append(argv)
+                return (False,"") if argv[:3]==["gh","auth","status"] else (True,"")
+            with mock.patch.object(c,"invoke",side_effect=fake_invoke):
+                branch,review=c.upload_to_github(root,file,file.name)
+            self.assertTrue(branch.startswith("audit/sbi-phase2-gcp-readiness-"))
+            self.assertIn("/compare/main...audit/",review)
+            fetches=[args for args in called if len(args)>3 and args[3]=="fetch"]
+            self.assertEqual(len(fetches),1)
+            self.assertIn(
+                "+refs/heads/main:refs/remotes/origin/main",fetches[0]
+            )
+            self.assertTrue(any("refs/remotes/origin/main^{commit}" in args
+                                for args in called))
+            staged=[args for args in called if "add" in args and "--" in args]
+            self.assertEqual(len(staged),1)
+            self.assertEqual(staged[0][-1],"audit/cloud/"+file.name)
+
+    def test_25_error_if_refspec_fetch_does_not_succeed(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as folder:
+            file=Path(folder)/"SBI_PHASE2_GCP_READINESS_20261106T183155Z.json"
+            file.write_text(c.render(self.run_collect()))
+            with mock.patch.object(c,"invoke",return_value=(False,"")):
+                with self.assertRaisesRegex(RuntimeError,"origin/main failed"):
+                    c.upload_to_github(Path(folder),file,file.name)
+
+
+
 if __name__=="__main__":
     unittest.main()
