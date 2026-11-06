@@ -1,0 +1,105 @@
+name: SBI AWS Backend Staging Release (review gated)
+on:
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: "Full 40-character reviewed main branch commit SHA"
+        required: true
+        type: string
+      mode:
+        description: "Preflight never connects to AWS; stage requires approval and restricted SSH"
+        required: true
+        default: preflight
+        type: choice
+        options: [preflight, stage]
+      explicit_staging_approval:
+        description: "For stage only: type APPROVE_ISOLATED_BACKEND_STAGING"
+        required: false
+        default: ""
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: sbi-aws-backend-readonly-staging
+  cancel-in-progress: false
+jobs:
+  verify-release-source:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Require exact reviewed main source SHA
+        shell: bash
+        env:
+          SHA: ${{ inputs.release_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'BLOCKED: invalid SHA'; exit 2; }
+          [[ "$(git rev-parse HEAD)" == "$SHA" ]] || { echo 'BLOCKED: SHA does not equal current main'; exit 2; }
+      - name: Independent synthetic read-only contract tests
+        run: |
+          python -m pip install -r staging/aws_backend_readonly/requirements.txt
+          python -m unittest discover -s tests -p test_sbi_aws_readonly_backend.py -v
+          python -m unittest discover -s tests -p test_sbi_aws_backend_stage_automation.py -v
+      - name: Build staging candidate locally only
+        run: docker build -f staging/aws_backend_readonly/Dockerfile --build-arg SBI_SOURCE_SHA="${GITHUB_SHA}" -t sbi-backend-preflight:"${GITHUB_SHA}" .
+      - name: No-network non-root synthetic image gate
+        run: |
+          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges \
+            --user 10001:10001 \
+            sbi-backend-preflight:"${GITHUB_SHA}" python -c \
+            'import os; from app import app; c=app.test_client(); assert os.getuid()==10001; assert c.get("/healthz").status_code==200; assert c.get("/readyz").status_code==503; assert c.post("/reports").status_code==403; assert c.get("/api/upload").status_code==403'
+      - name: Confirm safe preflight completion
+        run: |
+          echo 'SOURCE_PREFLIGHT=PASS'
+          echo 'FINANCIAL_WRITES=DISABLED'
+          echo 'PUBLIC_PREVIEW=UNMODIFIED'
+  approved-staging:
+    needs: verify-release-source
+    if: ${{ inputs.mode == 'stage' }}
+    environment: sbi-backend-staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Restrict manual promotion to explicit backend staging approval
+        env:
+          APPROVAL: ${{ inputs.explicit_staging_approval }}
+        run: |
+          [[ "$APPROVAL" == 'APPROVE_ISOLATED_BACKEND_STAGING' ]] || {
+            echo 'BLOCKED: explicit staging approval string missing'; exit 2;
+          }
+      - name: Verify separate restricted host executor and deploy approved SHA
+        shell: bash
+        env:
+          SHA: ${{ inputs.release_sha }}
+          STAGE_HOST: ${{ secrets.SBI_BACKEND_STAGE_HOST }}
+          STAGE_KEY: ${{ secrets.SBI_BACKEND_STAGE_DEPLOY_KEY }}
+          STAGE_KNOWN_HOST: ${{ secrets.SBI_BACKEND_STAGE_HOST_KEY }}
+        run: |
+          set -euo pipefail
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || exit 2
+          [[ -n "$STAGE_HOST" && -n "$STAGE_KEY" && -n "$STAGE_KNOWN_HOST" ]] || {
+            echo 'BLOCKED: separate restricted AWS backend staging credentials not configured'; exit 2;
+          }
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$STAGE_KEY" > "$HOME/.ssh/backend_stage_key"
+          printf '%s\n' "$STAGE_KNOWN_HOST" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/backend_stage_key" "$HOME/.ssh/known_hosts"
+          STATUS="$(ssh -i "$HOME/.ssh/backend_stage_key" -o IdentitiesOnly=yes \
+            -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes \
+            "sbi-backend-deployer@$STAGE_HOST" 'status-backend-v1')"
+          grep -Fxq 'SBI_BACKEND_EXECUTOR=READONLY_V1' <<< "$STATUS" || {
+            echo 'BLOCKED: backend-only host executor not installed / verified'; exit 2;
+          }
+          ssh -i "$HOME/.ssh/backend_stage_key" -o IdentitiesOnly=yes \
+            -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes \
+            "sbi-backend-deployer@$STAGE_HOST" "deploy-backend $SHA"
+          echo 'AWS_BACKEND_STAGING_RELEASE=COMPLETED'
+          echo 'PUBLIC_PREVIEW=UNMODIFIED'
+          echo 'FINANCIAL_WRITES=DISABLED'
