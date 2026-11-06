@@ -28,6 +28,9 @@ REPORT_HEADERS = (
 )
 
 
+CREDIT_NOTE_TOKEN = re.compile(r"(?<!\\w)CREDIT\\s+NO(?:TE|RTE)(?!\\w)", re.IGNORECASE)
+
+
 def normalize_header(value):
     return re.sub(r"\s+", " ", str(value).strip()).casefold()
 
@@ -200,7 +203,7 @@ def project_credit_notes(source_headers, source_rows):
             str(record[REPORT_HEADERS[16]] or "").upper().split()
         )
 
-        is_credit_note = status == "CREDIT NOTE"
+        is_credit_note = bool(CREDIT_NOTE_TOKEN.search(status))
 
         record["Credi note"] = (
             "CREDIT NOTE" if is_credit_note else ""
