@@ -1,0 +1,20 @@
+name: F43 Floating UI Source QA
+on:
+  pull_request:
+    paths:
+      - 'dashboard_source/dil_floating_assistant.js'
+      - 'tests/test_f43_floating_accessibility.py'
+      - '.github/workflows/f43-floating-accessibility-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-ui-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run nonzero synthetic accessibility guard suite
+        run: python3 -m unittest discover -s tests -p 'test_f43_floating_accessibility.py' -v
+      - name: Parse JavaScript without execution
+        run: node --check dashboard_source/dil_floating_assistant.js
