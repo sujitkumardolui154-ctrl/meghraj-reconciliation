@@ -56,8 +56,10 @@ def inspect(root):
     checks["required_source_markers_present"] = True
     files = {}
     for relative in RELEASE_INPUTS:
-        p = (root / relative).resolve()
-        if not p.is_relative_to(root) or not p.is_file() or p.is_symlink():
+        candidate = root / relative
+        # Reject links BEFORE resolving: an in-root symlink is still unsafe.
+        p = candidate.resolve()
+        if candidate.is_symlink() or not p.is_relative_to(root) or not p.is_file():
             checks["owner_policy_files_present"] = False
             continue
         # Whitelist alone is not enough: only regular source/doc/test files.
