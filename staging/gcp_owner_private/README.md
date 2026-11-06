@@ -23,3 +23,37 @@
 6. The source-only canary cannot pass full application functional or financial acceptance. Reconciliation, Credit Note amount parity, allocation-ledger/official SOL provenance and isolated recovery testing are separate stages.
 
 **Known caveats:** The existing `staging/private_stage_deploy.sh` reuses a production image with `--ingress all`; do **not** use it to represent this source build. Cloud Run service creation must not be inferred from a green CI check. `OWNER_BUSINESS_RULE_POLICY=APPROVED`; `CLOUD_RUN_RUNTIME=NOT_DEPLOYED_FROM_THIS_PR`; `FINANCIAL_WRITES=0`; `PRODUCTION_RELEASE=BLOCKED`.
+
+## One-command Cloud Shell discovery and GitHub import
+
+**This is the user's requested Phase 2B data collection, not a deploy.** The audit
+is deliberately sanitized because the GitHub repository may be publicly visible.
+
+```bash
+cd ~/sbi-phase2-readiness
+git pull --ff-only origin deploy/sbi-phase2-private-runtime-candidate-20261106
+python3 staging/gcp_owner_private/collect_phase2_readiness.py --upload
+```
+
+This uses the existing authenticated `gcloud` identity to read the project,
+Cloud Run services and stage IAM public-binding state, service-account counts,
+Artifact Registry and enabled APIs. It NEVER uploads IAM principals, account
+emails, tokens, secrets, URLs, environment variable values, invoices, bank
+records, or entire raw GCP responses.
+
+On success, the script outputs `GITHUB_SANITIZED_UPLOAD=SUCCESS` and a link
+to a newly pushed **`audit/sbi-phase2-gcp-readiness-...`** branch. If the
+GitHub CLI is authenticated, it also opens a **draft** pull request for review.
+If not, the link opens the GitHub compare/PR screen. Upload is confined to a
+single sanitized JSON file in `audit/cloud/` on that new branch; it **does
+not** commit to `main` or the deployment branch. It makes no GCP changes.
+
+The sanitized JSON remains locally saved in
+`~/sbi_phase2_private_inventory/` with restrictive file permissions even
+if GitHub push fails. If GitHub access is missing, authenticate directly in
+Cloud Shell using your approved GitHub login workflow—never paste a PAT or a
+cloud credential into a chat or repository.
+
+Passing the collector does **not** verify inherited Firestore/IAM financial
+write privileges or actual live authorization, and it does not perform
+any deployment, registry push, financial data read or production cutover.
