@@ -286,6 +286,128 @@ def exact_repo_git_root():
     return root
 
 
+
+def validate_existing_report_path(path, *, inventory_dir=None):
+    """Reuse only this collector's original privacy-safe report, never arbitrary files."""
+    directory = (Path(inventory_dir) if inventory_dir is not None
+                 else Path.home() / "sbi_phase2_private_inventory").resolve()
+    path = Path(path).expanduser()
+    if not re.fullmatch(r"SBI_PHASE2_GCP_READINESS_\d{8}T\d{6}Z[.]json", path.name):
+        raise ValueError("BLOCKED_UNRECOGNIZED_REPORT_FILENAME")
+    if path.is_symlink() or not path.is_file() or path.parent.resolve() != directory:
+        raise ValueError("BLOCKED_REPORT_OUTSIDE_PRIVATE_INVENTORY")
+    stat = path.stat()
+    if stat.st_uid != os.getuid() or not 80 <= stat.st_size <= 65536:
+        raise ValueError("BLOCKED_REPORT_OWNER_OR_SIZE")
+    raw = path.read_bytes()
+    try:
+        result = json.loads(raw)
+    except (ValueError, UnicodeError):
+        raise ValueError("BLOCKED_REPORT_JSON_INVALID") from None
+
+    top = {
+        "schema", "collected_utc", "source", "project", "region",
+        "active_gcloud_identity_present", "project_access_verified", "checks",
+        "service_count", "expected_services", "staging_account_distinct_from_dashboard_account",
+        "staging_service_public_invoker_policy", "service_accounts_total_count",
+        "service_accounts_staging_like_count", "registry", "api_enabled", "deployment_gates",
+    }
+    if not isinstance(result, dict) or set(result) != top:
+        raise ValueError("BLOCKED_UNEXPECTED_REPORT_FIELDS")
+    constants = {
+        "schema": "SBI_PHASE2_CLOUD_READINESS_SANITIZED_V1",
+        "source": "authorized_cloud_shell_read_only",
+        "project": PROJECT,
+        "region": REGION,
+    }
+    if any(result.get(k) != v for k, v in constants.items()):
+        raise ValueError("BLOCKED_WRONG_REPORT_PROVENANCE")
+    if not isinstance(result["collected_utc"], str) or not re.fullmatch(
+        r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\+00:00", result["collected_utc"]
+    ):
+        raise ValueError("BLOCKED_INVALID_INVENTORY_DATE")
+
+    def verified_bool(value):
+        return type(value) is bool or value == "NOT_VERIFIED"
+
+    def checked_count(value, maximum=100000):
+        return value is None or (type(value) is int and 0 <= value <= maximum)
+
+    if type(result["active_gcloud_identity_present"]) is not bool or \
+            type(result["project_access_verified"]) is not bool:
+        raise ValueError("BLOCKED_INVALID_IDENTITY_FLAGS")
+    for k in ("service_count", "service_accounts_total_count", "service_accounts_staging_like_count"):
+        if not checked_count(result[k]):
+            raise ValueError("BLOCKED_UNEXPECTED_SERVICE_COUNT")
+
+    expected_checks = {
+        "active_identity_lookup", "project_read", "cloud_run_list",
+        "staging_iam_policy_read", "service_account_inventory",
+        "artifact_registry_read", "registry_images_list", "enabled_apis_read",
+    } | {"cloud_run_read_" + service for service in (*PROD, STAGE)}
+    checks = result["checks"]
+    allowed_status = {"PASS", "NOT_ACCESSIBLE_OR_NOT_FOUND", "NOT_PRESENT", "NOT_VERIFIED"}
+    if not isinstance(checks, dict) or set(checks) != expected_checks or \
+            any(v not in allowed_status for v in checks.values()):
+        raise ValueError("BLOCKED_UNEXPECTED_DISCOVERY_STATUS")
+
+    services = result["expected_services"]
+    service_keys = {
+        "exists", "ready_revision", "identity_configured", "ingress",
+        "secret_reference_count",
+    }
+    ingress = {"all", "internal", "internal-and-cloud-load-balancing", "NOT_VERIFIED"}
+    if not isinstance(services, dict) or set(services) != set((*PROD, STAGE)):
+        raise ValueError("BLOCKED_UNEXPECTED_SERVICE_IDENTITIES")
+    for svc in services.values():
+        if not isinstance(svc, dict) or set(svc) != service_keys or \
+                not all(verified_bool(svc[k]) for k in (
+                    "exists", "ready_revision", "identity_configured"
+                )) or svc["ingress"] not in ingress or not (
+                    svc["secret_reference_count"] == "NOT_VERIFIED" or
+                    checked_count(svc["secret_reference_count"], 10000) and
+                    svc["secret_reference_count"] is not None
+                ):
+            raise ValueError("BLOCKED_UNEXPECTED_SERVICE_CONFIG")
+
+    if not verified_bool(result["staging_account_distinct_from_dashboard_account"]) or \
+            result["staging_service_public_invoker_policy"] not in (
+                "PUBLIC_GRANT_PRESENT", "NO_PUBLIC_GRANT_IN_SERVICE_POLICY", "NOT_VERIFIED"
+            ):
+        raise ValueError("BLOCKED_STAGING_SECURITY_FIELD_INVALID")
+    registry = result["registry"]
+    if not isinstance(registry, dict) or set(registry) != {
+        "expected_repository", "docker_format_verified",
+        "listed_image_sample_count_max_200", "new_source_image_digest"
+    } or registry["expected_repository"] != REGISTRY or \
+            not verified_bool(registry["docker_format_verified"]) or \
+            registry["new_source_image_digest"] != "NOT_VERIFIED" or \
+            not checked_count(registry["listed_image_sample_count_max_200"], 200):
+        raise ValueError("BLOCKED_UNEXPECTED_REGISTRY_EVIDENCE")
+    apis = result["api_enabled"]
+    if not isinstance(apis, dict) or set(apis) != set(API_NAMES) or \
+            any(not verified_bool(v) for v in apis.values()):
+        raise ValueError("BLOCKED_UNEXPECTED_API_FIELDS")
+    expected_gates = {
+        "dedicated_staging_service_account_no_finance_writes": "NOT_VERIFIED",
+        "inherited_and_resource_finance_iam_grants": "NOT_VERIFIED",
+        "staging_only_container_digest_pushed": "NOT_VERIFIED",
+        "live_authenticated_cloud_run_response": "NOT_VERIFIED",
+        "financial_data_parity": "NOT_VERIFIED",
+        "backup_isolated_restore": "NOT_VERIFIED",
+        "production_traffic_unchanged": "NOT_VERIFIED_BY_THIS_READ_ONLY_SCAN",
+        "financial_database_writes_executed_by_script": 0,
+        "production_cutover": "BLOCKED",
+    }
+    if result["deployment_gates"] != expected_gates:
+        raise ValueError("BLOCKED_RELEASE_GATES_UNEXPECTED")
+    # The original collector writes exactly this canonical JSON: reject edits,
+    # additional text, unrecognized fields and strings even in the private file.
+    if raw != render(result).encode("utf-8"):
+        raise ValueError("BLOCKED_REPORT_NOT_CANONICAL")
+    return path, result
+
+
 def upload_to_github(root, report_path, report_name):
     # Branch-based upload never writes to 'main'. No arbitrary local files
     # are staged; git pushes only the selected sanitized JSON in a worktree.
@@ -366,34 +488,43 @@ def upload_to_github(root, report_path, report_name):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
         "--upload", action="store_true",
-        help="Commit and push sanitized JSON on NEW GitHub audit branch")
+        help="Collect and push sanitized JSON on a NEW GitHub audit branch")
+    group.add_argument(
+        "--upload-existing", metavar="SAVED_JSON", type=Path,
+        help="Retry uploading a previously saved report, without another GCP scan")
     args = parser.parse_args()
-    if not shutil_which("gcloud"):
-        print("BLOCKED: gcloud CLI is required in Cloud Shell", file=sys.stderr)
-        return 2
     try:
         root = exact_repo_git_root()
-        report = collect()
-        text = render(report)
-        utc = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        folder = Path.home() / "sbi_phase2_private_inventory"
-        folder.mkdir(parents=True, exist_ok=True, mode=0o700)
-        os.chmod(folder, 0o700)
-        name = "SBI_PHASE2_GCP_READINESS_" + utc + ".json"
-        path = folder / name
-        fd = os.open(str(path), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(text)
-        print("PHASE2_SAFE_INVENTORY=CREATED")
+        if args.upload_existing:
+            path, report = validate_existing_report_path(args.upload_existing)
+            name = path.name
+            print("PHASE2_SAFE_INVENTORY=REUSED_LOCAL_REPORT")
+        else:
+            if not shutil_which("gcloud"):
+                print("BLOCKED: gcloud CLI is required in Cloud Shell", file=sys.stderr)
+                return 2
+            report = collect()
+            text = render(report)
+            utc = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            folder = Path.home() / "sbi_phase2_private_inventory"
+            folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+            os.chmod(folder, 0o700)
+            name = "SBI_PHASE2_GCP_READINESS_" + utc + ".json"
+            path = folder / name
+            fd = os.open(str(path), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(text)
+            print("PHASE2_SAFE_INVENTORY=CREATED")
         print("LOCAL_SANITIZED_REPORT=" + str(path))
         print("GCP_PROJECT_READ=" + report["checks"]["project_read"])
         print("CLOUD_RUN_LIST=" + report["checks"]["cloud_run_list"])
         print("ARTIFACT_REGISTRY_READ=" + report["checks"]["artifact_registry_read"])
         print("ACTIVE_GCP_IDENTITY_PRESENT=" + str(report["active_gcloud_identity_present"]))
         print("FINANCIAL_WRITES=0; PRODUCTION_RELEASE=BLOCKED")
-        if args.upload:
+        if args.upload or args.upload_existing:
             branch, link = upload_to_github(root, path, name)
             print("GITHUB_SANITIZED_UPLOAD=SUCCESS")
             print("GITHUB_AUDIT_BRANCH=" + branch)
