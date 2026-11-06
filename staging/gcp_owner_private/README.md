@@ -57,3 +57,26 @@ cloud credential into a chat or repository.
 Passing the collector does **not** verify inherited Firestore/IAM financial
 write privileges or actual live authorization, and it does not perform
 any deployment, registry push, financial data read or production cutover.
+
+
+### Recover from a single-branch shallow-clone worktree error
+
+If the Google Cloud inventory succeeded and saved a JSON but the upload printed
+`BLOCKED: Failed to create isolated audit worktree`, the original cloud discovery
+**does not need to be repeated**. The explicit `origin/main` refspec fix is
+included in the collector. From Cloud Shell:
+
+```bash
+cd ~/sbi-phase2-readiness
+git pull --ff-only origin deploy/sbi-phase2-private-runtime-candidate-20261106
+python3 staging/gcp_owner_private/collect_phase2_readiness.py 
+  --upload-existing ~/sbi_phase2_private_inventory/SBI_PHASE2_GCP_READINESS_20261106T183155Z.json
+```
+
+`--upload-existing` checks the original collector's fixed schema, source,
+file ownership, private location, timestamp, status allowlists, exact release
+blocks, and canonical JSON formatting before uploading. It executes no GCP
+commands. It fetches `main` into the explicitly named remote-tracking Git ref
+and creates a distinct review branch. If GitHub pushes are not authorized,
+the local private report stays intact and the error is reported; never
+share GitHub PATs or GCP keys.
