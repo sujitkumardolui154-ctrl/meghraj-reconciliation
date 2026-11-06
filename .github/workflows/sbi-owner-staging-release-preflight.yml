@@ -1,0 +1,61 @@
+name: SBI Owner Deployment Phase 1 — source-pinned staging preflight
+
+on:
+  pull_request:
+    paths:
+      - 'tools/sbi_owner_staging_release_preflight.py'
+      - 'tests/test_sbi_owner_staging_release_preflight.py'
+      - '.github/workflows/sbi-owner-staging-release-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stage-source-package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout pinned candidate without retained token
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Install Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run owner policy and financial-safety synthetic suites
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p 'test_owner_candidate_policy_gate.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_marker_precedence_shadow.py' -v
+          python -m unittest discover -s tests -p 'test_credit_note_annotation_qa.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_owner_staging_release_preflight.py' -v
+      - name: Build SHA256-pinned staging source evidence
+        run: |
+          set -euo pipefail
+          mkdir -p release/staging-evidence
+          python tools/sbi_owner_staging_release_preflight.py --root . --out-dir release/staging-evidence
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path=Path('release/staging-evidence/release_preflight.json')
+          result=json.loads(path.read_text())
+          assert result['result']=='PASS_SOURCE_PACKAGE_ONLY'
+          assert result['production_release']=='BLOCKED'
+          assert result['cloud_staging_deployment']=='NOT_PERFORMED'
+          assert result['finance_database_write_permission']=='NOT_GRANTED'
+          assert len(result['source_files'])==8
+          print('OWNER_DEPLOYMENT_PHASE1=PASS_SOURCE_EVIDENCE_ONLY')
+          print('CLOUD_DEPLOYMENT=NOT_PERFORMED')
+          print('PRODUCTION_TRAFFIC_CHANGE=0')
+          print('FINANCIAL_DATABASE_WRITES=0')
+          PY
+          git rev-parse HEAD > release/staging-evidence/pinned_source_commit.txt
+      - name: Upload private-ready source-only QA artifact (no finance data)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbi-owner-release-phase1-source-evidence
+          path: release/staging-evidence/
+          retention-days: 14
