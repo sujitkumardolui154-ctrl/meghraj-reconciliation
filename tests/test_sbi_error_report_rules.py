@@ -150,6 +150,7 @@ class ErrorReportRules(unittest.TestCase):
 
     def test_14_csv_formula_injection_defense(self):
         row = fixture("=1+2")
+        row[16] = "119"  # Force a row-level finding containing the unsafe invoice ID.
         output = render_error_report_csv(check([row], report_category="ok"))
         self.assertIn("'=1+2", output)
         self.assertIn("Error Code", output)
