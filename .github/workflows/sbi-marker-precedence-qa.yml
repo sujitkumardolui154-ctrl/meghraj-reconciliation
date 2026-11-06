@@ -1,0 +1,36 @@
+name: SBI Financial Marker Shadow Gate (offline synthetic)
+
+on:
+  pull_request:
+    paths:
+      - 'backend_source/sbi_marker_precedence_shadow.py'
+      - 'tests/test_sbi_marker_precedence_shadow.py'
+      - '.github/workflows/sbi-marker-precedence-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  marker-eligibility-shadow:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact head (without retained credentials)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run 18 synthetic read-only eligibility gates
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p 'test_sbi_marker_precedence_shadow.py' -v
+          python -m py_compile backend_source/sbi_marker_precedence_shadow.py tests/test_sbi_marker_precedence_shadow.py
+          echo 'QA_SCOPE=READ_ONLY_SYNTHETIC_MARKER_PRECEDENCE'
+          echo 'NEW_PAYMENT_ALLOCATIONS=0'
+          echo 'FINANCIAL_DATA_WRITES=0'
+          echo 'PRODUCTION_CUTOVER=BLOCKED'
