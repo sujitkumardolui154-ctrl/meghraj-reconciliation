@@ -6,6 +6,7 @@ on:
       - 'staging/gcp_owner_private/**'
       - 'tests/test_sbi_phase2_private_canary.py'
       - 'tests/test_sbi_phase2_cloud_inventory.py'
+      - 'tests/test_sbi_phase2_staging_iam_survey.py'
       - '.github/workflows/sbi-phase2-private-canary.yml'
   workflow_dispatch:
 
@@ -31,6 +32,8 @@ jobs:
           set -euo pipefail
           bash -n staging/gcp_owner_private/gcp_readiness_readonly.sh
           python -m unittest discover -s tests -p 'test_sbi_phase2_cloud_inventory.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_phase2_staging_iam_survey.py' -v
+          python -m py_compile staging/gcp_owner_private/assess_stage_iam_readonly.py
           python -m py_compile staging/gcp_owner_private/collect_phase2_readiness.py
           python -m unittest discover -s tests -p 'test_sbi_phase2_private_canary.py' -v
           python -m unittest discover -s tests -p 'test_owner_candidate_policy_gate.py' -v
