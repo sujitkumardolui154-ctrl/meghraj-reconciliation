@@ -11,7 +11,7 @@ class FloatingAssistantGuardTests(unittest.TestCase):
 
     def test_one_overlay_not_new_navigation(self):
         self.assertIn('id="dil-assistant-panel"', self.js)
-        self.assertIn('id="dil-assistant-root"', self.js)
+        self.assertIn('root.id = "dil-assistant-root"', self.js)
         self.assertNotIn('window.location.href', self.js)
 
     def test_keyboard_focus_containment(self):
