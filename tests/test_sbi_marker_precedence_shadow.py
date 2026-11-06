@@ -89,7 +89,7 @@ class SBIInvoiceMarkerPrecedenceTests(unittest.TestCase):
 
     def test_14_ordinary_tds_round_half_up_to_paise(self):
         self.assertEqual(ordinary_tds_matches(
-            bank_credit="116.76", invoice_gross="117.76", taxable="100.50"
+            bank_credit="116.75", invoice_gross="117.76", taxable="100.50"
         ), ("1",))
         self.assertEqual(ordinary_tds_matches(
             bank_credit="117", invoice_gross="118", taxable="100"
