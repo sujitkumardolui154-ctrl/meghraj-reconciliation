@@ -28,7 +28,7 @@ REPORT_HEADERS = (
 )
 
 
-CREDIT_NOTE_TOKEN = re.compile(r"(?<!\\w)CREDIT\\s+NO(?:TE|RTE)(?!\\w)", re.IGNORECASE)
+CREDIT_NOTE_TOKEN = re.compile(r"(?<!\w)CREDIT\s+NO(?:TE|RTE)(?!\w)", re.IGNORECASE)
 
 
 def normalize_header(value):
