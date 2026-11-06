@@ -289,9 +289,21 @@ def exact_repo_git_root():
 def upload_to_github(root, report_path, report_name):
     # Branch-based upload never writes to 'main'. No arbitrary local files
     # are staged; git pushes only the selected sanitized JSON in a worktree.
-    ok, _ = invoke(["git", "-C", str(root), "fetch", "--quiet", "origin", "main"])
+    # Cloud Shell commonly clones only the requested Phase 2 branch:
+    # `git fetch origin main` updates FETCH_HEAD, but NOT origin/main.
+    # Fetch an explicit remote-tracking ref so the isolated worktree has a base.
+    ok, _ = invoke([
+        "git", "-C", str(root), "fetch", "--quiet", "origin",
+        "+refs/heads/main:refs/remotes/origin/main",
+    ], timeout=90)
     if not ok:
-        raise RuntimeError("Git fetch failed. Check your GitHub read permissions")
+        raise RuntimeError("Git fetch of refs/remotes/origin/main failed")
+    ok, _ = invoke([
+        "git", "-C", str(root), "rev-parse", "--verify",
+        "refs/remotes/origin/main^{commit}",
+    ])
+    if not ok:
+        raise RuntimeError("The shallow clone has no verified origin/main base")
     utc = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     branch = "audit/sbi-phase2-gcp-readiness-" + utc
     with tempfile.TemporaryDirectory(prefix="sbi-cloud-git-") as folder:
