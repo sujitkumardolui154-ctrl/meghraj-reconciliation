@@ -28,6 +28,7 @@ jobs:
       - name: Offline staging canary unit safety gates
         run: |
           set -euo pipefail
+          bash -n staging/gcp_owner_private/gcp_readiness_readonly.sh
           python -m unittest discover -s tests -p 'test_sbi_phase2_private_canary.py' -v
           python -m unittest discover -s tests -p 'test_owner_candidate_policy_gate.py' -v
           python -m unittest discover -s tests -p 'test_sbi_marker_precedence_shadow.py' -v
