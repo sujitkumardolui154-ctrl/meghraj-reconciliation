@@ -97,8 +97,30 @@ class ErrorReportRules(unittest.TestCase):
         rows = [fixture("INV1"), fixture("INV2")]
         dataset = check(rows, report_category="ok")
         self.assertEqual(len([f for f in dataset if f["Error Code"].startswith("ERR-08")]), 1)
-        per_invoice = check(rows, report_category="ok", bank_evidence={"INV1": ["ref"]})
-        self.assertEqual(len(invoice_flags(per_invoice, "ERR-08_PAYMENT_EVIDENCE_MISSING")), 1)
+        supplied = check(rows, report_category="ok", bank_evidence={"INV1": ["ref"]})
+        payment = [f for f in supplied if f["Error Code"] == "ERR-08_PAYMENT_EVIDENCE_MISSING"]
+        self.assertEqual(len(payment), 1)
+        self.assertEqual(payment[0]["Source Row"], "")
+        self.assertEqual(payment[0]["Detection Status"], "NOT_VERIFIABLE")
+        self.assertFalse(invoice_flags(supplied, "ERR-08_PAYMENT_EVIDENCE_MISSING"))
+
+    def test_16_invoice_keyed_payment_claim_never_verifies_duplicate_rows(self):
+        rows = [fixture("DUP"), fixture("DUP")]
+        evidence = {"DUP": ["bank-ref-claimed"]}
+        findings = check(rows, report_category="ok", bank_evidence=evidence)
+        payment = [f for f in findings if f["Error Code"] == "ERR-08_PAYMENT_EVIDENCE_MISSING"]
+        self.assertEqual(len(payment), 1)
+        self.assertEqual(payment[0]["Detection Status"], "NOT_VERIFIABLE")
+        self.assertFalse(payment[0]["Source Row"])
+        self.assertEqual(len(invoice_flags(findings, "ERR-03_DUPLICATE_INVOICE")), 2)
+        self.assertEqual(evidence, {"DUP": ["bank-ref-claimed"]})
+
+    def test_17_empty_supplied_bank_mapping_does_not_accuse_rows(self):
+        findings = check([fixture()], report_category="ok", bank_evidence={})
+        payment = [f for f in findings if f["Error Code"] == "ERR-08_PAYMENT_EVIDENCE_MISSING"]
+        self.assertEqual(len(payment), 1)
+        self.assertEqual(payment[0]["Detection Status"], "NOT_VERIFIABLE")
+        self.assertFalse(invoice_flags(findings, "ERR-08_PAYMENT_EVIDENCE_MISSING"))
 
     def test_09_status_conflicts(self):
         row = fixture()

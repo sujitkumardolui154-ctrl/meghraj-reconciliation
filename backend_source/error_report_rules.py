@@ -201,15 +201,17 @@ def audit_error_report(
              note="Independent payment ledger absent; individual payments not judged",
              state="NOT_VERIFIABLE")
     else:
-        if not isinstance(bank_evidence, Mapping):
-            raise ValueError("Bank evidence must be keyed by invoice")
-        if str(report_category or "").lower() == "ok":
-            for line, row in enumerate(source_rows, start=2):
-                if not _is_missing(row[12]) and not bank_evidence.get(row[12].strip()):
-                    flag("ERR-08_PAYMENT_EVIDENCE_MISSING", line,
-                         field="Bank payment ledger",
-                         note="Claimed OK invoice lacks supplied independent payment reference",
-                         state="NOT_VERIFIABLE")
+        # Invoice-number-only lookups cannot prove a bank allocation. Matching
+        # must begin with SOL, bank credit I, amount/TDS, period and eligibility;
+        # duplicates require original-row identity and a globally unique ledger.
+        # This standalone flagger has no independently authenticated ledger
+        # adapter, so supplied mappings remain unverified at dataset scope.
+        flag("ERR-08_PAYMENT_EVIDENCE_MISSING",
+             field="Independent bank allocation verification",
+             note="Caller-supplied bank evidence is not independently authenticated "
+                  "or matched by SOL, amount, period, eligibility and unique "
+                  "source row; no invoice-level payment conclusion",
+             state="NOT_VERIFIABLE")
 
     if approved_master is None:
         flag("ERR-10_MASTER_REPORT_PARITY", field="Approved original invoice source",
