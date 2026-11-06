@@ -1,0 +1,36 @@
+name: SBI Owner Candidate Policy Gate (offline only)
+
+on:
+  pull_request:
+    paths:
+      - 'tools/owner_candidate_policy_gate.py'
+      - 'tests/test_owner_candidate_policy_gate.py'
+      - '.github/workflows/sbi-owner-policy-release-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  owner-policy-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact pull request source without retained credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run synthetic release negative-gate tests (no data/network)
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p 'test_owner_candidate_policy_gate.py' -v
+          python -m py_compile tools/owner_candidate_policy_gate.py tests/test_owner_candidate_policy_gate.py
+          echo 'OWNER_POLICY_RULE_QA=SYNTHETIC_ONLY'
+          echo 'BANK_RECONCILIATION_QA=NOT_VERIFIED'
+          echo 'FINANCIAL_WRITES=0'
+          echo 'PRODUCTION_RELEASE=BLOCKED'
