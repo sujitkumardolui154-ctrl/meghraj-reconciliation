@@ -249,35 +249,148 @@ class MeghrajCompleteAuthTests(unittest.TestCase):
         self.assertNotEqual(response.status_code, 200)
 
     # ------------------------------------------------
-    # SESSION LIFECYCLE — NOT YET IMPLEMENTED
-    # ------------------------------------------------
+    # SESSION LIFECYCLE — VERIFIED OFFLINE FIREBASE MOCK BOUNDARY
+    # All Firebase calls are intercepted. No live Firebase or financial access.
+    # CSRF is obtained through the actual endpoint, never bypassed.
 
-    @unittest.skip(
-        "Requires verified mock boundary for Firebase "
-        "token verification and session creation"
-    )
+    def _csrf_headers(self):
+        from dashboard_sessions import CSRF_COOKIE, ORIGINS
+        token = self.client.get("/auth/csrf").get_json()["csrf_token"]
+        self.assertEqual(
+            self.client.get_cookie(CSRF_COOKIE).value, token
+        )
+        return {"Origin": sorted(ORIGINS)[0], "X-DIL-CSRF": token}
+
+    def _login_mocks(self, stack):
+        from unittest.mock import patch, Mock
+        import time
+        from dashboard_sessions import SESSION_COOKIE
+        user = Mock(
+            uid="synthetic-uid", email="synthetic@example.invalid",
+            disabled=False, custom_claims={"dil_dashboard": True},
+            display_name="Synthetic"
+        )
+        identity = {
+            "uid": user.uid, "auth_time": time.time(),
+            "firebase": {"sign_in_provider": "password"}
+        }
+        stack.enter_context(patch(
+            "dashboard_sessions.firebase_app", return_value=object()
+        ))
+        verify_id = stack.enter_context(patch(
+            "dashboard_sessions.auth.verify_id_token", return_value=identity
+        ))
+        get_user = stack.enter_context(patch(
+            "dashboard_sessions.auth.get_user", return_value=user
+        ))
+        create = stack.enter_context(patch(
+            "dashboard_sessions.auth.create_session_cookie",
+            return_value="synthetic-session-cookie"
+        ))
+        verify_session = stack.enter_context(patch(
+            "dashboard_sessions.auth.verify_session_cookie",
+            return_value={"uid": user.uid}
+        ))
+        revoke = stack.enter_context(patch(
+            "dashboard_sessions.auth.revoke_refresh_tokens"
+        ))
+        return user, verify_id, get_user, create, verify_session, revoke
+
     def test_15_valid_authenticated_login(self):
-        pass
+        from contextlib import ExitStack
+        from dashboard_sessions import SESSION_COOKIE
+        with ExitStack() as stack:
+            user, verify_id, get_user, create, verify_session, revoke = (
+                self._login_mocks(stack)
+            )
+            headers = self._csrf_headers()
+            response = self.client.post(
+                "/auth/session", json={"idToken": "synthetic-id-token"},
+                headers=headers
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.get_json()["ok"])
+            self.assertEqual(
+                self.client.get_cookie(SESSION_COOKIE).value,
+                "synthetic-session-cookie"
+            )
+            verify_id.assert_called_once()
+            create.assert_called_once()
+            me = self.client.get("/auth/me")
+            self.assertEqual(me.status_code, 200)
+            self.assertEqual(me.get_json()["email"], user.email)
+            verify_session.assert_called_once()
 
-    @unittest.skip(
-        "Requires authenticated test session and "
-        "verified logout invalidation mechanism"
-    )
     def test_16_logout_invalidates_session(self):
-        pass
+        from contextlib import ExitStack
+        from dashboard_sessions import SESSION_COOKIE, CSRF_COOKIE
+        from firebase_admin import auth
+        with ExitStack() as stack:
+            user, _, _, _, verify_session, revoke = self._login_mocks(stack)
+            headers = self._csrf_headers()
+            self.assertEqual(self.client.post(
+                "/auth/session", json={"idToken": "synthetic-id-token"},
+                headers=headers
+            ).status_code, 200)
+            response = self.client.post("/auth/logout", headers=headers)
+            self.assertEqual(response.status_code, 200)
+            revoke.assert_called_once()
+            self.assertIsNone(self.client.get_cookie(SESSION_COOKIE))
+            self.assertIsNone(self.client.get_cookie(CSRF_COOKIE))
+            self.assertEqual(self.client.get("/auth/me").status_code, 401)
+            # A replayed cookie must be rejected after server revocation.
+            self.client.set_cookie(SESSION_COOKIE, "synthetic-session-cookie")
+            verify_session.side_effect = auth.RevokedSessionCookieError(
+                "synthetic revoked session"
+            )
+            self.assertEqual(self.client.get("/auth/me").status_code, 401)
 
-    @unittest.skip(
-        "Requires verified session expiration mechanism"
-    )
     def test_17_expired_session_rejected(self):
-        pass
+        from contextlib import ExitStack
+        from dashboard_sessions import SESSION_COOKIE
+        from firebase_admin import auth
+        with ExitStack() as stack:
+            _, _, _, _, verify_session, _ = self._login_mocks(stack)
+            self.client.set_cookie(SESSION_COOKIE, "synthetic-expired")
+            verify_session.side_effect = auth.InvalidSessionCookieError(
+                "synthetic expired session"
+            )
+            response = self.client.get("/auth/me")
+            self.assertEqual(response.status_code, 401)
+            self.assertIsNone(self.client.get_cookie(SESSION_COOKIE))
+            self.assertEqual(
+                verify_session.call_args.kwargs["check_revoked"], True
+            )
 
-    @unittest.skip(
-        "Requires authenticated response that sets "
-        "the application's session cookie"
-    )
     def test_18_secure_session_cookie_flags(self):
-        pass
+        from contextlib import ExitStack
+        from dashboard_sessions import SESSION_COOKIE, CSRF_COOKIE
+        with ExitStack() as stack:
+            self._login_mocks(stack)
+            csrf_response = self.client.get("/auth/csrf")
+            csrf_cookie = next(
+                h for h in csrf_response.headers.getlist("Set-Cookie")
+                if h.startswith(CSRF_COOKIE + "=")
+            )
+            token = csrf_response.get_json()["csrf_token"]
+            from dashboard_sessions import ORIGINS
+            response = self.client.post(
+                "/auth/session", json={"idToken": "synthetic-id-token"},
+                headers={
+                    "Origin": sorted(ORIGINS)[0], "X-DIL-CSRF": token
+                }
+            )
+            self.assertEqual(response.status_code, 200)
+            session_cookie = next(
+                h for h in response.headers.getlist("Set-Cookie")
+                if h.startswith(SESSION_COOKIE + "=")
+            )
+            for cookie in (csrf_cookie, session_cookie):
+                with self.subTest(cookie=cookie.split("=", 1)[0]):
+                    self.assertIn("Secure", cookie)
+                    self.assertIn("HttpOnly", cookie)
+                    self.assertIn("SameSite=Lax", cookie)
+                    self.assertIn("Path=/", cookie)
 
 
 if __name__ == "__main__":
