@@ -40,7 +40,7 @@ class TrustedScope:
     verified: bool
 
 
-ReadCandidates = Callable[[str, int], tuple[CandidateRow, ...]]
+ReadCandidates = Callable[[TrustedScope, str, int], tuple[CandidateRow, ...]]
 CanRead = Callable[[TrustedScope, CandidateRow], bool]
 
 
@@ -56,7 +56,7 @@ def authorized_invoice_reader(
 ) -> tuple[EvidenceRecord, ...]:
     """Fail the entire read if provenance or per-row authorization is unclear.
 
-    The repository must *already* apply verified scope filtering at query time
+    The repository must apply the explicitly passed verified scope at query time
     so this second per-row check is a defense in depth, not a permission grant.
     A financial record without explicit ownership/branch policy is denied.
     """
@@ -87,7 +87,7 @@ def authorized_invoice_reader(
     # At most limit candidate rows; anything beyond the limit is a hard error,
     # not a partial hidden authorization failure.
     try:
-        rows = read_candidates(question, limit)
+        rows = read_candidates(verified_scope, question, limit)
     except Exception as exc:
         raise IntelligenceUnavailable("Read-only evidence source unavailable") from exc
     if not isinstance(rows, tuple) or len(rows) > limit:
