@@ -22,7 +22,8 @@ class AuthorizedReadAdapterTests(unittest.TestCase):
         self.policy_count = 0
         self.compose_count = 0
 
-    def fetch(self, question, limit):
+    def fetch(self, verified_scope, question, limit):
+        self.assertIs(verified_scope, self.scope)
         self.read_count += 1
         self.assertEqual(limit, 25)
         return (self.row,)
@@ -52,6 +53,28 @@ class AuthorizedReadAdapterTests(unittest.TestCase):
         self.assertEqual(result.citations[0].record_id, "MXP-TEST-001")
         self.assertEqual((self.read_count, self.policy_count, self.compose_count),
                          (1, 1, 1))
+
+    def test_repository_receives_explicit_verified_scope_before_read(self):
+        captured = []
+        def scoped_fetch(scope, question, limit):
+            captured.append((scope, question, limit))
+            return (self.row,)
+        execute_invoice_question(
+            self.caller, "Find invoice evidence", (),
+            self.reader(fetch=scoped_fetch), self.compose,
+        )
+        self.assertEqual(captured, [(self.scope, "Find invoice evidence", 25)])
+
+    def test_repository_rejects_unscoped_callback_fail_closed(self):
+        # A legacy two-argument repository cannot silently ignore scope.
+        def legacy_reader(question, limit):
+            return (self.row,)
+        with self.assertRaises(IntelligenceUnavailable):
+            execute_invoice_question(
+                self.caller, "Invoice?", (),
+                self.reader(fetch=legacy_reader), self.compose,
+            )
+        self.assertEqual(self.compose_count, 0)
 
     def test_denied_scope_never_reads_or_composes(self):
         bad = TrustedScope("another-user", "sbi-approved-group", True)
