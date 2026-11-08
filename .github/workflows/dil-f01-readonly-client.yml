@@ -1,0 +1,24 @@
+name: DIL F01 read-only client synthetic QA
+on:
+  pull_request:
+    paths:
+      - 'dashboard_source/dil_floating_assistant.js'
+      - 'tests/test_dil_f01_readonly_client.cjs'
+      - '.github/workflows/dil-f01-readonly-client.yml'
+  workflow_dispatch:
+jobs:
+  synthetic-no-finance:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and synthetic negative authorization checks
+        run: |
+          set -euo pipefail
+          node --check dashboard_source/dil_floating_assistant.js
+          node --test tests/test_dil_f01_readonly_client.cjs
