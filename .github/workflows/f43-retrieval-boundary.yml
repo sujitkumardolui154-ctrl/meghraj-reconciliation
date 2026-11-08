@@ -1,0 +1,18 @@
+name: F43 synthetic evidence retrieval boundary
+on:
+  pull_request:
+    paths:
+      - 'dashboard_source/dil_readonly_orchestrator.py'
+      - 'tests/test_f43_retrieval_boundary.py'
+      - '.github/workflows/f43-retrieval-boundary.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-no-write:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Combined F43 authorization, evidence and no-write tests
+        run: python3 -m unittest discover -s tests -p 'test_f43_retrieval_boundary.py' -v
