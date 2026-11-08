@@ -16,16 +16,24 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: Exact commit and synthetic tests (fail on skips or zero)
         shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
           python - <<'PY'
           import subprocess, sys, unittest
-          print("TESTED_SHA=" + subprocess.check_output(["git","rev-parse","HEAD"], text=True).strip())
+          import os
+          actual = subprocess.check_output(["git","rev-parse","HEAD"], text=True).strip()
+          expected = os.environ.get("EXPECTED_SHA", "")
+          print("TESTED_SHA=" + actual + " EXPECTED_SHA=" + expected)
+          if actual != expected:
+              sys.exit("FAIL: checkout SHA differs from expected PR head")
           suite=unittest.defaultTestLoader.discover("tests",pattern="test_dil_evidence_envelope.py")
           result=unittest.TextTestRunner(verbosity=2).run(suite)
           print(f"TESTS={result.testsRun} SKIPPED={len(result.skipped)} ERRORS={len(result.errors)} FAILURES={len(result.failures)}")
