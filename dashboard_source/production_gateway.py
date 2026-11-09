@@ -2,7 +2,7 @@ import os
 import requests
 from flask import Flask, jsonify, send_from_directory, g
 from cloud_auth import get_backend_token
-from sbi_report_access import can_view_report
+from sbi_report_access import can_view_report, can_import_invoice
 
 app = Flask(__name__, static_folder=None)
 BACKEND = "https://sbi-supervisor-backend-109590290120.asia-south1.run.app"
@@ -289,7 +289,17 @@ def database_import_gateway(part):
     if request.method != expected_method:
         return import_reply({"error": "Method not allowed"}, 405)
 
+    # Firebase session middleware runs before this route. An explicit import
+    # entitlement is required for preview, receipt reads and apply alike.
+    if not can_import_invoice(getattr(g, "dil_user", None),
+                              getattr(g, "dil_identity", None)):
+        return import_reply({"error": "Invoice import permission required"}, 403)
+
     if expected_method == "POST":
+        # Origin and a custom marker are not sufficient CSRF defenses.
+        from dashboard_sessions import csrf_valid
+        if not csrf_valid():
+            return import_reply({"error": "Valid CSRF token required"}, 403)
         if (
             request.headers.get("Origin") not in IMPORT_ORIGINS
             or request.headers.get("X-DIL-Import") != "1"
@@ -340,8 +350,11 @@ def database_import_gateway(part):
                 {"error": "Maximum file size is 8 MiB"}, 413
             )
 
+    # Mint the service ID token for the exact backend being called.
+    # A token for the supervisor backend must not be reused for IMPORT_BACKEND.
+    import_target = os.environ.get("IMPORT_BACKEND", BACKEND).rstrip("/")
     try:
-        token = get_backend_token(BACKEND)
+        token = get_backend_token(import_target)
     except Exception:
         app.logger.exception("Import backend authentication failed")
         return import_reply(
@@ -351,7 +364,7 @@ def database_import_gateway(part):
     try:
         response = requests.request(
             expected_method,
-            os.environ.get("IMPORT_BACKEND", BACKEND).rstrip("/") + "/imports/" + part,
+            import_target + "/imports/" + part,
             headers={"Authorization": "Bearer " + token},
             params=params,
             files=files,
