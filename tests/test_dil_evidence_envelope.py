@@ -44,5 +44,21 @@ class EvidenceEnvelopeTests(unittest.TestCase):
     def test_money_precision_denied(self):
         with self.assertRaises(EvidenceRejected): exact_money("1.001")
 
+    def test_malformed_timestamp_denied(self):
+        with self.assertRaisesRegex(EvidenceRejected, "INVALID_TIMESTAMP"):
+            validate_answer(envelope(evidence=[dict(ROW, observed_at="2026-99-99T00:00:00Z")]), authorized_refs=frozenset({ROW["ref"]}))
+    def test_unzoned_timestamp_denied(self):
+        with self.assertRaisesRegex(EvidenceRejected, "UNZONED_TIMESTAMP"):
+            validate_answer(envelope(evidence=[dict(ROW, observed_at="2026-11-09T00:00:00")]), authorized_refs=frozenset({ROW["ref"]}))
+    def test_future_timestamp_denied(self):
+        with self.assertRaisesRegex(EvidenceRejected, "FUTURE_TIMESTAMP"):
+            validate_answer(envelope(evidence=[dict(ROW, observed_at="2999-11-09T00:00:00Z")]), authorized_refs=frozenset({ROW["ref"]}))
+    def test_unhashable_status_denied(self):
+        with self.assertRaises(EvidenceRejected):
+            validate_answer(envelope(status=[]), authorized_refs=frozenset({ROW["ref"]}))
+    def test_unhashable_source_denied(self):
+        with self.assertRaises(EvidenceRejected):
+            validate_answer(envelope(evidence=[dict(ROW, source=[])]), authorized_refs=frozenset({ROW["ref"]}))
+
 if __name__=="__main__":
     unittest.main()
