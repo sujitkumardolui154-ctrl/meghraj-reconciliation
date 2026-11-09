@@ -41,7 +41,7 @@ def validate_answer(envelope: Mapping, *, authorized_refs: frozenset[str]) -> di
             raise EvidenceRejected("UNAUTHORIZED_REFERENCE")
         if not isinstance(version, str) or not version.strip() or len(version) > 128:
             raise EvidenceRejected("UNVERSIONED_SOURCE")
-        if not isinstance(observed, str) or len(observed) < 20 or len(observed) > 40:
+        if not isinstance(observed, str) or len(observed) < 19 or len(observed) > 40:
             raise EvidenceRejected("MISSING_TIMESTAMP")
         try:
             timestamp = datetime.fromisoformat(observed.replace("Z", "+00:00"))
