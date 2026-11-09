@@ -1,0 +1,35 @@
+# Separate opt-in QA stack; not included in the existing AWS preview Compose.
+name: sbi-aws-backend-readonly-qa
+services:
+  backend-readonly:
+    profiles: ["manual-review-only"]
+    build:
+      context: ../..
+      dockerfile: staging/aws_backend_readonly/Dockerfile
+      args:
+        SBI_SOURCE_SHA: ${SBI_REVIEWED_SOURCE_SHA:?Full reviewed source SHA required}
+    restart: "no"
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 256m
+    environment:
+      SBI_SOURCE_SHA: ${SBI_REVIEWED_SOURCE_SHA:?Full reviewed source SHA required}
+      SBI_AWS_REPORT_USERNAME: ${SBI_AWS_REPORT_USERNAME:?Unique local QA username required}
+      SBI_AWS_REPORT_PASSWORD: ${SBI_AWS_REPORT_PASSWORD:?Unique local QA password required}
+    ports:
+      - "127.0.0.1:18086:8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz',timeout=3).close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks: [backend_isolated]
+networks:
+  backend_isolated:
+    internal: true
