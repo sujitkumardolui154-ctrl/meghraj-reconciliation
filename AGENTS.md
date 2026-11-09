@@ -1,5 +1,22 @@
 # SBI Reconciliation — Engineering Execution Rules
 
+## ADMIN RULE WS-LOCK-001 — STRICT WORKSTREAM ISOLATION
+
+**Existing owner-admin rule, retained without relaxation.** Scope intended by the owner: all current and future project chats and workstreams. This repository file enforces the rule for work performed **within this repository**; it does not itself configure unrelated ChatGPT projects.
+
+1. **ONE CHAT / PAGE = ONE WORKSTREAM.** A chat remains dedicated to its assigned project workstream. Keep unrelated tasks, code, tests, deployments and source files in separate appropriate chats.
+2. **Conflict response (exact):** `WORKSTREAM CONFLICT — ACTION BLOCKED`. Explain the conflicting workstream and direct it to its own chat. **Do not execute, modify code, run tests, stage, deploy, or expand scope** for that conflicting task in the current workstream.
+3. A new user request within an existing workstream is not automatically authorization to merge separate workstreams. Preserve all existing locks, business rules and safety gates. Changes to WS-LOCK-001 itself require **explicit owner authorization**.
+4. **Owner-approved addendum WS-LOCK-001.A — LAST-WORKING-FIRST / EXACT-SCOPE / MINIMAL EXECUTION (9 November 2026):** Within the **authorized active workstream only**, before creating code, issuing a new terminal command, building, testing, deploying or making other changes:
+   - **First recover the last verified working state** for that workstream: relevant branch and exact commit, deployed artifact/revision and runtime health if applicable, latest successful relevant QA, backups and rollback. Record timestamp and source of evidence. Clearly mark unknown values and do not assume local Git HEAD equals the live deployment.
+   - **Then identify the owner's exact requested change** against existing implementation. Reuse last-working files, tools, reports and CI evidence; prefer **NO CODE CHANGE** whenever the requirement is already met or can be resolved without new code.
+   - **Execute only what is necessary**, selecting the smallest safe diff and mandatory affected regression tests. Skip redundant commands, repeated testing, duplicate implementations, unnecessary builds, infrastructure and cloud costs. A status-only request must not trigger implementation or QA.
+   - **Stop safely on missing proof** that is necessary before a write, deployment or release. Provide the single minimal read-only verification step instead. Never bypass authorization, finance write protections, original source preservation, independent parity, security or rollback gates merely to reduce work.
+   - **Reporting contract:** `LAST_WORKING_VERIFIED / NOT_VERIFIED | WORKSTREAM | EXACT_REQUEST | NO_CODE_CHANGE / MINIMAL_DIFF | QA_REUSED / QA_NEEDED | BLOCKER | NEXT_SINGLE_ACTION | FINANCIAL_WRITES / TRAFFIC_CHANGES`.
+5. This addendum does **not** replace the isolation rule. It **applies after** the workstream is confirmed. In this project's current authorized AWS deployment workstream, the active hosting target remains **existing AWS Lightsail**, and legacy GCP migration work is a separate workstream unless the owner explicitly reauthorizes it.
+
+---
+
 **Owner instruction (9 November 2026): LAST WORKING FIRST.** These instructions apply to coding, deployment, reconciliation, migrations, tests, and assistant/agent maintenance. They supplement, never override, the stricter financial, security, audit, and rollback requirements.
 
 ## 1. Recover and verify the most recent working state BEFORE planning or generating new code
