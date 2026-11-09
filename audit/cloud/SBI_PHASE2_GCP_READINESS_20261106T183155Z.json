@@ -1,0 +1,81 @@
+{
+  "active_gcloud_identity_present": true,
+  "api_enabled": {
+    "artifactregistry.googleapis.com": true,
+    "cloudbuild.googleapis.com": true,
+    "iam.googleapis.com": true,
+    "run.googleapis.com": true
+  },
+  "checks": {
+    "active_identity_lookup": "PASS",
+    "artifact_registry_read": "PASS",
+    "cloud_run_list": "PASS",
+    "cloud_run_read_sbi-dashboard": "PASS",
+    "cloud_run_read_sbi-owner-private-stage-v1": "NOT_PRESENT",
+    "cloud_run_read_sbi-reconciliation-api": "PASS",
+    "cloud_run_read_sbi-supervisor-backend": "PASS",
+    "enabled_apis_read": "PASS",
+    "project_read": "PASS",
+    "registry_images_list": "PASS",
+    "service_account_inventory": "PASS",
+    "staging_iam_policy_read": "NOT_VERIFIED"
+  },
+  "collected_utc": "2026-11-06T18:31:55+00:00",
+  "deployment_gates": {
+    "backup_isolated_restore": "NOT_VERIFIED",
+    "dedicated_staging_service_account_no_finance_writes": "NOT_VERIFIED",
+    "financial_data_parity": "NOT_VERIFIED",
+    "financial_database_writes_executed_by_script": 0,
+    "inherited_and_resource_finance_iam_grants": "NOT_VERIFIED",
+    "live_authenticated_cloud_run_response": "NOT_VERIFIED",
+    "production_cutover": "BLOCKED",
+    "production_traffic_unchanged": "NOT_VERIFIED_BY_THIS_READ_ONLY_SCAN",
+    "staging_only_container_digest_pushed": "NOT_VERIFIED"
+  },
+  "expected_services": {
+    "sbi-dashboard": {
+      "exists": true,
+      "identity_configured": true,
+      "ingress": "all",
+      "ready_revision": true,
+      "secret_reference_count": 0
+    },
+    "sbi-owner-private-stage-v1": {
+      "exists": false,
+      "identity_configured": "NOT_VERIFIED",
+      "ingress": "NOT_VERIFIED",
+      "ready_revision": "NOT_VERIFIED",
+      "secret_reference_count": "NOT_VERIFIED"
+    },
+    "sbi-reconciliation-api": {
+      "exists": true,
+      "identity_configured": true,
+      "ingress": "internal-and-cloud-load-balancing",
+      "ready_revision": true,
+      "secret_reference_count": 0
+    },
+    "sbi-supervisor-backend": {
+      "exists": true,
+      "identity_configured": true,
+      "ingress": "all",
+      "ready_revision": true,
+      "secret_reference_count": 0
+    }
+  },
+  "project": "meghraj-reconciliation",
+  "project_access_verified": true,
+  "region": "asia-south1",
+  "registry": {
+    "docker_format_verified": true,
+    "expected_repository": "cloud-run-source-deploy",
+    "listed_image_sample_count_max_200": 123,
+    "new_source_image_digest": "NOT_VERIFIED"
+  },
+  "schema": "SBI_PHASE2_CLOUD_READINESS_SANITIZED_V1",
+  "service_accounts_staging_like_count": 2,
+  "service_accounts_total_count": 10,
+  "service_count": 4,
+  "source": "authorized_cloud_shell_read_only",
+  "staging_account_distinct_from_dashboard_account": "NOT_VERIFIED",
+  "staging_service_public_invoker_policy": "NOT_VERIFIED"
+}
