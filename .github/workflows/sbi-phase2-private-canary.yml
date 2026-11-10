@@ -1,0 +1,133 @@
+name: SBI Phase 2 — private staging canary image QA (no cloud writes)
+
+on:
+  pull_request:
+    paths:
+      - 'staging/gcp_owner_private/**'
+      - 'tests/test_sbi_phase2_private_canary.py'
+      - 'tests/test_sbi_phase2_cloud_inventory.py'
+      - 'tests/test_sbi_phase2_staging_iam_survey.py'
+      - '.github/workflows/sbi-phase2-private-canary.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-image-acceptance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout the exact PR head without retained credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline staging canary unit safety gates
+        run: |
+          set -euo pipefail
+          bash -n staging/gcp_owner_private/gcp_readiness_readonly.sh
+          python -m unittest discover -s tests -p 'test_sbi_phase2_cloud_inventory.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_phase2_staging_iam_survey.py' -v
+          python -m py_compile staging/gcp_owner_private/assess_stage_iam_readonly.py
+          python -m py_compile staging/gcp_owner_private/collect_phase2_readiness.py
+          python -m unittest discover -s tests -p 'test_sbi_phase2_private_canary.py' -v
+          python -m unittest discover -s tests -p 'test_owner_candidate_policy_gate.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_marker_precedence_shadow.py' -v
+          python -m unittest discover -s tests -p 'test_credit_note_annotation_qa.py' -v
+      - name: Prepare vetted Phase 1 source-only Docker context
+        run: |
+          set -euo pipefail
+          mkdir -p phase2/build/source phase2/evidence
+          python tools/sbi_owner_staging_release_preflight.py --root . --out-dir phase2/evidence
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import zipfile
+          path=Path('phase2/evidence/owner_staging_source_evidence.zip')
+          with zipfile.ZipFile(path) as z:
+              for name in z.namelist():
+                  p=Path(name)
+                  if name.startswith('/') or '..' in p.parts:
+                      raise SystemExit('BLOCKED_UNSAFE_ARCHIVE_FILE')
+              z.extractall('phase2/build/source')
+          m=json.loads(Path('phase2/evidence/release_preflight.json').read_text())
+          assert m['result']=='PASS_SOURCE_PACKAGE_ONLY'
+          assert len(m['source_files'])==8
+          PY
+          cp staging/gcp_owner_private/Dockerfile phase2/build/Dockerfile
+          cp staging/gcp_owner_private/canary.py phase2/build/canary.py
+          git rev-parse HEAD > phase2/evidence/source_commit.txt
+      - name: Build source-pinned image locally without registry credentials
+        run: |
+          set -euo pipefail
+          SHA="$(cat phase2/evidence/source_commit.txt)"
+          docker build --pull --build-arg "SOURCE_COMMIT_SHA=${SHA}" -t sbi-owner-private-phase2:ci phase2/build
+          docker image inspect sbi-owner-private-phase2:ci --format '{{.Id}}' > phase2/evidence/local_image_id.txt
+          test "$(docker image inspect sbi-owner-private-phase2:ci --format '{{.Config.User}}')" = "10001:10001"
+          test "$(docker image inspect sbi-owner-private-phase2:ci --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "${SHA}"
+      - name: Verify live local image — finance APIs denied and no prod access
+        run: |
+          set -euo pipefail
+          CID=""
+          cleanup() { if [ -n "${CID}" ]; then docker rm -f "${CID}" >/dev/null 2>&1 || true; fi; }
+          trap cleanup EXIT
+          CID="$(docker run --detach --name sbi-phase2-qa --cap-drop ALL --read-only \
+            --security-opt no-new-privileges --pids-limit 100 --memory 256m \
+            -p 127.0.0.1:18081:8080 sbi-owner-private-phase2:ci)"
+          for n in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:18081/healthz > phase2/evidence/health.json; then break; fi
+            sleep 1
+          done
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('phase2/evidence/health.json').read_text())
+          assert p['mode']=='READ_ONLY_SOURCE_PROOF'
+          assert p['financial_database_connected'] is False
+          assert p['financial_writes_enabled'] is False
+          assert p['production_release']=='BLOCKED'
+          assert p['source_commit']==Path('phase2/evidence/source_commit.txt').read_text().strip()
+          print('PHASE2_LOCAL_HEALTH=PASS')
+          PY
+          curl --silent --fail http://127.0.0.1:18081/release-evidence > phase2/evidence/runtime_source.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('phase2/evidence/runtime_source.json').read_text())
+          assert p['source_files_verified']==8
+          assert p['real_application_runtime']=='NOT_INCLUDED'
+          assert p['finance_execution']=='DISABLED'
+          print('PHASE2_RUNTIME_SOURCE=PASS')
+          PY
+          for path in / /api/reports /imports/preview /upload /reports/credit-note.csv /admin/users /reconciliation/apply; do
+            STATUS="$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:18081${path}")"
+            test "$STATUS" = "503"
+          done
+          test "$(curl -sS -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:18081/api/reports)" = "403"
+          echo "PHASE2_FINANCE_DENIAL=PASS" 
+          echo "PHASE2_LOCAL_CONTAINER_ACCEPTANCE=PASS" 
+      - name: Record GCP deploy remains not run
+        run: |
+          set -euo pipefail
+          cat > phase2/evidence/PHASE2_GATE_STATUS.txt <<'EOF'
+          PHASE2_LOCAL_IMAGE_BUILT=true
+          PHASE2_LOCAL_RUNTIME_TESTED=true
+          CLOUD_RUN_DEPLOYED=false
+          IMAGE_PUSHED_TO_REGISTRY=false
+          GOOGLE_CLOUD_IAM_VERIFIED=false
+          LIVE_FINANCIAL_ACCESS=disabled
+          FINANCIAL_DATABASE_WRITES=0
+          PRODUCTION_TRAFFIC_CHANGES=0
+          PRODUCTION_RELEASE=BLOCKED
+          EOF
+      - name: Retain source-only digest and runtime evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbi-phase2-private-canary-local-image-evidence
+          path: phase2/evidence/
+          retention-days: 14
