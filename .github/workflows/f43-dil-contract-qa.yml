@@ -1,0 +1,19 @@
+name: F43 DIL read-only query contract QA
+on:
+  pull_request:
+    paths:
+      - 'dashboard_source/dil_query_contract.py'
+      - 'tests/test_f43_*.py'
+      - '.github/workflows/f43-dil-contract-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-query-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Combined synthetic authorization, evidence and no-write QA
+        run: |
+          python3 -m unittest discover -s tests -p 'test_f43_*.py' -v
