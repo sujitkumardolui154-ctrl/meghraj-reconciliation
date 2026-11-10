@@ -19,6 +19,7 @@
       #dil-assistant-root .dil-label{background:#233c78;padding:9px 13px;border-radius:24px;border:1px solid #6588cb;font-size:12px;font-weight:700;box-shadow:0 8px 18px #0007}
       #dil-assistant-root .dil-panel{width:min(350px,calc(100vw - 32px));height:min(410px,calc(100dvh - 118px));min-height:220px;margin-bottom:10px;display:flex;flex-direction:column;border-radius:18px;background:linear-gradient(145deg,#1c2f54,#0b1831);border:1px solid #526fa5;box-shadow:0 18px 45px #0008;overflow:hidden;animation:dil-open .23s ease-out}
       #dil-assistant-root .dil-panel[hidden]{display:none}
+      @media(max-width:420px){#dil-assistant-root{right:8px;bottom:8px}#dil-assistant-root .dil-panel{width:calc(100vw - 16px);height:min(410px,calc(100dvh - 100px))}}
       #dil-assistant-root .dil-header{display:flex;justify-content:space-between;align-items:center;padding:12px 13px;background:#233b65;border-bottom:1px solid #43608b}
       #dil-assistant-root .dil-header strong{font-size:13px}
       #dil-assistant-root .dil-sub{color:#acc6e4;font-size:10px;margin-top:3px}
@@ -63,11 +64,13 @@
     const form = root.querySelector(".dil-form");
     const log = root.querySelector(".dil-messages");
     let lastFocus = null;
+    const MAX_VISIBLE_MESSAGES = 80;
     function appendMessage(message, who) {
       const bubble = document.createElement("div");
       bubble.className = "dil-message " + who;
       bubble.textContent = message; // NEVER innerHTML for user or model content.
       log.appendChild(bubble);
+      while (log.children.length > MAX_VISIBLE_MESSAGES) log.removeChild(log.firstElementChild);
       log.scrollTop = log.scrollHeight;
     }
     function toggle(open) {
@@ -86,7 +89,15 @@
     appendMessage("Hello! Ask any invoice-related question. I will use authorized records only when the verified read-only query API is connected.", "assistant");
     launcher.addEventListener("click", function () { toggle(panel.hidden); });
     close.addEventListener("click", function () { toggle(false); launcher.focus(); });
-    panel.addEventListener("keydown", function (event) { if (event.key === "Escape") { toggle(false); launcher.focus(); } });
+    panel.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") { event.preventDefault(); toggle(false); launcher.focus(); return; }
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(panel.querySelectorAll("button:not([disabled]), input:not([disabled])"));
+      if (!focusable.length) return;
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    });
     form.addEventListener("submit", function (event) {
       event.preventDefault();
       const question = input.value.trim();
