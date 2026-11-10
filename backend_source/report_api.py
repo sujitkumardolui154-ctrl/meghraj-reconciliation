@@ -62,9 +62,7 @@ def handle_snapshot_reports(request):
             metadata.get("original_columns_state") != "READY"
             or metadata.get("original_column_count") != 53
             or metadata.get("original_columns_row_count") != 14374
-            or not isinstance(headers, list)
-            or len(headers) != 53
-            or not all(isinstance(item, str) for item in headers)
+            or headers != HEADERS_53
         ):
             return jsonify(error="Original report columns are not ready"), 503
 
@@ -140,6 +138,10 @@ import re
 from flask import current_app
 from invoice_source_schema import HEADERS_53, row_layout, export_values_53
 from invoice_import_store import invoice_fields
+from report_source_integrity import (
+    validate_receipt_source_positions,
+    validate_completed_receipt_source_sheet,
+)
 
 
 def completed_import_rows(db):
@@ -196,6 +198,11 @@ def completed_import_rows(db):
         ):
             raise ValueError("Completed import counts are inconsistent")
 
+        # Completed receipts must map each physical source worksheet row once.
+        # Fail closed before any report content is returned.
+        validate_receipt_source_positions(entries)
+        validate_completed_receipt_source_sheet(receipt, entries)
+
         for document_id, row in entries:
             width, invoice_index, _, _, source_headers = row_layout(row)
             values = row["original_values"]
@@ -238,6 +245,7 @@ def completed_import_rows(db):
 
 # DIL payment reports v1.4.2
 from payment_report_rules import payment_report_kind
+from report_invoice_exception_rules import route_payment_report, exception_evidence_coverage
 
 PAYMENT_REPORTS = ("unpaid", "ok", "error-value")
 REPORT_NAMES_V142 = PAYMENT_REPORTS + ("balance-review",)
@@ -304,7 +312,7 @@ def load_report_rows_v142(db):
         baseline.append({
             **row,
             "export_values": list(values),
-            "payment_report": payment_report_kind(row),
+            "payment_report": route_payment_report(row, payment_report_kind(row))[0],
         })
 
     if source_rows != set(range(2, 14376)):
@@ -314,7 +322,9 @@ def load_report_rows_v142(db):
     # Existing receipt, source and invoice-key checks remain in use.
     imported = completed_import_rows(db)
     for row in imported:
-        row["payment_report"] = payment_report_kind(row)
+        row["payment_report"] = route_payment_report(
+            row, payment_report_kind(row)
+        )[0]
     return baseline, imported
 
 def report_groups_v142(rows):
@@ -357,6 +367,9 @@ def handle_reports(request):
                 completed_import_rows=len(imported),
                 total_invoice_rows=len(baseline) + len(imported),
                 payment_report_basis="PAYMENT_RECEIVED_BLANK_ZERO_NUMERIC_OR_ERROR",
+                exception_evidence_coverage=exception_evidence_coverage(
+                    baseline + imported
+                ),
                 reports={
                     name: {
                         "rows": len(base_groups[name]) + len(import_groups[name]),
