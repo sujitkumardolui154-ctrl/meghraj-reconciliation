@@ -106,3 +106,46 @@ its blob hash and safe permissions, then perform a status-only SSH check.
 Do not replace host executors merely because a PR is green. An approval-gated
 AWS staging release and independent real-host rollback QA are still required.
 This does not enable finance reads, production reporting, DB writes or cutover.
+
+
+## Owner-authorized automatic rollback rehearsal (source-only, pending review)
+
+The deployed V2 executor already restores the old backend and ingress images
+when a post-swap health gate fails. The original SSH allowlist does **not**
+expose a way to trigger such a failure intentionally. The optional
+`rollback-rehearsal` operation added here is permitted only when invoked
+locally by an AWS administrator through the root-owned executor, **not**
+through the dedicated SSH deployment account or GitHub Actions.
+
+This is a potentially disruptive test **only for the separate localhost-only
+staging endpoint** at 127.0.0.1:18086. It is never a financial, public-preview,
+database, or production operation. Do not run it without the owner's explicit
+staging-only authorization and a current healthy baseline.
+
+The stdin request is exactly one line:
+
+```text
+rollback-rehearsal FULL_MAIN_SHA sha256:FULL_PREVIOUS_BACKEND_IMAGE_ID sha256:FULL_PREVIOUS_INGRESS_IMAGE_ID
+```
+
+Fail-closed gates require the reviewed SHA to equal current `main`, both
+existing image IDs to match the operator-pinned baseline, both staging
+containers to be running, and HTTP and authenticated deny-by-default baseline
+checks to pass. All the usual limited source, network and credential checks
+remain. The executor then builds and verifies a canary on 18087; after it
+swaps the staging backend+ingress pair, it deliberately exits into the **same
+automatic EXIT rollback trap** used for a real failed deployment. Both pinned
+images must be restored, with health and authenticated report-denial checks
+passing, for `BACKEND_ROLLBACK=PASS` and `ROLLBACK_REHEARSAL=PASS`.
+
+A rehearsal can briefly interrupt **only** 127.0.0.1:18086. If recovery
+fails, the test exits nonzero, reports manual intervention required, and must
+not be retried blindly. Existing Caddy, public preview, 80/443, agent, dashboard,
+invoice records and financial writes are out of scope. The release workflow
+continues to accept only reviewed main-SHA deployments, never rehearsals.
+
+**Do not assume this feature is installed on the AWS host.** This documentation
+describes a proposed source change that must pass PR QA, be reviewed, merged,
+and installed as exact verified root-owned executor bytes. Preserve the
+existing V2 backup. Certify the actual rehearsal only from observed AWS
+rollback outputs and independent container image/HTTP verification.

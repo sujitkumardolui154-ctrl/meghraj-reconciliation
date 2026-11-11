@@ -63,6 +63,31 @@ class BackendStagingAutomationTests(unittest.TestCase):
         self.assertIn('INGRESS_PUBLISH=LOOPBACK_ONLY', contract)
         self.assertIn('AUTHENTICATED_FAIL_CLOSED=PASS', contract)
 
+    def test_local_root_only_rollback_rehearsal_uses_actual_post_swap_cleanup(self):
+        script = (DIR / "stage_release_root.sh").read_text()
+        gate = (DIR / "stage_ssh_gate.sh").read_text()
+        self.assertIn("REHEARSAL=0", script)
+        self.assertIn("rollback-rehearsal[[:space:]]", script)
+        self.assertIn('"${SUDO_USER:-}" != sbi-backend-deployer', script)
+        self.assertIn('OLD_IMAGE" == "$EXPECTED_OLD_IMAGE', script)
+        self.assertIn('OLD_INGRESS_IMAGE" == "$EXPECTED_OLD_INGRESS_IMAGE', script)
+        self.assertIn("ROLLBACK_REHEARSAL_BASELINE=VERIFIED", script)
+        self.assertIn("ROLLBACK_REHEARSAL_INJECTED=AFTER_STAGING_SWAP", script)
+        self.assertIn("ROLLBACK_REHEARSAL=PASS", script)
+        self.assertIn("ROLLBACK_REHEARSAL=FAILED_IMAGE_MISMATCH", script)
+        self.assertNotIn("rollback-rehearsal", gate)
+        # Injection must occur after both replacement containers were created
+        # and must exit into the existing EXIT trap, never bypass cleanup.
+        swap = script.index('run_ingress "$INGRESS_NAME" "$NAME" 18086 "$INGRESS_IMAGE"')
+        inject = script.index("ROLLBACK_REHEARSAL_INJECTED=AFTER_STAGING_SWAP")
+        self.assertLess(swap, inject)
+        self.assertIn("exit 97", script[inject:inject + 150])
+        self.assertIn("if (( code != 0 && MUTATED == 1 )); then", script)
+        self.assertIn('run_candidate "$NAME" "$OLD_IMAGE"', script)
+        self.assertIn('run_ingress "$INGRESS_NAME" "$NAME" 18086 "$OLD_INGRESS_IMAGE"', script)
+        self.assertIn("probe_http 18086 && probe_authenticated", script)
+        self.assertIn("code=0", script)
+
     def test_ssh_is_forced_allowlisted_not_general_remote_shell(self):
         script = (DIR / "stage_ssh_gate.sh").read_text()
         self.assertIn("SSH_ORIGINAL_COMMAND", script)

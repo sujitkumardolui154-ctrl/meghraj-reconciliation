@@ -64,8 +64,24 @@ if [[ "$REQUEST" == status ]]; then
   echo 'FINANCIAL_WRITES=DISABLED'
   exit 0
 fi
-[[ "$REQUEST" =~ ^[a-f0-9]{40}$ ]] || { echo 'BLOCKED: valid full Git SHA required'; exit 2; }
-SHA="$REQUEST"
+# Deliberate post-swap failure rehearsal is LOCAL-ROOT-ONLY. The restricted
+# SSH gate can send only "status" or the bare 40-character deployment SHA.
+# Pin the expected previous backend AND ingress immutable image IDs.
+REHEARSAL=0
+EXPECTED_OLD_IMAGE=''
+EXPECTED_OLD_INGRESS_IMAGE=''
+if [[ "$REQUEST" =~ ^rollback-rehearsal[[:space:]]([a-f0-9]{40})[[:space:]](sha256:[a-f0-9]{64})[[:space:]](sha256:[a-f0-9]{64})$ ]]; then
+  [[ "${SUDO_USER:-}" != sbi-backend-deployer ]] || {
+    echo 'BLOCKED: SSH deploy account cannot run a rollback rehearsal'; exit 2;
+  }
+  REHEARSAL=1
+  SHA="${BASH_REMATCH[1]}"
+  EXPECTED_OLD_IMAGE="${BASH_REMATCH[2]}"
+  EXPECTED_OLD_INGRESS_IMAGE="${BASH_REMATCH[3]}"
+else
+  [[ "$REQUEST" =~ ^[a-f0-9]{40}$ ]] || { echo 'BLOCKED: valid full Git SHA required'; exit 2; }
+  SHA="$REQUEST"
+fi
 check_config
 exec 9>/run/lock/sbi-backend-readonly-stage.lock
 flock -n 9 || { echo 'BLOCKED: another backend staging release is running'; exit 2; }
@@ -186,6 +202,19 @@ if docker container inspect "$NAME" >/dev/null 2>&1; then
 elif docker container inspect "$INGRESS_NAME" >/dev/null 2>&1; then
   echo 'BLOCKED: ingress exists without matching backend stage'; exit 2
 fi
+if (( REHEARSAL == 1 )); then
+  [[ "$OLD_IMAGE" == "$EXPECTED_OLD_IMAGE" && "$OLD_INGRESS_IMAGE" == "$EXPECTED_OLD_INGRESS_IMAGE" ]] || {
+    echo 'BLOCKED: rollback rehearsal baseline image IDs do not match'; exit 2;
+  }
+  [[ "$(docker inspect -f '{{.State.Running}}' "$NAME")" == true &&
+     "$(docker inspect -f '{{.State.Running}}' "$INGRESS_NAME")" == true ]] || {
+    echo 'BLOCKED: rollback rehearsal requires healthy running stage pair'; exit 2;
+  }
+  probe_http 18086 && probe_authenticated "$NAME" || {
+    echo 'BLOCKED: staging baseline failed pre-rehearsal health gate'; exit 2;
+  }
+  echo 'ROLLBACK_REHEARSAL_BASELINE=VERIFIED'
+fi
 MUTATED=0
 cleanup() {
   local code=$?
@@ -198,6 +227,15 @@ cleanup() {
          run_ingress "$INGRESS_NAME" "$NAME" 18086 "$OLD_INGRESS_IMAGE" &&
          probe_http 18086 && probe_authenticated "$NAME"; then
         echo 'BACKEND_ROLLBACK=PASS'
+        if (( REHEARSAL == 1 )); then
+          [[ "$(docker inspect --format '{{.Image}}' "$NAME")" == "$EXPECTED_OLD_IMAGE" &&
+             "$(docker inspect --format '{{.Image}}' "$INGRESS_NAME")" == "$EXPECTED_OLD_INGRESS_IMAGE" ]] || {
+            echo 'ROLLBACK_REHEARSAL=FAILED_IMAGE_MISMATCH'
+            exit 1
+          }
+          echo 'ROLLBACK_REHEARSAL=PASS'
+          code=0
+        fi
       else
         echo 'BACKEND_ROLLBACK=FAILED_MANUAL_INTERVENTION_REQUIRED'
       fi
@@ -218,6 +256,10 @@ MUTATED=1
 docker rm -f "$INGRESS_NAME" "$NAME" >/dev/null 2>&1 || true
 run_candidate "$NAME" "$CANDIDATE"
 run_ingress "$INGRESS_NAME" "$NAME" 18086 "$INGRESS_IMAGE"
+if (( REHEARSAL == 1 )); then
+  echo 'ROLLBACK_REHEARSAL_INJECTED=AFTER_STAGING_SWAP'
+  exit 97  # The existing EXIT trap must restore BOTH pinned baseline images.
+fi
 probe_http 18086 && probe_authenticated "$NAME" || { echo 'BACKEND_STAGING_HEALTH=FAIL'; exit 1; }
 echo "BACKEND_STAGING_RELEASE_SHA=$SHA"
 echo 'BACKEND_STAGING=PASS'
