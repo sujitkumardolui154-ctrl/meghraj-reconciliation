@@ -4,6 +4,8 @@ COPY staging/aws_backend_readonly/requirements.txt /tmp/requirements.txt
 RUN python -m pip install --no-cache-dir -r /tmp/requirements.txt
 # Copy ONLY the sealed read-only gateway, never the import/payment writers.
 COPY backend_source/aws_readonly_reporting_app.py /app/app.py
+# The staging executor uses umask 077; ensure the non-root worker can read its entrypoint.
+RUN chmod 0644 /app/app.py
 ARG SBI_SOURCE_SHA=UNVERIFIED
 LABEL org.opencontainers.image.revision="${SBI_SOURCE_SHA}"
 ENV SBI_SOURCE_SHA=${SBI_SOURCE_SHA} PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
