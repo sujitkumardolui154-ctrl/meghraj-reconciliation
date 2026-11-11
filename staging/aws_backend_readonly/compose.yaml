@@ -1,4 +1,5 @@
-# Separate opt-in QA stack; not included in the existing AWS preview Compose.
+# Separate opt-in QA stack; never part of the live AWS public-preview Compose.
+# The backend stays ONLY on the internal bridge; ingress is dual-networked.
 name: sbi-aws-backend-readonly-qa
 services:
   backend-readonly:
@@ -22,14 +23,40 @@ services:
       SBI_SOURCE_SHA: ${SBI_REVIEWED_SOURCE_SHA:?Full reviewed source SHA required}
       SBI_AWS_REPORT_USERNAME: ${SBI_AWS_REPORT_USERNAME:?Unique local QA username required}
       SBI_AWS_REPORT_PASSWORD: ${SBI_AWS_REPORT_PASSWORD:?Unique local QA password required}
-    ports:
-      - "127.0.0.1:18086:8080"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz',timeout=3).close()"]
       interval: 30s
       timeout: 5s
       retries: 3
     networks: [backend_isolated]
+
+  ingress-readonly:
+    profiles: ["manual-review-only"]
+    build:
+      context: ../..
+      dockerfile: staging/aws_backend_readonly/ingress.Dockerfile
+    depends_on: [backend-readonly]
+    restart: "no"
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      - /etc/nginx/conf.d:rw,noexec,nosuid,size=1m,mode=1777
+      - /var/cache/nginx:rw,noexec,nosuid,size=4m,mode=1777
+      - /var/run:rw,noexec,nosuid,size=1m,mode=1777
+      - /tmp:rw,noexec,nosuid,size=4m,mode=1777
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 128m
+    environment:
+      BACKEND_NAME: backend-readonly
+    ports:
+      - "127.0.0.1:18086:8080"
+    networks: [ingress_host, backend_isolated]
+
 networks:
   backend_isolated:
     internal: true
+  ingress_host:
+    driver: bridge

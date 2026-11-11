@@ -18,7 +18,11 @@ SRC=/var/lib/sbi-backend-readonly/source
 NAME=sbi-backend-readonly-stage
 NETWORK=sbi-backend-readonly-net
 PROBE=sbi-backend-readonly-probe
+INGRESS_NETWORK=sbi-backend-ingress-net
+INGRESS_NAME=sbi-backend-readonly-ingress-stage
+INGRESS_PROBE=sbi-backend-readonly-ingress-probe
 IMAGE_PREFIX=sbi-backend-readonly-candidate
+INGRESS_IMAGE_PREFIX=sbi-backend-readonly-ingress
 LOGDIR=/var/log/sbi-backend-readonly
 
 check_config() {
@@ -55,7 +59,7 @@ check_config() {
 
 if [[ "$REQUEST" == status ]]; then
   check_config
-  echo 'SBI_BACKEND_EXECUTOR=READONLY_V1'
+  echo 'SBI_BACKEND_EXECUTOR=READONLY_V2'
   echo 'DEPLOY_TARGET=LOOPBACK_ONLY_18086'
   echo 'FINANCIAL_WRITES=DISABLED'
   exit 0
@@ -91,21 +95,50 @@ git -C "$SRC" -c core.hooksPath=/dev/null fetch --no-tags --depth=1 origin refs/
 git -C "$SRC" -c core.hooksPath=/dev/null checkout --force --detach "$SHA"
 [[ -f "$SRC/staging/aws_backend_readonly/Dockerfile" ]] || { echo 'BLOCKED: no backend Dockerfile'; exit 2; }
 CANDIDATE="$IMAGE_PREFIX:${SHA:0:12}"
-# Financial engine, Firebase and all private report data are absent from image.
+INGRESS_IMAGE="$INGRESS_IMAGE_PREFIX:${SHA:0:12}"
+# Financial engine, Firebase and private report data are absent from both images.
 docker build --build-arg SBI_SOURCE_SHA="$SHA" -f "$SRC/staging/aws_backend_readonly/Dockerfile" -t "$CANDIDATE" "$SRC"
+docker build -f "$SRC/staging/aws_backend_readonly/ingress.Dockerfile" -t "$INGRESS_IMAGE" "$SRC"
 if ! docker network inspect "$NETWORK" >/dev/null 2>&1; then
   docker network create --internal "$NETWORK" >/dev/null
 fi
 [[ "$(docker network inspect -f '{{.Internal}}' "$NETWORK")" == 'true' ]] || {
   echo 'BLOCKED: staging network must be internal'; exit 2;
 }
+if ! docker network inspect "$INGRESS_NETWORK" >/dev/null 2>&1; then
+  docker network create --driver bridge -o com.docker.network.bridge.host_binding_ipv4=127.0.0.1 "$INGRESS_NETWORK" >/dev/null
+fi
+[[ "$(docker network inspect -f '{{.Internal}}' "$INGRESS_NETWORK")" == 'false' ]] || {
+  echo 'BLOCKED: localhost ingress network must be a normal bridge'; exit 2;
+}
 
+# The credentialed backend has NO published port and only the internal network.
 run_candidate() {
-  local name="$1" port="$2" image="$3"
+  local name="$1" image="$2"
   docker run -d --name "$name" --restart no --network "$NETWORK" \
     --user 10001:10001 --read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m \
     --cap-drop ALL --security-opt no-new-privileges --pids-limit 128 --memory 256m \
-    -p "127.0.0.1:$port:8080" --env-file "$ENVFILE" "$image" >/dev/null
+    --env-file "$ENVFILE" "$image" >/dev/null
+}
+
+# The separate uncredentialed nginx ingress is dual-networked. The publish
+# mapping belongs ONLY to the non-internal bridge and binds ONLY to localhost.
+# Create -> network connect -> start so nginx can resolve the backend at startup.
+run_ingress() {
+  local ingress="$1" backend="$2" port="$3" image="$4"
+  docker create --name "$ingress" --restart no --network "$INGRESS_NETWORK" \
+    --user 10001:10001 --read-only \
+    --tmpfs /etc/nginx/conf.d:rw,nosuid,noexec,size=1m,mode=1777 \
+    --tmpfs /var/cache/nginx:rw,nosuid,noexec,size=4m,mode=1777 \
+    --tmpfs /var/run:rw,nosuid,noexec,size=1m,mode=1777 \
+    --tmpfs /tmp:rw,nosuid,noexec,size=4m,mode=1777 \
+    --cap-drop ALL --security-opt no-new-privileges --pids-limit 128 --memory 128m \
+    -p "127.0.0.1:$port:8080" -e "BACKEND_NAME=$backend" "$image" >/dev/null
+  docker network connect "$NETWORK" "$ingress"
+  docker start "$ingress" >/dev/null
+  [[ "$(docker port "$ingress" 8080/tcp)" == "127.0.0.1:$port" ]] || {
+    echo 'BLOCKED: ingress must publish only on localhost'; return 1;
+  }
 }
 probe_http() {
   local port="$1" attempt
@@ -141,19 +174,29 @@ assert get("/api/upload") == 403
 '
 }
 OLD_IMAGE=''
+OLD_INGRESS_IMAGE=''
 if docker container inspect "$NAME" >/dev/null 2>&1; then
+  docker container inspect "$INGRESS_NAME" >/dev/null 2>&1 || {
+    echo 'BLOCKED: existing backend stage has no matching ingress for safe rollback'; exit 2;
+  }
   OLD_IMAGE="$(docker inspect --format '{{.Image}}' "$NAME")"
+  OLD_INGRESS_IMAGE="$(docker inspect --format '{{.Image}}' "$INGRESS_NAME")"
   docker image inspect "$OLD_IMAGE" >/dev/null || { echo 'BLOCKED: rollback image missing'; exit 2; }
+  docker image inspect "$OLD_INGRESS_IMAGE" >/dev/null || { echo 'BLOCKED: rollback ingress image missing'; exit 2; }
+elif docker container inspect "$INGRESS_NAME" >/dev/null 2>&1; then
+  echo 'BLOCKED: ingress exists without matching backend stage'; exit 2
 fi
 MUTATED=0
 cleanup() {
   local code=$?
   trap - EXIT
-  docker rm -f "$PROBE" >/dev/null 2>&1 || true
+  docker rm -f "$INGRESS_PROBE" "$PROBE" >/dev/null 2>&1 || true
   if (( code != 0 && MUTATED == 1 )); then
-    docker rm -f "$NAME" >/dev/null 2>&1 || true
-    if [[ -n "$OLD_IMAGE" ]]; then
-      if run_candidate "$NAME" 18086 "$OLD_IMAGE" && probe_http 18086 && probe_authenticated "$NAME"; then
+    docker rm -f "$INGRESS_NAME" "$NAME" >/dev/null 2>&1 || true
+    if [[ -n "$OLD_IMAGE" && -n "$OLD_INGRESS_IMAGE" ]]; then
+      if run_candidate "$NAME" "$OLD_IMAGE" &&
+         run_ingress "$INGRESS_NAME" "$NAME" 18086 "$OLD_INGRESS_IMAGE" &&
+         probe_http 18086 && probe_authenticated "$NAME"; then
         echo 'BACKEND_ROLLBACK=PASS'
       else
         echo 'BACKEND_ROLLBACK=FAILED_MANUAL_INTERVENTION_REQUIRED'
@@ -165,14 +208,16 @@ cleanup() {
   exit "$code"
 }
 trap cleanup EXIT
-docker rm -f "$PROBE" >/dev/null 2>&1 || true
-run_candidate "$PROBE" 18087 "$CANDIDATE"
+docker rm -f "$INGRESS_PROBE" "$PROBE" >/dev/null 2>&1 || true
+run_candidate "$PROBE" "$CANDIDATE"
+run_ingress "$INGRESS_PROBE" "$PROBE" 18087 "$INGRESS_IMAGE"
 probe_http 18087 && probe_authenticated "$PROBE" || { echo 'BACKEND_CANARY=FAIL'; exit 1; }
 echo 'BACKEND_CANARY=PASS'
-docker rm -f "$PROBE" >/dev/null
+docker rm -f "$INGRESS_PROBE" "$PROBE" >/dev/null
 MUTATED=1
-docker rm -f "$NAME" >/dev/null 2>&1 || true
-run_candidate "$NAME" 18086 "$CANDIDATE"
+docker rm -f "$INGRESS_NAME" "$NAME" >/dev/null 2>&1 || true
+run_candidate "$NAME" "$CANDIDATE"
+run_ingress "$INGRESS_NAME" "$NAME" 18086 "$INGRESS_IMAGE"
 probe_http 18086 && probe_authenticated "$NAME" || { echo 'BACKEND_STAGING_HEALTH=FAIL'; exit 1; }
 echo "BACKEND_STAGING_RELEASE_SHA=$SHA"
 echo 'BACKEND_STAGING=PASS'

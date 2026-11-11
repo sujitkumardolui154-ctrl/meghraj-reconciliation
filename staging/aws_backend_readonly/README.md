@@ -12,9 +12,13 @@ invoices or move private financial data.
   They require a separate operator-local Basic account with a >=24-character
   password and currently **always return 503**. No report data is returned.
 - All writes and unrelated routes are rejected.
-- Manual QA Compose is independent of the live AWS public-preview Compose:
-  a distinct profile, loopback-only port 18086, UID 10001, read-only filesystem,
-  no volumes, internal network, and no access to external financial services.
+- Manual QA Compose is independent of the live AWS public-preview Compose.
+  The credentialed backend has UID 10001, read-only filesystem, no volumes,
+  NO published ports, and ONLY the internal Docker network. A separate
+  uncredentialed non-root nginx ingress joins both the internal Docker network
+  and a dedicated normal bridge and publishes only 127.0.0.1:18086.
+  Docker 29 can silently fail to publish ports on internal-only networks.
+  This ingress intentionally has no report credentials or financial data.
 - GitHub Actions runs synthetic HTTP/deny tests and a no-network non-root image
   smoke test, but does not deploy.
 
@@ -45,9 +49,10 @@ has two manual modes:
    `sbi-backend-staging`, separate restricted staging SSH secrets and a
    validated `READONLY_V1` host executor. The executor fetches only the
    reviewed `main` SHA, builds the isolated candidate, probes it on
-   127.0.0.1:18087, swaps only `sbi-backend-readonly-stage` on 18086,
-   performs fail-closed checks, and attempts rollback to the previous backend
-   staging image if post-swap checks fail. Nothing uses port 80, 443, 18081,
+   127.0.0.1:18087 through an uncredentialed ingress companion,
+   swaps only the backend+ingress staging pair on 18086,
+   performs fail-closed checks, and attempts restoration of both previous
+   staging images if post-swap checks fail. Nothing uses port 80, 443, 18081,
    18082 or the existing dashboard containers.
 
 **Administrator bootstrap still required.** An independent operator must
@@ -78,3 +83,26 @@ exercised rollback. Staging remains monitoring-only: all report requests fail
 closed with 503, and no actual financial engine/database is connected.
 Production promotion and all financial write operations remain separately
 prohibited. Google/Firebase reporting-role provisioning is dry-run only.
+
+
+## Docker 29 localhost ingress correction (source-only, pending owner review)
+
+The AWS canary evidence showed the backend itself started and responded to
+`/healthz` inside the internal-only container (HTTP 200), while the same
+published host port returned HTTP 000. The source fix keeps the backend
+entirely on `sbi-backend-readonly-net` (internal=true, no published ports),
+adds an uncredentialed nginx ingress on a separate standard bridge, and joins
+only that ingress to the backend's private network. The ingress publishes
+`127.0.0.1:18087` for canary or `127.0.0.1:18086` for staging.
+
+Synthetic CI runs `test_localhost_ingress.sh` using disposable bridge networks
+and synthetic Basic credentials; no AWS deployment or database connection.
+The source adds pairwise first-install cleanup and restores BOTH backend and
+ingress images during subsequent rollback attempts. The new executor responds
+`SBI_BACKEND_EXECUTOR=READONLY_V2`; the GitHub stage workflow must reject the
+previous V1 host executor. Before any stage run, an authorized administrator
+must independently review and replace the installed root-owned executor, verify
+its blob hash and safe permissions, then perform a status-only SSH check.
+Do not replace host executors merely because a PR is green. An approval-gated
+AWS staging release and independent real-host rollback QA are still required.
+This does not enable finance reads, production reporting, DB writes or cutover.

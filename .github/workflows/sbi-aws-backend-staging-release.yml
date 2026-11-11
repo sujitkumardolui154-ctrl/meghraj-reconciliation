@@ -55,6 +55,10 @@ jobs:
             --user 10001:10001 \
             sbi-backend-preflight:"${GITHUB_SHA}" python -c \
             'import os; from app import app; c=app.test_client(); assert os.getuid()==10001; assert c.get("/healthz").status_code==200; assert c.get("/readyz").status_code==503; assert c.post("/reports").status_code==403; assert c.get("/api/upload").status_code==403'
+      - name: Build separate localhost ingress locally only
+        run: docker build -f staging/aws_backend_readonly/ingress.Dockerfile -t sbi-ingress-preflight:"${GITHUB_SHA}" .
+      - name: Verify localhost ingress with synthetic network isolation
+        run: bash staging/aws_backend_readonly/test_localhost_ingress.sh sbi-backend-preflight:"${GITHUB_SHA}" sbi-ingress-preflight:"${GITHUB_SHA}"
       - name: Confirm safe preflight completion
         run: |
           echo 'SOURCE_PREFLIGHT=PASS'
@@ -94,7 +98,7 @@ jobs:
           STATUS="$(ssh -i "$HOME/.ssh/backend_stage_key" -o IdentitiesOnly=yes \
             -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes \
             "sbi-backend-deployer@$STAGE_HOST" 'status-backend-v1')"
-          grep -Fxq 'SBI_BACKEND_EXECUTOR=READONLY_V1' <<< "$STATUS" || {
+          grep -Fxq 'SBI_BACKEND_EXECUTOR=READONLY_V2' <<< "$STATUS" || {
             echo 'BLOCKED: backend-only host executor not installed / verified'; exit 2;
           }
           ssh -i "$HOME/.ssh/backend_stage_key" -o IdentitiesOnly=yes \
