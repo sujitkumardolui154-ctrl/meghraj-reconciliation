@@ -28,6 +28,8 @@ jobs:
           python -m unittest discover -s tests -p test_sbi_aws_backend_stage_automation.py -v
       - name: Validate host deployment scripts syntax without executing them
         run: bash -n staging/aws_backend_readonly/stage_release_root.sh staging/aws_backend_readonly/stage_ssh_gate.sh
+      - name: Simulate restrictive AWS checkout permissions
+        run: chmod 0600 backend_source/aws_readonly_reporting_app.py
       - name: Build isolated image (no deploy)
         run: docker build -f staging/aws_backend_readonly/Dockerfile --build-arg SBI_SOURCE_SHA="${GITHUB_SHA}" -t sbi-readonly-qa:"${GITHUB_SHA}" .
       - name: Test non-root image with no network access
