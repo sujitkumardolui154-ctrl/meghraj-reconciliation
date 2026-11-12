@@ -155,7 +155,8 @@ def audit_credit_note_rows(
         for reason in reasons:
             flags[reason] += 1
         rows_out.append({
-            "source_row": index,
+            "source_row": (src.get("_source_row") if isinstance(src.get("_source_row"), int)
+                           and src["_source_row"] >= 2 else index),
             "invoice_no": text(_field(src, INVOICE_ALIASES)),
             "credit_note_no": text(_field(src, CREDIT_NOTE_ALIASES)) if cn_fields_present else None,
             "replacement_invoice_no": text(_field(src, REPLACEMENT_ALIASES)),
