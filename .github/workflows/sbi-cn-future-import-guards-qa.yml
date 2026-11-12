@@ -7,9 +7,12 @@ on:
     paths:
       - backend_source/credit_note_validation.py
       - backend_source/credit_note_import_preview.py
+      - backend_source/credit_note_registry_readonly.py
+      - backend_source/credit_note_import_file.py
       - backend_source/invoice_import_preview.py
       - tests/test_credit_note_import_preview_v2.py
       - tests/test_credit_note_invoice_preview_bridge.py
+      - tests/test_credit_note_registry_preview.py
       - .github/workflows/sbi-cn-future-import-guards-qa.yml
   workflow_dispatch:
 
@@ -38,20 +41,26 @@ jobs:
           paths = (
               "backend_source/credit_note_validation.py",
               "backend_source/credit_note_import_preview.py",
+              "backend_source/credit_note_registry_readonly.py",
+              "backend_source/credit_note_import_file.py",
               "backend_source/invoice_import_preview.py",
               "tests/test_credit_note_import_preview_v2.py",
               "tests/test_credit_note_invoice_preview_bridge.py",
+              "tests/test_credit_note_registry_preview.py",
           )
           for filename in paths:
               ast.parse(Path(filename).read_text(encoding="utf-8"), filename=filename)
           print("SOURCE_SYNTAX_QA=PASS")
           PY
+      - name: Install Excel preview parser for isolated QA
+        run: python -m pip install openpyxl==3.1.5
       - name: Run isolated credit note preview regression
         env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
           python -m unittest discover -s tests -p 'test_credit_note_import_preview_v2.py' -v
           python -m unittest discover -s tests -p 'test_credit_note_invoice_preview_bridge.py' -v
+          python -m unittest discover -s tests -p 'test_credit_note_registry_preview.py' -v
           echo 'CREDIT_NOTE_IMPORT_QA=PASS'
           echo 'REAL_DATABASE_ACCESS=NOT_ATTEMPTED'
           echo 'FINANCIAL_WRITES=NOT_PERFORMED'
