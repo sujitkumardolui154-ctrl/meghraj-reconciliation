@@ -4,6 +4,7 @@ from invoice_source_schema import invoice_number
 from collections import Counter
 from invoice_excel_parser import parse_excel
 from invoice_import_rules import classify_rows
+from credit_note_import_preview import summarize_invoice_upload_credit_notes
 
 def build_preview(filename, data, existing_invoices):
     parsed = parse_excel(filename, data)
@@ -53,5 +54,6 @@ def build_preview(filename, data, existing_invoices):
             "ready_to_add": len(accepted),
             "rejected": len(rejected),
         },
+        "credit_note_review": summarize_invoice_upload_credit_notes(parsed["rows"]),
         "database_changed": False,
     }
