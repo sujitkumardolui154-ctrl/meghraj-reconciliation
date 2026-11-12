@@ -53,3 +53,21 @@ Even with a certified read-only preview, a later, separately approved writer mus
 \`MERGE_TO_MAIN=NOT_PERFORMED\`
 
 The branch-only GitHub Actions workflow runs synthetic tests without Google/AWS credentials and with repository-read permissions only.
+
+
+## Batch A3: Authenticated staging route and historical identity index preflight (2026-11-12)
+
+The staging-only \`dashboard_source/sbi_cn_staging_preview.py\` provides a **factory**, not an installed route. No application registration has occurred. Registration must be restricted to a separately isolated staging environment after the existing revocation-checked session middleware is installed, using a read-only backend handler and a restricted service account.
+
+- Feature flag \`SBI_CN_STAGING_PREVIEW_ENABLED=true\` is required; disabled by default.
+- Requires matching verified Firebase \`uid\`, enabled account, \`dil_dashboard=true\` and explicit \`sbi_credit_note_import_preview=true\` claim.
+- Uses the existing \`dashboard_sessions.csrf_valid()\` with its origin and double-submit-CSRF checks, plus \`X-DIL-CN-Preview: 1\`.
+- Accepts one authenticated bounded POST file, CSV or XLSX, at \`/staging/credit-note/import-preview\`. \`?format=errors\` returns a no-store Error CSV. No GET or apply route is exposed.
+- Returns import_ready=false, database_changed=false and release_status=REVIEW_REQUIRED even for otherwise clean files; no persistent write is possible in the module.
+- The live Firebase login, role assignment, HTTP E2E, and service-account isolation have **not** been tested.
+
+The \`backend_source/credit_note_registry_audit.py\` module now produces source identity counts, duplicated-number error groups and candidate key fingerprints from owner-supplied records. It is **read-only** and always reports \`can_certify=false\`, \`certificate_created=false\`. Certification must remain blocked pending original authenticated sources and independently verified invoice/CN/replacement index completeness. Historical duplicate invoice groups require manual review; they are not auto-deduplicated.
+
+**GitHub Actions synthetic QA on the isolated branch:** 18 Credit Note rule tests + 2 invoice-preview compatibility tests + 23 registry/CSV/XLSX tests + 20 staging HTTP/index-preflight tests = **63 / 63 PASS**, without cloud credentials or financial writes. This does not certify live auth, real database integrity, production data parity or deployment.
+
+**Release lock:** No merge to main, no AWS or Google Cloud deployment, no index writes/backfill, no financial writes. Production cutover remains BLOCKED under WS-LOCK-001.
