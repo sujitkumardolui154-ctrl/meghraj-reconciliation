@@ -1,0 +1,58 @@
+name: SBI Credit Note future import guards (isolated QA)
+
+on:
+  push:
+    branches:
+      - feature/sbi-cn-future-import-guards-20261112
+    paths:
+      - backend_source/credit_note_validation.py
+      - backend_source/credit_note_import_preview.py
+      - backend_source/invoice_import_preview.py
+      - tests/test_credit_note_import_preview_v2.py
+      - tests/test_credit_note_invoice_preview_bridge.py
+      - .github/workflows/sbi-cn-future-import-guards-qa.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-synthetic-qa:
+    if: github.ref == 'refs/heads/feature/sbi-cn-future-import-guards-20261112'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout branch without credential persistence
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile isolated modules
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 python - <<'PY'
+          import ast
+          from pathlib import Path
+          paths = (
+              "backend_source/credit_note_validation.py",
+              "backend_source/credit_note_import_preview.py",
+              "backend_source/invoice_import_preview.py",
+              "tests/test_credit_note_import_preview_v2.py",
+              "tests/test_credit_note_invoice_preview_bridge.py",
+          )
+          for filename in paths:
+              ast.parse(Path(filename).read_text(encoding="utf-8"), filename=filename)
+          print("SOURCE_SYNTAX_QA=PASS")
+          PY
+      - name: Run isolated credit note preview regression
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -m unittest discover -s tests -p 'test_credit_note_import_preview_v2.py' -v
+          python -m unittest discover -s tests -p 'test_credit_note_invoice_preview_bridge.py' -v
+          echo 'CREDIT_NOTE_IMPORT_QA=PASS'
+          echo 'REAL_DATABASE_ACCESS=NOT_ATTEMPTED'
+          echo 'FINANCIAL_WRITES=NOT_PERFORMED'
+          echo 'PRODUCTION_DEPLOYMENT=NOT_PERFORMED'
