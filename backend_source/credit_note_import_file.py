@@ -22,7 +22,8 @@ CSV_HEADERS = ("Source Row", "Invoice No", "Credit Note No",
 
 def _headings(headers):
     headers = [str(h).strip() if h is not None else "" for h in headers]
-    if len(headers) != len(set(headers)):
+    nonempty = [h for h in headers if h]
+    if len(nonempty) != len(set(nonempty)):
         raise ValueError("DUPLICATED_CREDIT_NOTE_HEADERS")
     for group, label in (
         (INVOICE_ALIASES, "INVOICE_NUMBER"),
