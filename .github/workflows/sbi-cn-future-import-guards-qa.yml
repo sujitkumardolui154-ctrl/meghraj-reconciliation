@@ -20,6 +20,8 @@ on:
       - tests/test_sbi_cn_isolated_app_e2e.py
       - .github/workflows/sbi-cn-future-import-guards-qa.yml
       - tools/sbi_cn_combined_remaining_qa.py
+      - tools/sbi_cn_external_readiness_preflight.py
+      - tests/test_sbi_cn_external_readiness_preflight.py
   workflow_dispatch:
 
 permissions:
@@ -59,6 +61,8 @@ jobs:
               "tests/test_credit_note_staging_http_and_index_audit.py",
               "tests/test_sbi_cn_isolated_app_e2e.py",
               "tools/sbi_cn_combined_remaining_qa.py",
+              "tools/sbi_cn_external_readiness_preflight.py",
+              "tests/test_sbi_cn_external_readiness_preflight.py",
           )
           for filename in paths:
               ast.parse(Path(filename).read_text(encoding="utf-8"), filename=filename)
@@ -71,3 +75,5 @@ jobs:
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
           python -B tools/sbi_cn_combined_remaining_qa.py
+          python -B -m unittest discover -s tests -p 'test_sbi_cn_external_readiness_preflight.py' -v
+          echo 'EXTERNAL_RELEASE_GATES=NOT_CERTIFIED'
