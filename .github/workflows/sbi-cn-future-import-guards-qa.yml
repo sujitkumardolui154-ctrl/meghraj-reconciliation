@@ -10,12 +10,14 @@ on:
       - backend_source/credit_note_registry_readonly.py
       - backend_source/credit_note_registry_audit.py
       - dashboard_source/sbi_cn_staging_preview.py
+      - staging/sbi_cn_isolated_stage_app.py
       - backend_source/credit_note_import_file.py
       - backend_source/invoice_import_preview.py
       - tests/test_credit_note_import_preview_v2.py
       - tests/test_credit_note_invoice_preview_bridge.py
       - tests/test_credit_note_registry_preview.py
       - tests/test_credit_note_staging_http_and_index_audit.py
+      - tests/test_sbi_cn_isolated_app_e2e.py
       - .github/workflows/sbi-cn-future-import-guards-qa.yml
   workflow_dispatch:
 
@@ -47,19 +49,21 @@ jobs:
               "backend_source/credit_note_registry_readonly.py",
               "backend_source/credit_note_registry_audit.py",
               "dashboard_source/sbi_cn_staging_preview.py",
+              "staging/sbi_cn_isolated_stage_app.py",
               "backend_source/credit_note_import_file.py",
               "backend_source/invoice_import_preview.py",
               "tests/test_credit_note_import_preview_v2.py",
               "tests/test_credit_note_invoice_preview_bridge.py",
               "tests/test_credit_note_registry_preview.py",
               "tests/test_credit_note_staging_http_and_index_audit.py",
+              "tests/test_sbi_cn_isolated_app_e2e.py",
           )
           for filename in paths:
               ast.parse(Path(filename).read_text(encoding="utf-8"), filename=filename)
           print("SOURCE_SYNTAX_QA=PASS")
           PY
-      - name: Install isolated HTTP and Excel test dependencies
-        run: python -m pip install openpyxl==3.1.5 Flask==3.1.2
+      - name: Install dashboard authentication and Excel test dependencies
+        run: python -m pip install -r dashboard_source/requirements.txt openpyxl==3.1.5
       - name: Run isolated credit note preview regression
         env:
           PYTHONDONTWRITEBYTECODE: '1'
@@ -68,6 +72,7 @@ jobs:
           python -m unittest discover -s tests -p 'test_credit_note_invoice_preview_bridge.py' -v
           python -m unittest discover -s tests -p 'test_credit_note_registry_preview.py' -v
           python -m unittest discover -s tests -p 'test_credit_note_staging_http_and_index_audit.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_cn_isolated_app_e2e.py' -v
           echo 'CREDIT_NOTE_IMPORT_QA=PASS'
           echo 'REAL_DATABASE_ACCESS=NOT_ATTEMPTED'
           echo 'FINANCIAL_WRITES=NOT_PERFORMED'
