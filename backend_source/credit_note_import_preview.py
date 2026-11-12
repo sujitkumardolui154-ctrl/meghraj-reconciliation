@@ -45,3 +45,26 @@ def summarize_invoice_upload_credit_notes(parsed_rows):
         "credit_note_import_ready": False,
         "financial_writes": 0,
     }
+
+
+def preview_uploaded_credit_notes(db, filename, data, *, authenticated=False):
+    """Explicitly authorized read-only staging entry point.
+
+    NOT registered as an HTTP route. The real server router must enforce
+    session + role + CSRF before invoking this function. No receipt or
+    financial writer exists in this module.
+    """
+    if authenticated is not True:
+        raise PermissionError("CREDIT_NOTE_PREVIEW_AUTH_REQUIRED")
+    import hashlib
+    from credit_note_import_file import parse_credit_note_upload, error_report_csv
+    from credit_note_registry_readonly import preview_against_certified_registry
+
+    parsed = parse_credit_note_upload(filename, data)
+    preview = preview_against_certified_registry(db, parsed)
+    preview["file_sha256"] = hashlib.sha256(data).hexdigest()
+    preview["source_file_type"] = filename.rsplit(".", 1)[-1].lower()
+    preview["source_rows"] = len(parsed)
+    preview["database_changed"] = False
+    preview["import_ready"] = False
+    return preview, error_report_csv(preview)
