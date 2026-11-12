@@ -41,10 +41,10 @@ def _rows_to_maps(headers, rows):
     result = []
     for excel_row, values in enumerate(rows, start=2):
         values = list(values)
-        if len(values) != len(headers):
-            raise ValueError("SOURCE_ROW_WIDTH_MISMATCH")
         if not any(str(v if v is not None else "").strip() for v in values):
             continue
+        if len(values) != len(headers):
+            raise ValueError("SOURCE_ROW_WIDTH_MISMATCH")
         if len(result) >= MAX_PREVIEW_ROWS:
             raise ValueError("MAX_20000_ROWS_PER_PREVIEW")
         record = {
