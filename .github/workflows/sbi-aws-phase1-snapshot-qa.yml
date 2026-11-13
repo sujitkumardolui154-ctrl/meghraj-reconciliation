@@ -1,0 +1,71 @@
+name: SBI AWS Phase 1 Private Snapshot Candidate QA (no deploy)
+
+on:
+  push:
+    branches:
+      - feature/sbi-aws-phase1-reporting-snapshot-20261113
+    paths:
+      - 'backend_source/aws_readonly_reporting_app.py'
+      - 'backend_source/aws_readonly_snapshot_reports.py'
+      - 'staging/aws_phase1_reporting/**'
+      - 'tests/test_sbi_aws_phase1_snapshot.py'
+      - 'tests/test_sbi_aws_phase1_combined_gate.py'
+      - 'tools/sbi_aws_phase1_combined_gate.py'
+      - '.github/workflows/sbi-aws-phase1-snapshot-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-and-immutable-snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install minimal candidate dependencies
+        run: python -m pip install -r staging/aws_backend_readonly/requirements.txt
+      - name: Source compile and existing AWS backend regression
+        run: |
+          python -B -m py_compile backend_source/aws_readonly_reporting_app.py backend_source/aws_readonly_snapshot_reports.py
+          python -B -m unittest discover -s tests -p 'test_sbi_aws_readonly_backend.py' -v
+      - name: AWS Phase 1 sealed source-report tests
+        run: python -B -m unittest discover -s tests -p 'test_sbi_aws_phase1_snapshot.py' -v
+      - name: Combined AWS four-stage gate source and isolation QA
+        run: |
+          python -B -m py_compile tools/sbi_aws_phase1_combined_gate.py
+          python -B -m unittest discover -s tests -p 'test_sbi_aws_phase1_combined_gate.py' -v
+      - name: Build actual disconnected backend image and test fail-closed HTTP contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --build-arg SBI_SOURCE_SHA="$GITHUB_SHA" -f staging/aws_phase1_reporting/Dockerfile -t sbi-phase1-combined-ci:verify .
+          docker run -d --rm --name sbi-phase1-combined-ci --network none --restart no --user 10001:10001 --read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m --cap-drop ALL --security-opt no-new-privileges --pids-limit 128 --memory 256m -e SBI_COMBINED_QA_MODE=FAIL_CLOSED -e SBI_AWS_REPORT_USERNAME=offline-synthetic -e SBI_AWS_REPORT_PASSWORD=not-a-real-password-for-isolated-qa-2026 sbi-phase1-combined-ci:verify
+          trap 'docker stop --time 3 sbi-phase1-combined-ci >/dev/null 2>&1 || true' EXIT
+          python - <<'PY'
+          import importlib.util
+          import pathlib
+          import subprocess
+          p=pathlib.Path('tools/sbi_aws_phase1_combined_gate.py')
+          s=importlib.util.spec_from_file_location('combined',p)
+          m=importlib.util.module_from_spec(s)
+          s.loader.exec_module(m)
+          result=subprocess.run(['docker','exec','-i','sbi-phase1-combined-ci','python','-'],input=m.PROBE,text=True,capture_output=True)
+          print(result.stdout)
+          if result.returncode:
+              print('PRIVATE_CANARY=FAIL')
+              raise SystemExit(1)
+          print('PRIVATE_CANARY=PASS_FAIL_CLOSED_NO_REAL_DATA')
+          PY
+      - name: Explicit release boundary
+        if: always()
+        run: |
+          echo 'AWS_DEPLOYMENT=NOT_PERFORMED'
+          echo 'LIVE_SNAPSHOT=NOT_CONNECTED_BY_CI'
+          echo 'FINANCIAL_WRITES=NOT_PERFORMED'
+          echo 'PRODUCTION_CUTOVER=BLOCKED'
