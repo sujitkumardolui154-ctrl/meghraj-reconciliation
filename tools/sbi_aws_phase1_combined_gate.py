@@ -277,6 +277,9 @@ def main():
     else:
         announce("STAGE2_PRIVATE_DATA", "CONFIG_PRESENT_VALIDATE_IN_CANARY")
     name = "sbi-phase1-combined-{}-{}".format(required_sha[:8], os.getpid())
+    safe_canary = False
+    cleanup_pass = False
+    existing_unchanged = False
     try:
         launch(docker, name, image, has_private)
         probe = call(
@@ -286,21 +289,27 @@ def main():
         # The probe prints only status labels, never actual customer rows.
         if probe.stdout:
             print(probe.stdout.strip(), flush=True)
-        if probe.returncode != 0:
-            announce("STAGE3_ISOLATED_CANARY", "FAIL_CLOSED_REVIEW_REQUIRED")
-        else:
-            announce("STAGE3_ISOLATED_CANARY", "PASS_READONLY_AUTH_CONTRACT")
-            if has_private:
-                announce("STAGE2_SNAPSHOT_HASH_AND_STRUCTURE", "PASS")
+        safe_canary = probe.returncode == 0
+        announce("STAGE3_ISOLATED_CANARY",
+                 "PASS_READONLY_AUTH_CONTRACT" if safe_canary
+                 else "FAIL_CLOSED_REVIEW_REQUIRED")
+        if safe_canary and has_private:
+            announce("STAGE2_SNAPSHOT_HASH_AND_STRUCTURE", "PASS")
     finally:
         # Only stop the ephemeral named container, never existing SBI services.
         call(docker + ["stop", "--time", "3", name], check=False, quiet=True)
         remainder = call(docker + ["container", "inspect", name], check=False, quiet=True)
-        announce("ISOLATED_CANDIDATE_CLEANUP", "PASS" if remainder.returncode else "REVIEW_REQUIRED")
+        cleanup_pass = remainder.returncode != 0
+        announce("ISOLATED_CANDIDATE_CLEANUP",
+                 "PASS" if cleanup_pass else "REVIEW_REQUIRED")
         after = baseline(docker)
-        announce("EXISTING_CONTAINERS_UNCHANGED", "PASS" if after == before else "FAIL_REVIEW_REQUIRED")
+        existing_unchanged = after == before
+        announce("EXISTING_CONTAINERS_UNCHANGED",
+                 "PASS" if existing_unchanged else "FAIL_REVIEW_REQUIRED")
     code = host_public_preview()
     announce("EXISTING_PUBLIC_PREVIEW_HTTP", code)
+    announce("PUBLIC_PREVIEW_ANONYMOUS_ACCESS",
+             "PASS_DENIED_401" if code == 401 else "REVIEW_REQUIRED")
     announce("REAL_FIREBASE_LOGIN", "NOT_TESTED")
     announce("INDEPENDENT_SOURCE_VALUE_PARITY", "NOT_VERIFIED_BY_THIS_RUN")
     announce("CREDIT_NOTE_CONFLICT_RESOLUTION", "PENDING_SOURCE_REVIEW")
@@ -309,6 +318,9 @@ def main():
     announce("AWS_DEPLOYMENT", "NOT_PERFORMED")
     announce("FINANCIAL_WRITES", "NOT_PERFORMED")
     announce("PRODUCTION_CUTOVER", "BLOCKED")
+    if not (safe_canary and cleanup_pass and existing_unchanged):
+        announce("PHASE1_COMBINED_GATE", "REVIEW_REQUIRED_CANARY_OR_BASELINE_FAILED")
+        raise RuntimeError("ISOLATION_SAFETY_GATE_FAILED")
     announce("PHASE1_COMBINED_GATE", "COMPLETE_WITH_EXTERNAL_GATES")
 
 
