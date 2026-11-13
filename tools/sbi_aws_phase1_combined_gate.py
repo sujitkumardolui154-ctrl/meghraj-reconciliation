@@ -13,6 +13,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -166,6 +167,24 @@ def baseline(docker):
     return {name: image_ref(docker, name) for name in RUNNING}
 
 
+def wait_candidate_cleanup(docker, name, attempts=20):
+    """Allow Docker --rm to finish asynchronous deletion after docker stop.
+
+    Never stop or remove an existing named SBI application container.
+    """
+    if not name.startswith("sbi-phase1-combined-"):
+        raise RuntimeError("CANDIDATE_CLEANUP_NAME_NOT_ALLOWED")
+    for _ in range(attempts):
+        result = call(
+            docker + ["container", "inspect", name],
+            check=False, quiet=True,
+        )
+        if result.returncode != 0:
+            return True
+        time.sleep(.5)
+    return False
+
+
 def private_configuration():
     # Separate root-controlled AWS secrets, not the pre-existing staging env file.
     # Fail closed; neither create nor print a credential or a finance file.
@@ -298,8 +317,7 @@ def main():
     finally:
         # Only stop the ephemeral named container, never existing SBI services.
         call(docker + ["stop", "--time", "3", name], check=False, quiet=True)
-        remainder = call(docker + ["container", "inspect", name], check=False, quiet=True)
-        cleanup_pass = remainder.returncode != 0
+        cleanup_pass = wait_candidate_cleanup(docker, name)
         announce("ISOLATED_CANDIDATE_CLEANUP",
                  "PASS" if cleanup_pass else "REVIEW_REQUIRED")
         after = baseline(docker)
