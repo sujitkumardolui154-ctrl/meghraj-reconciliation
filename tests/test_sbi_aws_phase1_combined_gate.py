@@ -102,6 +102,33 @@ class CombinedGateTests(unittest.TestCase):
                      "PRIVATE_SNAPSHOT_NOT_READY", "PRIVATE_SNAPSHOT_REPORT_INDEX_NOT_200"):
             self.assertIn(item, gate.PROBE)
 
+    def test_docker_async_cleanup_waits_until_candidate_disappears(self):
+        class Status:
+            def __init__(self, code):
+                self.returncode = code
+
+        with patch.object(gate, "call", side_effect=[Status(0), Status(0), Status(1)]) as func:
+            with patch.object(gate.time, "sleep") as sleep:
+                self.assertTrue(gate.wait_candidate_cleanup(
+                    ["docker"], "sbi-phase1-combined-12345678-42", attempts=5
+                ))
+        self.assertEqual(func.call_count, 3)
+        self.assertEqual(sleep.call_count, 2)
+
+    def test_candidate_still_present_requires_review(self):
+        class Status:
+            returncode = 0
+
+        with patch.object(gate, "call", return_value=Status()):
+            with patch.object(gate.time, "sleep"):
+                self.assertFalse(gate.wait_candidate_cleanup(
+                    ["docker"], "sbi-phase1-combined-12345678-42", attempts=2
+                ))
+
+    def test_cleanup_never_targets_existing_live_container(self):
+        with self.assertRaisesRegex(RuntimeError, "NAME_NOT_ALLOWED"):
+            gate.wait_candidate_cleanup(["docker"], "aws_lightsail-sbi-preview-1")
+
     def test_no_prod_alteration_or_financial_write_calls(self):
         text = path.read_text()
         for forbidden in (
