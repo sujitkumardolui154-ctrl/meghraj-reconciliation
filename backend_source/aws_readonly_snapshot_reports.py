@@ -134,6 +134,21 @@ def _validated_csv(root, kind, entry, *, include_bytes):
         isinstance(x, str) and x.strip() for x in headers
     ) or len(headers) != len(set(headers)):
         raise NotCertified("SNAPSHOT_HEADERS_INVALID")
+    # A pinned manifest must NOT be able to invent its own approved headers.
+    # Match a separately operator-pinned approved source-header digest.
+    header_pin_env = (
+        "SBI_AWS_APPROVED_53_HEADERS_SHA256"
+        if kind in CORE | {"suspense"} else
+        "SBI_AWS_APPROVED_18_HEADERS_SHA256"
+        if kind == "credit-note" else
+        "SBI_AWS_APPROVED_" + kind.replace("-", "_").upper() + "_HEADERS_SHA256"
+    )
+    header_pin = os.environ.get(header_pin_env, "")
+    header_bytes = json.dumps(
+        headers, ensure_ascii=False, separators=(",", ":")
+    ).encode("utf-8")
+    if not SHA_RE.fullmatch(header_pin) or _sha(header_bytes) != header_pin:
+        raise NotCertified("INDEPENDENT_HEADER_CONTRACT_NOT_VERIFIED")
     raw = _safe_file(root / (kind + ".csv"), MAX_REPORT_BYTES)
     if _sha(raw) != entry["sha256"]:
         raise NotCertified("SNAPSHOT_REPORT_HASH_MISMATCH")
