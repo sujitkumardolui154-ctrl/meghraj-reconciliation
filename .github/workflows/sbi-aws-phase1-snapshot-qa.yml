@@ -1,0 +1,43 @@
+name: SBI AWS Phase 1 Private Snapshot Candidate QA (no deploy)
+
+on:
+  push:
+    branches:
+      - feature/sbi-aws-phase1-reporting-snapshot-20261113
+    paths:
+      - 'backend_source/aws_readonly_reporting_app.py'
+      - 'backend_source/aws_readonly_snapshot_reports.py'
+      - 'staging/aws_phase1_reporting/**'
+      - 'tests/test_sbi_aws_phase1_snapshot.py'
+      - '.github/workflows/sbi-aws-phase1-snapshot-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-and-immutable-snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install minimal candidate dependencies
+        run: python -m pip install -r staging/aws_backend_readonly/requirements.txt
+      - name: Source compile and existing AWS backend regression
+        run: |
+          python -B -m py_compile backend_source/aws_readonly_reporting_app.py backend_source/aws_readonly_snapshot_reports.py
+          python -B -m unittest discover -s tests -p 'test_sbi_aws_readonly_backend.py' -v
+      - name: AWS Phase 1 sealed source-report tests
+        run: python -B -m unittest discover -s tests -p 'test_sbi_aws_phase1_snapshot.py' -v
+      - name: Explicit release boundary
+        if: always()
+        run: |
+          echo 'AWS_DEPLOYMENT=NOT_PERFORMED'
+          echo 'LIVE_SNAPSHOT=NOT_CONNECTED_BY_CI'
+          echo 'FINANCIAL_WRITES=NOT_PERFORMED'
+          echo 'PRODUCTION_CUTOVER=BLOCKED'
