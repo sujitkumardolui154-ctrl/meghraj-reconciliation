@@ -2,7 +2,19 @@
 import hmac
 import os
 import re
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, Response
+
+
+def approved_snapshot(kind=None, require_core=False):
+    """Opt-in only; unconfigured deployments retain legacy 503 behavior."""
+    if not os.environ.get("SBI_AWS_REPORT_SNAPSHOT_DIR") or not os.environ.get("SBI_AWS_REPORT_MANIFEST_SHA256"):
+        return None
+    from aws_readonly_snapshot_reports import load_snapshot, NotCertified
+    try:
+        return load_snapshot(kind, require_core=require_core)
+    except NotCertified as exc:
+        return str(exc)
+
 
 app = Flask(__name__)
 REPORTS = frozenset(("unpaid", "ok", "balance-review", "suspense",
@@ -59,13 +71,30 @@ def healthz():
 
 @app.get("/readyz")
 def readyz():
-    return fail("REPORT_DATA_NOT_CERTIFIED", 503)
+    certified = approved_snapshot(require_core=True)
+    if certified is None:
+        return fail("REPORT_DATA_NOT_CERTIFIED", 503)
+    if isinstance(certified, str):
+        return fail(certified, 503)
+    return jsonify(
+        status="READY_READONLY_PRIVATE_SNAPSHOT",
+        financial_execution_enabled=False,
+        reconciliation_executed=False,
+        report_kinds=sorted(certified[0]["reports"]),
+    )
 
 
 @app.get("/reports")
 def reports():
     denied = authorized_or_error()
-    return denied if denied is not None else fail("REPORT_DATA_NOT_CONNECTED", 503)
+    if denied is not None:
+        return denied
+    certified = approved_snapshot()
+    if certified is None:
+        return fail("REPORT_DATA_NOT_CONNECTED", 503)
+    if isinstance(certified, str):
+        return fail(certified, 503)
+    return jsonify(certified[0])
 
 
 @app.get("/reports/<report_name>.csv")
@@ -75,7 +104,19 @@ def report_csv(report_name):
         return denied
     if report_name not in REPORTS:
         return fail("REPORT_NOT_APPROVED", 404)
-    return fail("REPORT_DATA_NOT_CONNECTED", 503)
+    certified = approved_snapshot(report_name)
+    if certified is None:
+        return fail("REPORT_DATA_NOT_CONNECTED", 503)
+    if isinstance(certified, str):
+        return fail(certified, 503)
+    catalog, payload = certified
+    result = Response(payload, content_type="text/csv; charset=utf-8")
+    result.headers["Content-Disposition"] = (
+        'attachment; filename="sbi-' + report_name + '-source-reference.csv"'
+    )
+    result.headers["X-Report-Rows"] = str(catalog["reports"][report_name]["rows"])
+    result.headers["X-Report-Classification"] = "SOURCE_REFERENCE_ONLY"
+    return result
 
 
 if __name__ == "__main__":
