@@ -1,0 +1,23 @@
+name: F43 Evidence Boundary Synthetic QA
+on:
+  pull_request:
+    paths:
+      - 'backend_source/dil_evidence_boundary.py'
+      - 'tests/test_dil_evidence_boundary.py'
+      - '.github/workflows/f43-evidence-boundary.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-no-write:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run all mandatory synthetic checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile backend_source/dil_evidence_boundary.py tests/test_dil_evidence_boundary.py
+          python3 -m unittest tests/test_dil_evidence_boundary.py -v
+          echo "NEXT_GATE=independent_readonly_adapter_review_and_authenticated_private_staging"
