@@ -63,6 +63,9 @@
     const form = root.querySelector(".dil-form");
     const log = root.querySelector(".dil-messages");
     let lastFocus = null;
+    let pending = false;
+    const send = root.querySelector('.dil-send');
+    const queryEnabled = window.DIL_READONLY_QUERY_ENABLED === true;
     function appendMessage(message, who) {
       const bubble = document.createElement("div");
       bubble.className = "dil-message " + who;
@@ -87,13 +90,49 @@
     launcher.addEventListener("click", function () { toggle(panel.hidden); });
     close.addEventListener("click", function () { toggle(false); launcher.focus(); });
     panel.addEventListener("keydown", function (event) { if (event.key === "Escape") { toggle(false); launcher.focus(); } });
-    form.addEventListener("submit", function (event) {
+    form.addEventListener("submit", async function (event) {
       event.preventDefault();
       const question = input.value.trim();
-      if (!question) return;
+      if (!question || pending) return;
       appendMessage(question, "user");
       input.value = "";
-      appendMessage("Secure invoice query integration is not yet available. No financial data was accessed or modified.", "assistant");
+      if (!queryEnabled) {
+        appendMessage("Secure invoice query integration is not yet available. No financial data was accessed or modified.", "assistant");
+        return;
+      }
+      pending = true;
+      send.disabled = true;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      try {
+        const response = await fetch("/api/dil/query", {
+          method: "POST", credentials: "same-origin", redirect: "error",
+          cache: "no-store",
+          headers: {"Content-Type": "application/json", "X-DIL-Read-Only": "1"},
+          body: JSON.stringify({question}), signal: controller.signal
+        });
+        if (!response.ok || !(response.headers.get("content-type") || "").toLowerCase().includes("application/json")) {
+          throw new Error("Query unavailable");
+        }
+        const result = await response.json();
+        const evidenceValid = Array.isArray(result.evidence) &&
+          result.evidence.length > 0 && result.evidence.length <= 30 &&
+          result.evidence.every(e => e && typeof e.source === "string" &&
+            e.source.length > 0 && e.source.length <= 200 &&
+            typeof e.row_id === "string" && e.row_id.length > 0 &&
+            e.row_id.length <= 120);
+        if (result.read_only !== true || result.authorized !== true ||
+            typeof result.answer !== "string" || result.answer.length > 8000 ||
+            !evidenceValid) throw new Error("Unverified evidence");
+        appendMessage(result.answer, "assistant");
+        appendMessage("Evidence: " + result.evidence.map(e => e.source + " / " + e.row_id).join("; "), "assistant");
+      } catch (_) {
+        appendMessage("Unable to verify an authorized answer. No financial data was changed.", "assistant");
+      } finally {
+        clearTimeout(timeout);
+        pending = false;
+        send.disabled = false;
+      }
     });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount, {once:true});
