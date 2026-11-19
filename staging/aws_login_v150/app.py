@@ -25,6 +25,16 @@ ORIGINS.add(SITE_ORIGIN)
 PUBLIC_PATHS.add("/healthz")
 
 app = Flask(__name__, static_folder=None)
+
+@app.after_request
+def permit_same_origin_tower_embed(response):
+    # Registered before session hooks so this narrowly scoped override runs
+    # last. Standalone pages and every other route retain DENY.
+    from flask import request
+    if request.path == "/control-tower" and request.args.get("embedded") == "1":
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    return response
+
 install_sessions(app)
 install_login_pages(app)
 # Same Firebase session, separate read-only engineering Control Tower.
@@ -71,7 +81,7 @@ def dashboard():
     response.headers["Content-Security-Policy"] = (
         "default-src 'none'; script-src 'self' 'unsafe-inline'; "
         "style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
-        "connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; "
+        "connect-src 'self'; frame-src 'self'; base-uri 'none'; frame-ancestors 'none'; "
         "form-action 'self'"
     )
     return response

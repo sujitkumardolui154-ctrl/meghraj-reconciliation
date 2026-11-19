@@ -10,7 +10,7 @@ import os
 import re
 from pathlib import Path
 
-from flask import Blueprint, Response, jsonify
+from flask import Blueprint, Response, jsonify, request
 from pipeline_data import current_pipeline
 
 tower = Blueprint("sbi_control_tower", __name__)
@@ -54,11 +54,23 @@ def control_tower():
         '← Dashboard</a>',
         1,
     )
+    embedded = request.args.get("embedded") == "1"
+    if embedded:
+        # Only the same-origin dashboard may frame the compact view.
+        # Keep the historical full-page Control Tower intact at /control-tower.
+        compact_style = (
+            '<style id="control-tower-embedded-style">'
+            "header.top{display:none!important}"
+            ".hero{padding-top:18px!important}"
+            ".shell{padding-left:14px;padding-right:14px}"
+            "</style>"
+        )
+        source = source.replace("</head>", compact_style + "</head>", 1)
     response = Response(source, mimetype="text/html; charset=utf-8")
     response.headers["Content-Security-Policy"] = (
         "default-src 'none'; script-src 'self' 'unsafe-inline'; "
         "style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
-        "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; "
+        "connect-src 'self'; frame-ancestors " + ("'self'" if embedded else "'none'") + "; base-uri 'none'; "
         "form-action 'none'"
     )
     return response
