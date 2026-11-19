@@ -1,0 +1,77 @@
+/* Meghraj Express / SBI unified professional operations theme */
+:root{
+  color-scheme:dark;
+  --ux-bg:#071321;--ux-navy:#10233a;--ux-card:#14283f;
+  --ux-line:#2c4661;--ux-ink:#f0f7ff;--ux-muted:#a9bed0;
+  --ux-teal:#35d0c3;--ux-blue:#78adff;--ux-gold:#ffc983;
+}
+html{scroll-behavior:smooth}
+body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  background:radial-gradient(ellipse 85% 65% at 7% -8%,#183b54 0,transparent 70%),
+  linear-gradient(155deg,#0a192a,#071321 68%);color:var(--ux-ink);line-height:1.55}
+header{background:linear-gradient(115deg,#102a43,#0d1d32);
+  border-bottom:1px solid var(--ux-line);padding:30px max(22px,calc((100vw - 1460px)/2));
+  box-shadow:0 10px 30px #06101c50}
+header h1{font-weight:800;font-size:clamp(24px,3vw,34px);letter-spacing:-.055em}
+header h1 span{color:var(--ux-teal)}
+header p{margin:6px 0 0;color:var(--ux-muted);font-size:13px}
+.dash-overline{color:var(--ux-teal)!important;font-size:11px;font-weight:800;letter-spacing:.14em;margin:0 0 10px}
+.dash-divider{color:#92a6c0}
+main{max-width:1480px;min-width:0;padding:26px 30px}
+.dil-nav{max-width:1480px;padding:16px 30px 0;gap:8px;flex-wrap:wrap}
+.dil-nav button{background:transparent;border:1px solid transparent;
+  color:#b6c9db;border-radius:10px;padding:12px 18px;letter-spacing:.01em;font-weight:650;
+  transition:background .16s,border-color .16s,color .16s}
+.dil-nav button:hover{color:#fff;background:#172e47;border-color:#345571}
+.dil-nav button[aria-pressed="true"]{color:#0d1e2f!important;background:linear-gradient(115deg,#43d9ca,#83cadd)!important;
+  outline:none!important;border-color:#7ef1df;box-shadow:0 6px 24px #12aaab30}
+.dash-hero{border:1px solid #3b5571;border-radius:20px;padding:35px 38px;
+  display:flex;align-items:center;justify-content:space-between;gap:24px;
+  background:linear-gradient(130deg,#19465a 0,#163250 48%,#14253f 100%);
+  box-shadow:0 22px 70px #030a153d;margin:0 0 23px}
+.dash-hero h2{font-size:clamp(22px,3vw,32px);letter-spacing:-.04em;margin:0 0 7px}
+.dash-hero p:not(.dash-overline){max-width:740px;font-size:14px;color:#c5d9e9;margin:0}
+.dash-hero button{white-space:nowrap;border-radius:11px;background:var(--ux-teal);color:#0b2232;
+  font-weight:800;padding:13px 19px;box-shadow:0 8px 28px #16b7aa35}
+.dash-hero button:hover{background:#77eadd}
+.grid{gap:17px}
+.card{border-radius:16px;background:linear-gradient(155deg,#172c44,#112239);
+  border:1px solid var(--ux-line);box-shadow:0 10px 30px #020d191f;padding:24px}
+.card h2{font-size:17px;font-weight:740;letter-spacing:-.02em}
+.card p{color:#b7ccde;font-size:14px}
+.status{font-weight:750;font-size:11px;letter-spacing:.03em;border:1px solid #47607b;color:#d6e7f4;background:#213c57}
+.status.warn{color:#ffe1a8;background:#463822;border-color:#705b3a}
+.status.bad{color:#ffbbc1;background:#482e3b;border-color:#73424a}
+.status.good{color:#9debd2;background:#154c44;border-color:#2e836f}
+section{margin-top:22px}
+button{font-family:inherit;background:#245d84;border:1px solid #3a7ca8;border-radius:9px;font-weight:650}
+button:hover{background:#357caf}
+button:disabled{background:#24394d;color:#8ea8bb;opacity:.65;cursor:not-allowed}
+input,select,textarea{background:#0e2339;color:#edf6ff;border:1px solid #3f5973;
+  border-radius:9px;padding:11px;font:inherit}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{
+  outline:2px solid var(--ux-teal);outline-offset:3px}
+a{color:#81dce0}
+small{color:#a7bdce}
+#dil-home .grid .card{min-height:180px}
+#dil-tower{max-width:1500px}
+#dil-tower-panel{padding:0}
+#dil-tower-frame{border:1px solid #36546a;border-radius:16px;background:#071321;box-shadow:0 16px 40px #0004}
+#dil-reports h2,#dil-imports h2{letter-spacing:-.035em}
+#dil-reports .grid,#dil-imports .grid{margin-top:16px}
+#dil-imports table th{color:#cae6f5}
+#dil-imports table td{color:#a9bfd0}
+@media(max-width:840px){
+  header{padding:26px 20px}
+  main{padding:20px}
+  .dil-nav{padding:13px 20px 0}
+  .dash-hero{padding:25px;align-items:flex-start;flex-direction:column}
+}
+@media(max-width:540px){
+  .dil-nav{gap:6px}
+  .dil-nav button{padding:10px 12px;font-size:12px}
+  .dash-hero{padding:22px}
+  .card{padding:18px}
+  #dil-tower-frame{border-radius:8px}
+}
+@media(prefers-reduced-motion:reduce){.dil-nav button{transition:none}}

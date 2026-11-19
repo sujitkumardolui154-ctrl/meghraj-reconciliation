@@ -10,7 +10,7 @@ import os
 import re
 from pathlib import Path
 
-from flask import Blueprint, Response, jsonify, request
+from flask import Blueprint, Response, jsonify, request, send_from_directory
 from pipeline_data import current_pipeline
 
 tower = Blueprint("sbi_control_tower", __name__)
@@ -66,6 +66,24 @@ def control_tower():
             "</style>"
         )
         source = source.replace("</head>", compact_style + "</head>", 1)
+    # Keep historical source intact; overlay the professional theme and
+    # append the separate authenticated private workspace component.
+    theme_link = '<link rel="stylesheet" href="/control-tower/theme.css">'
+    source = source.replace("</head>", theme_link + "</head>", 1)
+    old_section_start = source.find('    <div class="section-head" style="margin-top:22px">')
+    old_section_end = source.find('    <p class="sub">Priority order is the agreed development plan.', old_section_start)
+    if old_section_start < 0 or old_section_end < 0:
+        return jsonify(error="Legacy task UI contract changed"), 503
+    source = (source[:old_section_start] + '<div id="legacy-owner-task-interface" hidden>'
+              + source[old_section_start:old_section_end] + '</div>\n'
+              + source[old_section_end:])
+    ui_file = Path(__file__).resolve().parent / "workspace_ui.html"
+    if not ui_file.is_file():
+        return jsonify(error="Private project workspace UI missing"), 503
+    source = source.replace(
+        '  <section class="section" id="pipeline">',
+        ui_file.read_text(encoding="utf-8") + '\n  <section class="section" id="pipeline">', 1,
+    )
     response = Response(source, mimetype="text/html; charset=utf-8")
     response.headers["Content-Security-Policy"] = (
         "default-src 'none'; script-src 'self' 'unsafe-inline'; "
@@ -74,6 +92,12 @@ def control_tower():
         "form-action 'none'"
     )
     return response
+
+
+@tower.get("/control-tower/theme.css")
+def tower_css():
+    return send_from_directory(str(Path(__file__).resolve().parent),
+                               "tower_theme.css", mimetype="text/css")
 
 
 @tower.get("/control-tower/api/pipeline/status")

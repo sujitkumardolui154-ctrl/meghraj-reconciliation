@@ -1,0 +1,98 @@
+/* SBI Control Tower visual refinement — shared Meghraj professional palette */
+:root{--bg:#071321;--surface:#11243a;--surface2:#162d44;--line:#305069;--text:#f0f7ff;
+  --muted:#adc4d6;--teal:#37d2c3;--blue:#82b8ff;--violet:#b0bfff;
+  --amber:#f8c981;--red:#ff9ea7}
+body{font-family:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;
+  background:radial-gradient(ellipse 70% 60% at 0 0,#17374d 0,transparent 70%),#071321}
+.top{background:#0d2135ee;border-bottom:1px solid #304b65}
+.mark{background:linear-gradient(130deg,#37d5c4,#65a3e5);color:#072137}
+.hero .eyebrow{color:#58dbcc}
+h1{letter-spacing:-.055em}
+.hero h1{background:linear-gradient(100deg,#f3faff,#9eddd9);
+  background-clip:text;-webkit-background-clip:text;color:transparent}
+.panel{background:linear-gradient(145deg,#172d46,#10223a);
+  border:1px solid #304c65;border-radius:16px;
+  box-shadow:0 12px 34px #030d1a30}
+.notice{background:#3c301f9c;border-color:#886e3d;color:#ffe3b0}
+.section-head h2{font-size:21px;letter-spacing:-.035em}
+.section-head p,.sub{color:#afc6d9}
+.metric .value{font-variant-numeric:tabular-nums}
+.priority-card.p0{background:linear-gradient(145deg,#174448,#132b41)}
+.priority-summary{background:#372d219c;border-color:#745d35}
+.bubble{border:1px solid transparent}
+.bubble.ok{background:#155546;border-color:#2e856f;color:#a6f1d5}
+.bubble.warn{background:#614522;border-color:#927247;color:#ffdda0}
+.bubble.bad{background:#663440;border-color:#935363;color:#ffc8ce}
+.bubble.neutral{background:#253c56;border-color:#416180;color:#d5e8f7}
+.btn{background:#245b80;border-color:#3d7295;border-radius:11px;color:#f2faff}
+.btn:hover{background:#316f92}
+.filters input,.filters select,
+.priority-editor input,.priority-editor select,.priority-editor textarea{
+  background:#0b1f33;border-color:#43627b;border-radius:10px}
+.task,.issue,.release-entry,.priority-owner-item{background:#102438;border-color:#345169;border-radius:12px}
+.task:hover,.issue:hover,.release-entry:hover{border-color:#487f91}
+a{color:#8bdce6}
+a:focus-visible,button:focus-visible,input:focus-visible,
+select:focus-visible,textarea:focus-visible{outline:2px solid #44dccb;outline-offset:3px}
+#priority-edit-toggle,#priority-owner-editor{display:none!important}
+.workspace-eyebrow{color:#4bdbcc!important;font-size:10px!important;
+  letter-spacing:.16em;font-weight:850;margin:0 0 7px!important}
+#my-workspace{scroll-margin-top:30px}
+.workspace-titlebar{margin-bottom:16px}
+.workspace-titlebar h2{font-size:24px;letter-spacing:-.04em}
+.workspace-layout{display:grid;grid-template-columns:minmax(310px,.9fr) minmax(0,1.65fr);gap:18px}
+.workspace-compose,.workspace-feed{padding:25px;min-width:0}
+.workspace-compose h3,.workspace-feed h3{margin:0;font-size:17px;letter-spacing:-.02em}
+.workspace-switch{display:flex;gap:8px;margin:18px 0 21px}
+.workspace-switch button{border:1px solid #3d6079;border-radius:10px;
+  background:#162e46;color:#b9cfe0;padding:10px 16px;font:700 13px/1.3 inherit;cursor:pointer}
+.workspace-switch button[aria-pressed="true"]{background:#35d2c3;color:#09273a;border-color:#76eddc}
+.workspace-compose label{display:block;color:#d7e8f5;font-size:12px;
+  font-weight:750;margin:16px 0 7px}
+.workspace-required{color:#ffe1a8}
+.workspace-compose input,.workspace-compose select,.workspace-compose textarea,
+.workspace-filter select{
+  background:#0b1d2e;border:1px solid #41627e;color:#ecf8ff;
+  width:100%;padding:12px 13px;font:inherit;border-radius:10px}
+.workspace-compose textarea{resize:vertical;min-height:112px}
+.workspace-fields{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.workspace-fields>div:last-child{grid-column:1/-1}
+.workspace-fields[hidden]{display:none!important}
+.workspace-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:21px}
+.workspace-actions button{padding:12px 19px;border:1px solid #2dcfbd;border-radius:10px;
+  background:linear-gradient(110deg,#35d2c3,#72e3d7);font-weight:800;color:#08283a;cursor:pointer}
+.workspace-actions button:nth-child(2){background:#263f57;border-color:#4d6b83;color:#e9f7ff}
+.workspace-actions button:disabled{opacity:.6;cursor:not-allowed}
+#mw-message{min-height:22px;margin:12px 0 0;color:#9ee7d8;font-size:12px}
+#mw-message[data-error="true"]{color:#ffb7c0}
+.workspace-privacy{border-top:1px solid #315069;color:#91adbf;font-size:11px;padding-top:15px}
+.workspace-lists{display:grid;gap:18px;align-content:start}
+.workspace-feed .section-head{align-items:flex-start}
+.workspace-filter{display:flex;align-items:center;gap:10px;margin:11px 0 16px}
+.workspace-filter label{font-size:12px;color:#a2bfd1}
+.workspace-filter select{width:auto;min-width:170px;padding:8px 10px}
+.workspace-item-list{display:grid;gap:11px;max-height:540px;overflow:auto}
+.workspace-item{border:1px solid #34536c;background:#0e2236;
+  border-radius:12px;padding:15px}
+.workspace-item-head{display:flex;align-items:flex-start;justify-content:space-between;gap:15px}
+.workspace-item-head strong{font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.workspace-bubble{font-size:10px;font-weight:800;white-space:nowrap;color:#8fe3d9;
+  background:#1a4a4b;border:1px solid #397c79;padding:4px 9px;border-radius:30px}
+.workspace-bubble[data-state="done"]{background:#14513d;color:#c7f5df}
+.workspace-bubble[data-state="pending"]{background:#584421;color:#ffe1ab}
+.workspace-item-body{white-space:pre-wrap;overflow-wrap:anywhere;color:#c2d6e4;
+  font-size:12px;line-height:1.6;margin:11px 0}
+.workspace-item-meta{color:#8aa9be;font-size:11px;margin:11px 0 9px}
+.workspace-item-actions{display:flex;gap:8px;flex-wrap:wrap}
+.workspace-small-button{border:1px solid #42647e;background:#1c4059;color:#d4ecf7;
+  font-size:11px;font-weight:750;padding:6px 10px;border-radius:8px;cursor:pointer}
+.workspace-small-button:hover{background:#255571}
+.workspace-danger{background:#4e2f3e;border-color:#774859;color:#ffc3ca}
+.workspace-danger:hover{background:#694052}
+.workspace-empty{color:#99b2c4;font-size:13px;padding:12px;border:1px dashed #405c73;border-radius:10px}
+@media(max-width:1020px){.workspace-layout{grid-template-columns:1fr}}
+@media(max-width:580px){.workspace-compose,.workspace-feed{padding:17px}
+ .workspace-fields{grid-template-columns:1fr}
+ .workspace-titlebar{align-items:flex-start;flex-direction:column}
+ .workspace-item-head{flex-direction:column;gap:8px}
+}
