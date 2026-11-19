@@ -74,7 +74,8 @@ class AWSLoginV150Tests(unittest.TestCase):
              patch("dashboard_sessions.auth.get_user", return_value=user):
             resp = self.client.get("/dashboard")
             self.assertEqual(resp.status_code, 200)
-            self.assertIn(b"Meghraj _ SBI Reconciliation Control Center", resp.data)
+            self.assertIn(b"Reconciliation Control Center", resp.data)
+            self.assertIn(b"MEGHRAJ EXPRESS", resp.data)
             self.assertEqual(self.client.get("/api/reports").status_code, 403)
             self.assertEqual(self.client.get("/api/qa").status_code, 403)
             self.assertEqual(self.client.get("/users").status_code, 403)
