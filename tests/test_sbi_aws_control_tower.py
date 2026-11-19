@@ -46,7 +46,8 @@ class TowerRestoreTests(unittest.TestCase):
         with a, b, c:
             dashboard = self.client.get("/dashboard")
             self.assertEqual(dashboard.status_code, 200)
-            self.assertIn(b'href="/control-tower"', dashboard.data)
+            self.assertIn(b'id="dil-tower-button"', dashboard.data)
+            self.assertIn(b'data-src="/control-tower?embedded=1"', dashboard.data)
             page = self.client.get("/control-tower")
             self.assertEqual(page.status_code, 200)
             for original in (b"All stages. One control center.",
