@@ -158,7 +158,7 @@ check_login
 cmp -s "$HOST_CADDY" "$OLD_CONFIG" ||
   { echo "BLOCKED_EXISTING_CADDY_HAS_CUSTOM_CHANGES"; exit 2; }
 [[ ! -e "$BACKUP" ]] || { echo "BLOCKED_CADDY_BACKUP_ALREADY_EXISTS"; exit 2; }
-docker exec -i "$PROXY" caddy adapt --config /dev/stdin --validate < "$NEW_CONFIG" >/dev/null ||
+docker exec -i "$PROXY" caddy adapt --config /dev/stdin --adapter caddyfile --validate < "$NEW_CONFIG" >/dev/null ||
   { echo "BLOCKED_NEW_CADDY_SYNTAX"; exit 2; }
 cp -- "$HOST_CADDY" "$BACKUP"
 chmod 600 "$BACKUP"
