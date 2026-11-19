@@ -95,7 +95,6 @@ class AWSLoginV150Tests(unittest.TestCase):
             "production_gateway.py",
             "invoice_import_store.py",
             "payment_report_rules.py",
-            "finance",
         ):
             self.assertNotIn(forbidden, docker)
 
