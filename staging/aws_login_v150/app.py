@@ -49,6 +49,9 @@ for _path in _source_dirs:
         sys.path.insert(0, str(_path))
 from tower_readonly import tower
 app.register_blueprint(tower)
+# User-owned project notes/tasks are separate from financial database APIs.
+from project_workspace import workspace
+app.register_blueprint(workspace)
 
 
 @app.after_request
@@ -85,6 +88,13 @@ def dashboard():
         "form-action 'self'"
     )
     return response
+
+
+@app.get("/dashboard-theme.css")
+def dashboard_theme_css():
+    return send_from_directory(
+        str(UI_ROOT), "dashboard-theme.css", mimetype="text/css"
+    )
 
 
 @app.get("/dashboard.js")

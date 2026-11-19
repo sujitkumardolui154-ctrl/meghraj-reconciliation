@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DIL SBI Reconciliation Dashboard</title>
+<title>SBI Reconciliation | Meghraj Express Workspace</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#0b1220;color:#eaf1ff}
@@ -27,8 +27,9 @@ small{color:#9fb1cc}
 </head>
 <body>
 <header>
-<h1>Meghraj _ SBI Reconciliation Control Center</h1>
-<p>Google Cloud Project: meghraj-reconciliation</p>
+<p class="dash-overline">MEGHRAJ EXPRESS <span class="dash-divider">/</span> SBI OPERATIONS</p>
+<h1>SBI Reconciliation <span>Workspace</span></h1>
+<p>Engineering oversight, project priorities and controlled reporting in one secure application.</p>
 </header>
 
 <!-- DIL Reports Tab v1.4.2 -->
@@ -59,22 +60,22 @@ small{color:#9fb1cc}
   </section>
 </main>
 <main id="dil-home">
-
+<section class="dash-hero" aria-labelledby="dash-hero-title"><div><p class="dash-overline">PROJECT COMMAND CENTER</p><h2 id="dash-hero-title">Plan, monitor and deliver with confidence.</h2><p>Follow source-backed release progress and manage your personal work inside Control Tower. Financial processing remains securely restricted.</p></div><button type="button" id="open-control-tower" onclick="document.getElementById('dil-tower-button').click()">Open Control Tower</button></section>
 <section class="grid">
 <div class="card">
-<h2>Supervisor</h2>
-<span class="status warn">STATIC BASELINE</span>
-<p>Monitoring API connected; live agent telemetry not connected.</p>
+<h2>Project oversight</h2>
+<span class="status warn">SOURCE-BACKED</span>
+<p>Review priority gates and engineering evidence in Control Tower. Live agent telemetry is not connected.</p>
 </div>
 <div class="card">
 <h2>Independent QA</h2>
-<span class="status warn">PENDING</span>
+<span class="status warn">REVIEW REQUIRED</span>
 <p>Q218-D01 and SBISA_NEGATIVE require verification</p>
 </div>
 <div class="card">
-<h2>Builder Agent</h2>
-<span class="status">NOT CONNECTED</span>
-<p>Agent integration pending</p>
+<h2>Engineering pipeline</h2>
+<span class="status">SOURCE TRACKING</span>
+<p>Development, testing and stage history are available in Control Tower.</p>
 </div>
 <div class="card">
 <h2>Financial Engine</h2>
@@ -83,33 +84,20 @@ small{color:#9fb1cc}
 </div>
 </section>
 
-<section class="card">
-<h2>Backend API Reports</h2>
-<p><small>Protected monitoring reports — accessible through Google IAP authentication.</small></p>
-<div id="links"></div>
-</section>
-
-<section class="card">
-<h2>Dashboard Controls</h2>
-<button onclick="refreshDashboard()">Refresh Dashboard</button>
-<p id="updated">Awaiting refresh</p>
-<p><small>API monitoring refreshes every 30 seconds. Agent telemetry remains demonstration-only.</small></p>
-</section>
-
 <!-- DIL Excel Upload v1.3.0 -->
 <section class="card" id="excel-upload">
   <h2>Excel Upload — Dashboard v1.3.0</h2>
-  <p>Select one Excel workbook (.xlsx or .xls), maximum 8 MiB.</p>
+  <p>Financial file intake is not enabled in this AWS stage. Source workbooks remain protected.</p>
   <form id="excel-upload-form">
     <label for="excel-file">Browse Excel file</label>
     <input id="excel-file" type="file" accept=".xlsx,.xls"
-           required style="display:block;margin:16px 0;max-width:100%">
-    <button id="excel-upload-button" type="submit">Upload Excel</button>
+           required disabled style="display:block;margin:16px 0;max-width:100%">
+    <button id="excel-upload-button" type="submit" disabled>Upload unavailable in staging</button>
   </form>
   <p id="excel-upload-result" role="status" aria-live="polite">
-    No file uploaded.
+    File uploads are disabled in the current protected stage.
   </p>
-  <small>This upload stores the workbook for validation only. Use the Database Update tab to preview new monthly invoices. Payment reconciliation has not run.</small>
+  <small>Financial imports require separate verification and approval. Payment reconciliation has not run.</small>
 </section>
 <script>
 (() => {
@@ -183,35 +171,6 @@ small{color:#9fb1cc}
 </script>
 
 </main>
-<script>
-const paths = ["health", "qa", "supervisor", "agents"];
-const links = document.getElementById("links");
-
-for (const path of paths) {
-  const row = document.createElement("p");
-  const link = document.createElement("a");
-  link.href = "/api/" + path;
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
-  link.textContent = "/api/" + path;
-  row.appendChild(link);
-  links.appendChild(row);
-}
-
-async function refreshDashboard() {
-  const indicator = document.getElementById("updated");
-  indicator.textContent = "Requesting monitoring data...";
-  try {
-    await refreshMonitoring();
-    indicator.textContent =
-      "API requests finished: " + new Date().toLocaleString() +
-      " — check panels for endpoint errors";
-  } catch (error) {
-    indicator.textContent = "Refresh error: " + error.message;
-  }
-}
-</script>
-<script src="/dashboard.js" defer></script>
 
 <main id="dil-reports" hidden>
 <section class="card" id="dil-reconciliation-changes" aria-labelledby="dil-change-title">
@@ -753,5 +712,6 @@ Reports include new invoices only after an import completes. Preview alone does 
 <script src="/account.js" defer></script>
 <!-- F01: single floating overlay across existing dashboard views; inert until authorized API is reviewed. -->
 <script src="/dil_floating_assistant.js" defer></script>
+<link rel="stylesheet" href="/dashboard-theme.css">
 </body>
 </html>
