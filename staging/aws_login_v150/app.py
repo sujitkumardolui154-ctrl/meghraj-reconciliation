@@ -93,7 +93,7 @@ def dashboard():
 @app.get("/dashboard-theme.css")
 def dashboard_theme_css():
     return send_from_directory(
-        str(UI_ROOT), "dashboard-theme.css", mimetype="text/css"
+        str(UI_ROOT), "dashboard_theme.css", mimetype="text/css"
     )
 
 
