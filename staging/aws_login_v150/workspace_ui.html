@@ -223,9 +223,10 @@
     try {
       await mutate(editing?path+"/"+encodeURIComponent(editing):path,
                    editing?"PATCH":"POST",payload);
+      const savedKind = kind;
       reset();
       await load(false);
-      note("Your private "+kind+" has been saved."); 
+      note("Your private "+savedKind+" has been saved."); 
     } catch (error) { note(error.message,true); }
     finally { busyState(false); }
   });
