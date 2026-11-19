@@ -1,0 +1,235 @@
+<section class="section" id="my-workspace" aria-labelledby="my-workspace-title">
+  <div class="section-head workspace-titlebar">
+    <div><p class="workspace-eyebrow">YOUR PRIVATE PROJECT PLANNER</p><h2 id="my-workspace-title">Project notes &amp; personal tasks</h2>
+      <p class="sub">Write internal project notes, plan your own priorities and manage follow-ups. This does not change the official release task register.</p></div>
+    <span class="bubble neutral" id="mw-storage-badge">Checking secure storage</span>
+  </div>
+  <div class="workspace-layout">
+    <article class="panel workspace-compose" aria-labelledby="mw-editor-heading">
+      <h3 id="mw-editor-heading">Add your next item</h3>
+      <p class="sub">Private to your signed-in account. Not published to GitHub.</p>
+      <div class="workspace-switch" role="group" aria-label="Choose note or task">
+        <button type="button" id="mw-task-mode" aria-pressed="true">New task</button>
+        <button type="button" id="mw-note-mode" aria-pressed="false">Project note</button>
+      </div>
+      <form id="mw-form" autocomplete="off">
+        <label for="mw-title">Title <span class="workspace-required">*</span></label>
+        <input id="mw-title" maxlength="140" required placeholder="What needs attention?">
+        <label for="mw-body">Notes / details</label>
+        <textarea id="mw-body" maxlength="4000" rows="5" placeholder="Context, decisions, next action and follow-up…"></textarea>
+        <div id="mw-task-fields" class="workspace-fields">
+          <div><label for="mw-priority">Priority</label>
+            <select id="mw-priority"><option value="P0">P0 · Essential</option>
+              <option value="P1" selected>P1 · Important</option><option value="P2">P2 · Later</option></select></div>
+          <div><label for="mw-state">Task status</label>
+            <select id="mw-state"><option value="pending">Pending</option><option value="in_progress">In progress</option><option value="done">Done (personal only)</option></select></div>
+          <div><label for="mw-due">Target date</label><input id="mw-due" type="date"></div>
+        </div>
+        <div class="workspace-actions">
+          <button type="submit" id="mw-save">Save task</button>
+          <button type="button" id="mw-cancel" hidden>Cancel edit</button>
+        </div>
+        <p id="mw-message" role="status" aria-live="polite">Loading your private workspace…</p>
+        <p class="workspace-privacy">Personal task completion is not a QA approval or a financial release authorization. Do not store passwords or bank credentials here.</p>
+      </form>
+    </article>
+    <div class="workspace-lists">
+      <article class="panel workspace-feed" aria-labelledby="mw-task-heading">
+        <div class="section-head"><div><h3 id="mw-task-heading">Owner-added priority tasks</h3><p>Personal planning, separate from mandatory release gates</p></div>
+          <span class="bubble neutral" id="mw-task-count">—</span></div>
+        <div class="workspace-filter"><label for="mw-filter">Show</label><select id="mw-filter"><option value="active">Pending &amp; in progress</option>
+          <option value="all">All tasks</option><option value="done">Completed</option></select></div>
+        <div id="mw-task-list" class="workspace-item-list"><p class="workspace-empty">Loading personal tasks…</p></div>
+      </article>
+      <article class="panel workspace-feed" aria-labelledby="mw-note-heading">
+        <div class="section-head"><div><h3 id="mw-note-heading">Project notes</h3><p>Your private decision and working notes</p></div><span class="bubble neutral" id="mw-note-count">—</span></div>
+        <div id="mw-note-list" class="workspace-item-list"><p class="workspace-empty">Loading project notes…</p></div>
+      </article>
+    </div>
+  </div>
+</section>
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const form = $("mw-form");
+  const message = $("mw-message");
+  const taskList = $("mw-task-list");
+  const noteList = $("mw-note-list");
+  const storage = $("mw-storage-badge");
+  const switchTask = $("mw-task-mode");
+  const switchNote = $("mw-note-mode");
+  const save = $("mw-save");
+  const cancel = $("mw-cancel");
+  let kind = "task";
+  let editing = null;
+  let items = [];
+  let busy = false;
+  const path = "/control-tower/api/workspace";
+
+  function note(text, error = false) {
+    message.textContent = text;
+    message.dataset.error = String(error);
+  }
+  function setKind(next) {
+    kind = next;
+    switchTask.setAttribute("aria-pressed", String(kind === "task"));
+    switchNote.setAttribute("aria-pressed", String(kind === "note"));
+    $("mw-task-fields").hidden = kind === "note";
+    save.textContent = editing ? "Save changes" : kind === "task" ? "Save task" : "Save note";
+  }
+  function reset() {
+    editing = null;
+    form.reset();
+    cancel.hidden = true;
+    setKind("task");
+  }
+  function busyState(on) {
+    busy = on;
+    save.disabled = on;
+    switchTask.disabled = on;
+    switchNote.disabled = on;
+    cancel.disabled = on;
+  }
+  async function dataFetch(url, options) {
+    const response = await fetch(url, {credentials:"same-origin",cache:"no-store",redirect:"error",...options});
+    let data;
+    try { data = await response.json(); }
+    catch { throw new Error("Unexpected response from private workspace"); }
+    if (!response.ok) throw new Error(data.error || "Private workspace unavailable");
+    return data;
+  }
+  async function mutate(url, method, data) {
+    const csrf = await dataFetch("/auth/csrf");
+    if (!csrf.csrf_token) throw new Error("Could not validate secure session");
+    return dataFetch(url, {
+      method,
+      headers: {"Content-Type":"application/json", "X-DIL-CSRF":csrf.csrf_token},
+      body: JSON.stringify(data)
+    });
+  }
+  function el(tag, text, cls) {
+    const node = document.createElement(tag);
+    if (text !== undefined && text !== null) node.textContent = String(text);
+    if (cls) node.className = cls;
+    return node;
+  }
+  function action(label, onClick, cls) {
+    const button = el("button", label, cls || "workspace-small-button");
+    button.type = "button";
+    button.addEventListener("click", onClick);
+    return button;
+  }
+  function dateLabel(utc) {
+    const date = new Date(utc);
+    return Number.isNaN(date.getTime()) ? "" :
+      new Intl.DateTimeFormat(undefined,{dateStyle:"medium"}).format(date);
+  }
+  function card(item) {
+    const box = el("div", null, "workspace-item");
+    const heading = el("div", null, "workspace-item-head");
+    heading.appendChild(el("strong", item.title));
+    if (item.kind === "task") {
+      const badge = el("span", item.priority+" · "+item.status.replace("_"," "), "workspace-bubble");
+      badge.dataset.state = item.status;
+      heading.appendChild(badge);
+    } else heading.appendChild(el("span","PRIVATE NOTE","workspace-bubble"));
+    box.appendChild(heading);
+    if (item.body) box.appendChild(el("p", item.body, "workspace-item-body"));
+    const info = el("p", "Updated "+dateLabel(item.updated_utc)+(item.due_on?" · Target "+item.due_on:""), "workspace-item-meta");
+    box.appendChild(info);
+    const buttons = el("div", null, "workspace-item-actions");
+    buttons.appendChild(action("Edit", () => {
+      editing = item.item_id;
+      $("mw-title").value = item.title;
+      $("mw-body").value = item.body;
+      $("mw-priority").value = item.priority;
+      $("mw-state").value = item.status === "note" ? "pending" : item.status;
+      $("mw-due").value = item.due_on || "";
+      cancel.hidden = false;
+      setKind(item.kind);
+      $("my-workspace").scrollIntoView({behavior:"smooth",block:"start"});
+      $("mw-title").focus({preventScroll:true});
+      note("Editing your private "+item.kind+".");
+    }));
+    if (item.kind === "task" && item.status !== "done") {
+      buttons.appendChild(action("Mark done", () => update(item.item_id,{status:"done"})));
+    }
+    buttons.appendChild(action("Delete", () => {
+      if (window.confirm("Delete this personal "+item.kind+"? This cannot be undone.")) {
+        update(item.item_id, {}, "DELETE");
+      }
+    },"workspace-small-button workspace-danger"));
+    box.appendChild(buttons);
+    return box;
+  }
+  function render() {
+    const tasks = items.filter(it => it.kind === "task");
+    const notes = items.filter(it => it.kind === "note");
+    const filter = $("mw-filter").value;
+    const visible = tasks.filter(it =>
+      filter === "all" || (filter === "done" ? it.status === "done" : it.status !== "done"));
+    $("mw-task-count").textContent = tasks.length + " tasks";
+    $("mw-note-count").textContent = notes.length + " notes";
+    taskList.replaceChildren(...(visible.length ? visible.map(card) :
+      [el("p","No matching personal tasks yet.","workspace-empty")]));
+    noteList.replaceChildren(...(notes.length ? notes.map(card) :
+      [el("p","No private project notes yet.","workspace-empty")]));
+  }
+  async function load(showMessage = true) {
+    try {
+      const data = await dataFetch(path);
+      if (!Array.isArray(data.items) || data.financial_writes !== false) {
+        throw new Error("Invalid workspace response");
+      }
+      items = data.items;
+      storage.textContent = "Private AWS storage connected";
+      storage.className = "bubble ok";
+      render();
+      if (showMessage) note("Private workspace ready. Tasks and notes are saved on AWS, not to GitHub.");
+    } catch (error) {
+      storage.textContent = "Storage unavailable";
+      storage.className = "bubble warn";
+      items = [];
+      taskList.replaceChildren(el("p","Private task storage unavailable; no data changes made.","workspace-empty"));
+      noteList.replaceChildren(el("p","Private note storage unavailable; no data changes made.","workspace-empty"));
+      note(error.message, true);
+    }
+  }
+  async function update(id, payload, method = "PATCH") {
+    if (busy) return;
+    busyState(true);
+    try {
+      await mutate(path+"/"+encodeURIComponent(id),method,payload);
+      await load(false);
+      note(method === "DELETE" ? "Personal item deleted." : "Personal task updated.");
+    } catch (error) { note(error.message, true); }
+    finally { busyState(false); }
+  }
+  switchTask.addEventListener("click", () => { if (!editing) setKind("task"); });
+  switchNote.addEventListener("click", () => { if (!editing) setKind("note"); });
+  cancel.addEventListener("click", () => { reset(); note("Editing cancelled."); });
+  $("mw-filter").addEventListener("change", render);
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (busy || !form.reportValidity()) return;
+    busyState(true);
+    const payload = {
+      kind, title:$("mw-title").value.trim(), body:$("mw-body").value,
+      priority:kind==="task"?$("mw-priority").value:"P1",
+      status:kind==="task"?$("mw-state").value:"note",
+      due_on:kind==="task"?$("mw-due").value:""
+    };
+    try {
+      await mutate(editing?path+"/"+encodeURIComponent(editing):path,
+                   editing?"PATCH":"POST",payload);
+      reset();
+      await load(false);
+      note("Your private "+kind+" has been saved."); 
+    } catch (error) { note(error.message,true); }
+    finally { busyState(false); }
+  });
+  setKind("task");
+  load();
+})();
+</script>
