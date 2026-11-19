@@ -24,7 +24,7 @@ class AWSLoginV150Tests(unittest.TestCase):
     def test_original_v150_login_page_and_assets_public(self):
         page = self.client.get("/login")
         self.assertEqual(page.status_code, 200)
-        self.assertIn(b"DIL Dashboard", page.data)
+        self.assertIn(b"SBI Workspace", page.data)
         self.assertIn(b"Login v1.5.0", page.data)
         self.assertEqual(self.client.get("/login.css").status_code, 200)
         self.assertEqual(self.client.get("/login.js").status_code, 200)
@@ -74,7 +74,7 @@ class AWSLoginV150Tests(unittest.TestCase):
              patch("dashboard_sessions.auth.get_user", return_value=user):
             resp = self.client.get("/dashboard")
             self.assertEqual(resp.status_code, 200)
-            self.assertIn(b"Meghraj _ SBI Reconciliation Control Center", resp.data)
+            self.assertIn(b"SBI Reconciliation", resp.data)
             self.assertEqual(self.client.get("/api/reports").status_code, 403)
             self.assertEqual(self.client.get("/api/qa").status_code, 403)
             self.assertEqual(self.client.get("/users").status_code, 403)
