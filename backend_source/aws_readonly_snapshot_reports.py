@@ -132,7 +132,10 @@ def _validated_csv(root, kind, entry, *, include_bytes):
     headers = entry.get("headers")
     if not isinstance(headers, list) or len(headers) != columns or not all(
         isinstance(x, str) and x.strip() for x in headers
-    ) or len(headers) != len(set(headers)):
+    ):
+        # SBI's approved 53-column contract legitimately repeats labels
+        # (including Client Name and Branch Code). Identity is enforced by
+        # the independent SHA256 pin over the exact *ordered* header array.
         raise NotCertified("SNAPSHOT_HEADERS_INVALID")
     # A pinned manifest must NOT be able to invent its own approved headers.
     # Match a separately operator-pinned approved source-header digest.
