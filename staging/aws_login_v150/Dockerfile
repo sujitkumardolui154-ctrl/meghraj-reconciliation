@@ -1,5 +1,5 @@
 # Pinned, separate AWS v1.5 Firebase login + former dashboard frontend.
-# Never copy Cloud Run production_gateway.py or any finance writer.
+# Only include the isolated AWS UI entrypoint and approved login assets.
 FROM python:3.12-slim-bookworm
 WORKDIR /app
 COPY staging/aws_login_v150/requirements.txt /tmp/requirements.txt
