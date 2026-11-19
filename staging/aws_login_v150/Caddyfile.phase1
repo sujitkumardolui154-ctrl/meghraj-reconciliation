@@ -1,0 +1,25 @@
+{$SITE_DOMAIN} {
+    encode gzip
+    route {
+        # Preserve original /pipeline and priority-task preview, including
+        # its existing independent Basic Auth and its current container.
+        @legacy path /pipeline /api/pipeline/* /api/priority-tasks /api/priority-tasks/* /ui-preview /ui-preview.css
+        handle @legacy {
+            reverse_proxy sbi-preview:8080
+        }
+        # Original v1.5 login and read-only dashboard frontend on AWS.
+        @login path / /dashboard /login /login.css /login.js /auth/* /dashboard.js /account.js /dil_floating_assistant.js /users /users.js /api/*
+        handle @login {
+            reverse_proxy sbi-login-v150:8080
+        }
+        # Keep all unmodified legacy routes on existing preview.
+        handle {
+            reverse_proxy sbi-preview:8080
+        }
+    }
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        X-Frame-Options DENY
+    }
+}
