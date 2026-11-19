@@ -25,6 +25,16 @@ ORIGINS.add(SITE_ORIGIN)
 PUBLIC_PATHS.add("/healthz")
 
 app = Flask(__name__, static_folder=None)
+
+@app.after_request
+def permit_same_origin_tower_embed(response):
+    # Registered before session hooks so this narrowly scoped override runs
+    # last. Standalone pages and every other route retain DENY.
+    from flask import request
+    if request.path == "/control-tower" and request.args.get("embedded") == "1":
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    return response
+
 install_sessions(app)
 install_login_pages(app)
 # Same Firebase session, separate read-only engineering Control Tower.
@@ -39,6 +49,9 @@ for _path in _source_dirs:
         sys.path.insert(0, str(_path))
 from tower_readonly import tower
 app.register_blueprint(tower)
+# User-owned project notes/tasks are separate from financial database APIs.
+from project_workspace import workspace
+app.register_blueprint(workspace)
 
 
 @app.after_request
@@ -71,10 +84,17 @@ def dashboard():
     response.headers["Content-Security-Policy"] = (
         "default-src 'none'; script-src 'self' 'unsafe-inline'; "
         "style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
-        "connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; "
+        "connect-src 'self'; frame-src 'self'; base-uri 'none'; frame-ancestors 'none'; "
         "form-action 'self'"
     )
     return response
+
+
+@app.get("/dashboard-theme.css")
+def dashboard_theme_css():
+    return send_from_directory(
+        str(UI_ROOT), "dashboard_theme.css", mimetype="text/css"
+    )
 
 
 @app.get("/dashboard.js")

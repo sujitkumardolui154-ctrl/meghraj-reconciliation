@@ -1,0 +1,51 @@
+name: SBI AWS Control Tower In-App Tab QA
+on:
+  push:
+    branches:
+      - fix/sbi-aws-control-tower-in-app-tab-20261119
+  pull_request:
+    branches:
+      - feature/sbi-aws-control-tower-integration-20261119
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  safe-in-app-tab:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install isolated dashboard dependencies
+        run: python -m pip install -r staging/aws_login_v150/requirements.txt
+      - name: Same-page tab regression
+        run: python -m unittest discover -s tests -p 'test_sbi_aws_control_tower_tab.py' -v
+      - name: Original Control Tower regression
+        run: python -m unittest discover -s tests -p 'test_sbi_aws_control_tower.py' -v
+      - name: Firebase Login v1.5 regression
+        run: python -m unittest discover -s tests -p 'test_sbi_aws_login_v150.py' -v
+      - name: Build non-root blue-green candidate
+        run: docker build -f staging/aws_login_v150/Dockerfile --build-arg SBI_SOURCE_SHA="$GITHUB_SHA" -t sbi-tower-tab-qa:local .
+      - name: Disconnected HTTP smoke
+        run: |
+          docker run -d --name sbi-tower-tab-qa --network none --read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges sbi-tower-tab-qa:local
+          for i in $(seq 1 20); do
+            if docker exec sbi-tower-tab-qa python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz',timeout=2)" >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          docker exec -i sbi-tower-tab-qa python - <<'PY'
+          from urllib.request import urlopen
+          from urllib.error import HTTPError
+          def status(path):
+              try: return urlopen('http://127.0.0.1:8080'+path, timeout=5).status
+              except HTTPError as exc: return exc.code
+          assert status('/healthz')==200
+          assert status('/login')==200
+          for path in ('/control-tower','/control-tower?embedded=1','/control-tower/api/pipeline/status','/api/reports'):
+              assert status(path)==401,path
+          print('IN_APP_TOWER_DISCONNECTED_HTTP=PASS')
+          PY
+      - name: Remove isolated QA container
+        if: always()
+        run: docker rm -f sbi-tower-tab-qa 2>/dev/null || true
