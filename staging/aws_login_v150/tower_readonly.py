@@ -60,6 +60,10 @@ def control_tower():
         # Keep the historical full-page Control Tower intact at /control-tower.
         compact_style = (
             '<style id="control-tower-embedded-style">'
+            ":root{--bg:#0b1423;--surface:#16263d;--surface2:#1d314b;"
+            "--line:#304761;--text:#f2f7ff;--muted:#adc0d6;"
+            "--teal:#55ddc8;--blue:#85b9fa;--violet:#b3b9fa;"
+            "--amber:#ffd28b;--red:#ffa2a8}"
             "header.top{display:none!important}"
             ".hero{padding-top:18px!important}"
             ".shell{padding-left:14px;padding-right:14px}"
