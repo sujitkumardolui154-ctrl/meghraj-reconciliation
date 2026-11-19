@@ -11,6 +11,8 @@ on:
       - 'tests/test_sbi_aws_phase1_snapshot.py'
       - 'tests/test_sbi_aws_phase1_combined_gate.py'
       - 'tools/sbi_aws_phase1_combined_gate.py'
+      - 'tools/sbi_aws_header_contract_check.py'
+      - 'tests/test_sbi_aws_header_contract_check.py'
       - '.github/workflows/sbi-aws-phase1-snapshot-qa.yml'
   workflow_dispatch:
 
@@ -40,6 +42,10 @@ jobs:
         run: |
           python -B -m py_compile tools/sbi_aws_phase1_combined_gate.py
           python -B -m unittest discover -s tests -p 'test_sbi_aws_phase1_combined_gate.py' -v
+      - name: Actual SBI source-header contracts 34/35/53 including duplicate labels
+        run: |
+          python -B -m py_compile tools/sbi_aws_header_contract_check.py
+          python -B -m unittest discover -s tests -p 'test_sbi_aws_header_contract_check.py' -v
       - name: Build actual disconnected backend image and test fail-closed HTTP contract
         shell: bash
         run: |
