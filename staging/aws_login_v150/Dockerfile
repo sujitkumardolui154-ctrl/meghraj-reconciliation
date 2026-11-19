@@ -9,6 +9,10 @@ COPY dashboard_source/login.html dashboard_source/login.css dashboard_source/log
 COPY dashboard_source/index.html dashboard_source/dashboard.js /app/
 COPY dashboard_source/account.js dashboard_source/dil_floating_assistant.js /app/
 COPY staging/aws_login_v150/app.py /app/app.py
+COPY staging/aws_login_v150/tower_readonly.py /app/tower_readonly.py
+# Recover the original engineering Control Tower, not a modified placeholder.
+COPY staging/railway_public/pipeline.html /app/pipeline.html
+COPY staging/railway_public/pipeline_data.py /app/pipeline_data.py
 ARG SBI_SOURCE_SHA=UNVERIFIED
 LABEL org.opencontainers.image.revision="${SBI_SOURCE_SHA}"
 ENV SBI_SOURCE_SHA=${SBI_SOURCE_SHA} PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1

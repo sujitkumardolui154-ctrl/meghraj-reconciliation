@@ -26,6 +26,9 @@ PUBLIC_PATHS.add("/healthz")
 app = Flask(__name__, static_folder=None)
 install_sessions(app)
 install_login_pages(app)
+# Same Firebase session, separate read-only engineering Control Tower.
+from tower_readonly import tower
+app.register_blueprint(tower)
 
 
 @app.after_request
