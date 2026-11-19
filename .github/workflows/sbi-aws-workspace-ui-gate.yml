@@ -19,6 +19,12 @@ jobs:
           python-version: '3.12'
       - name: Install isolated Firebase auth and Flask runtime
         run: python -m pip install -r staging/aws_login_v150/requirements.txt
+      - name: Audit checked-out UI asset paths
+        run: |
+          git rev-parse HEAD
+          git ls-tree -r HEAD --name-only | grep 'dashboard_theme.css' || true
+          find dashboard_source -maxdepth 1 -type f -name '*theme*' -print
+          ls -l dashboard_source/dashboard_theme.css || true
       - name: Run workspace note/task CRUD, isolation, CSRF and UI tests
         run: python -m unittest discover -s tests -p 'test_sbi_aws_workspace_ui.py' -v
       - name: Control Tower integration regression
