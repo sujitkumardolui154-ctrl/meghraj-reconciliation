@@ -1,0 +1,57 @@
+name: SBI AWS Dashboard Polish Safe QA
+on:
+  push:
+    branches:
+      - feature/sbi-aws-dashboard-polish-20261119
+  pull_request:
+    branches:
+      - fix/sbi-aws-control-tower-in-app-tab-20261119
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dashboard-ui-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install isolated login dependencies
+        run: python -m pip install -r staging/aws_login_v150/requirements.txt
+      - name: Dashboard visual and retired panel regression
+        run: python -m unittest discover -s tests -p 'test_sbi_aws_dashboard_polish.py' -v
+      - name: In-app Control Tower tab regression
+        run: python -m unittest discover -s tests -p 'test_sbi_aws_control_tower_tab.py' -v
+      - name: Original Control Tower regression
+        run: python -m unittest discover -s tests -p 'test_sbi_aws_control_tower.py' -v
+      - name: Firebase Login v1.5 regression
+        run: python -m unittest discover -s tests -p 'test_sbi_aws_login_v150.py' -v
+      - name: Build isolated nonroot candidate
+        run: docker build -f staging/aws_login_v150/Dockerfile --build-arg SBI_SOURCE_SHA="$GITHUB_SHA" -t sbi-dashboard-polish-qa:local .
+      - name: Disconnected HTTP smoke
+        run: |
+          docker run -d --name sbi-dashboard-polish-qa --network none --read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges sbi-dashboard-polish-qa:local
+          for i in $(seq 1 20); do
+            if docker exec sbi-dashboard-polish-qa python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz',timeout=2)" >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          docker exec -i sbi-dashboard-polish-qa python - <<'PY'
+          from urllib.request import urlopen
+          from urllib.error import HTTPError
+          from pathlib import Path
+          def status(path):
+              try: return urlopen('http://127.0.0.1:8080'+path, timeout=5).status
+              except HTTPError as exc: return exc.code
+          assert status('/healthz')==200
+          assert status('/login')==200
+          for path in ('/control-tower','/control-tower?embedded=1','/control-tower/api/pipeline/status','/api/reports'):
+              assert status(path)==401,path
+          html=Path('/app/index.html').read_text(encoding='utf-8')
+          assert '<h2>Backend API Reports</h2>' not in html
+          assert 'data-src="/control-tower?embedded=1"' in html
+          print('DASHBOARD_POLISH_DISCONNECTED_HTTP=PASS')
+          PY
+      - name: Cleanup isolated container
+        if: always()
+        run: docker rm -f sbi-dashboard-polish-qa 2>/dev/null || true

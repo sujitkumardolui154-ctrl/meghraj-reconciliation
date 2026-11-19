@@ -5,43 +5,159 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DIL SBI Reconciliation Dashboard</title>
 <style>
+:root{
+  color-scheme:dark;
+  --bg:#0b1423;--bg-soft:#101e31;--surface:#16263d;--surface-raised:#1d314b;
+  --stroke:#304761;--stroke-soft:#263a52;--text:#f2f7ff;--muted:#adc0d6;
+  --accent:#55ddc8;--accent-strong:#20b79f;--blue:#85b9fa;--gold:#ffd28b;
+  --danger:#ffa2a8;--radius:15px;--shadow:0 16px 40px rgba(2,8,17,.18);
+}
 *{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#0b1220;color:#eaf1ff}
-header{padding:24px;background:#15223a;border-bottom:1px solid #34435c}
-h1{margin:0;font-size:25px}
-header p{color:#a8b8d0}
-main{max-width:1200px;margin:auto;padding:24px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
-.card{background:#17263f;border:1px solid #30445f;border-radius:14px;padding:22px}
-.card h2{font-size:17px;margin-top:0}
-.status{display:inline-block;padding:7px 12px;border-radius:20px;font-size:12px;background:#39465b}
-.good{background:#145c43;color:#a9f5d0}
-.warn{background:#765018;color:#ffe4a0}
-.bad{background:#702d37;color:#ffd1d6}
-a{color:#83c5ff}
-button{background:#2879d5;color:white;border:0;border-radius:8px;padding:11px 18px;cursor:pointer}
-button:hover{background:#3991f3}
+html{scroll-behavior:smooth}
+body{
+  margin:0;min-height:100vh;color:var(--text);
+  background:radial-gradient(850px 390px at 10% -12%,rgba(34,94,128,.25),transparent 72%),
+    radial-gradient(720px 420px at 100% 8%,rgba(19,110,102,.12),transparent 72%),
+    linear-gradient(180deg,#0b1423,#0d1727 65%,#0b1423);
+  font:14px/1.6 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.site-header{
+  padding:22px 24px;border-bottom:1px solid var(--stroke-soft);
+  background:rgba(12,23,39,.92);backdrop-filter:blur(16px);
+}
+.site-header-inner{
+  max-width:1240px;margin:auto;display:flex;align-items:center;gap:18px;
+}
+.brand-symbol{
+  width:49px;height:49px;flex:none;display:grid;place-items:center;
+  border-radius:13px;font-weight:850;letter-spacing:-1px;font-size:18px;
+  background:linear-gradient(135deg,#61dfce,#407cba);color:#071c29;
+  box-shadow:0 5px 24px rgba(42,179,175,.15);
+}
+.brand-copy{min-width:0}
+.brand-copy .eyebrow{
+  display:block;color:var(--accent);font-size:10px;font-weight:800;
+  letter-spacing:.14em;text-transform:uppercase;line-height:1.4;
+}
+.site-header h1{
+  margin:3px 0 2px;font-size:clamp(19px,2.1vw,26px);
+  letter-spacing:-.035em;line-height:1.25;font-weight:760;
+}
+.site-header p{margin:0;color:var(--muted);font-size:12px}
+.env-label{
+  display:flex;align-items:center;gap:9px;flex:none;margin-left:auto;
+  border:1px solid #365e63;border-radius:30px;background:#173a3b;
+  color:#b9f5e6;padding:6px 12px;font-size:11px;font-weight:750;letter-spacing:.04em;
+}
+.env-label .signal{width:7px;height:7px;border-radius:50%;background:#55ddc8}
+main{max-width:1240px;margin:0 auto;padding:28px 24px 44px}
+main#dil-tower{max-width:1400px}
+main>section:first-child{margin-top:0}
 section{margin-top:24px}
-small{color:#9fb1cc}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:16px}
+.card{
+  min-width:0;padding:23px 24px;background:linear-gradient(155deg,var(--surface),#142238);
+  border:1px solid var(--stroke-soft);border-radius:var(--radius);
+  box-shadow:var(--shadow);transition:border-color .2s ease,transform .2s ease;
+}
+.card:hover{border-color:#46617e}
+.card h2{
+  margin:0 0 12px;font-size:16px;line-height:1.35;
+  font-weight:750;letter-spacing:-.01em;color:var(--text);
+}
+.card p{color:#cad8e8;margin:9px 0;line-height:1.65}
+.status{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:5px 11px;border-radius:7px;
+  font-size:11px;font-weight:800;letter-spacing:.035em;
+  background:#30445d;border:1px solid #47617d;color:#d9e6f8;
+}
+.good{background:#153d37;color:#91f1d4;border-color:#2c7365}
+.warn{background:#42351f;color:#ffe1a2;border-color:#74603b}
+.bad{background:#462b38;color:#ffc3ca;border-color:#754457}
+a{color:var(--blue);text-decoration-thickness:1px;text-underline-offset:3px}
+a:hover{color:#b5d9ff}
+button{
+  padding:10px 17px;min-height:40px;border:1px solid #417896;
+  border-radius:9px;color:#f1fbff;font:inherit;font-size:13px;font-weight:650;line-height:1.3;
+  background:linear-gradient(150deg,#22688b,#1c5277);
+  cursor:pointer;transition:background-color .15s ease,border-color .15s ease;
+}
+button:hover{border-color:#6cadd2;background:#286f97}
+button:disabled{opacity:.48;cursor:not-allowed}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:2px solid var(--accent);outline-offset:3px;
+}
+input,select,textarea{
+  border:1px solid #486079;background:#102035;color:var(--text);
+  padding:10px 12px;border-radius:9px;font:inherit;
+}
+input[type=file]{padding:12px;border:1px dashed #55718d;background:#101f32}
+input::placeholder,textarea::placeholder{color:#8ea4bc}
+small{color:var(--muted)}
+#dil-account-bar{
+  background:#0d192b!important;color:var(--text)!important;
+  border-bottom:1px solid var(--stroke-soft)!important;
+  padding:9px max(24px,calc((100% - 1192px)/2))!important;font-size:12px;
+}
+#dil-account-bar button{min-height:31px;padding:6px 12px;font-size:12px}
+@media(max-width:700px){
+  .site-header{padding:16px}.site-header-inner{gap:11px}
+  .brand-symbol{height:42px;width:42px;font-size:15px}
+  .env-label{font-size:0;padding:8px;margin-left:auto}
+  .env-label .signal{width:8px;height:8px}
+  main{padding:22px 16px 36px}.card{padding:18px}
+  #dil-account-bar{padding:8px 16px!important}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
-<header>
-<h1>Meghraj _ SBI Reconciliation Control Center</h1>
-<p>Google Cloud Project: meghraj-reconciliation</p>
+<header class="site-header">
+  <div class="site-header-inner">
+    <div class="brand-symbol" aria-hidden="true">MX</div>
+    <div class="brand-copy">
+      <span class="eyebrow">MEGHRAJ EXPRESS · SBI WORKSTREAM</span>
+      <h1>Reconciliation Control Center</h1>
+      <p>Engineering oversight and project operations</p>
+    </div>
+    <span class="env-label"><span class="signal" aria-hidden="true"></span>AWS Private Preview</span>
+  </div>
 </header>
 
 <!-- DIL Reports Tab v1.4.2 -->
 <style>
 [hidden]{display:none!important}
-.dil-nav{max-width:1200px;margin:auto;padding:20px 24px 0;display:flex;gap:12px}
-.dil-nav button[aria-pressed="true"]{outline:2px solid #a9d5ff}
-#dil-tower-button[aria-pressed="true"]{outline:2px solid #a9d5ff}
-#dil-tower-panel{padding:12px 0}
-#dil-tower-frame{width:100%;height:1600px;display:block;border:1px solid #344c6d;border-radius:12px;background:#080f1d}
-@media(max-width:640px){#dil-tower-frame{height:1600px;border-radius:8px}}
-#dil-reports button:disabled{opacity:.5;cursor:not-allowed}
+.dil-nav{
+  max-width:1240px;margin:18px auto 0;padding:0 24px;
+  display:flex;align-items:stretch;flex-wrap:wrap;gap:3px;
+  border-bottom:1px solid var(--stroke);
+}
+.dil-nav button{
+  appearance:none;position:relative;min-height:48px;padding:13px 19px;
+  border:1px solid transparent;border-bottom:2px solid transparent;
+  border-radius:10px 10px 0 0;background:transparent;color:var(--muted);
+  box-shadow:none;white-space:nowrap;font-size:13px;font-weight:700;
+}
+.dil-nav button:hover{background:#192c43;border-color:transparent;color:var(--text)}
+.dil-nav button[aria-pressed="true"]{
+  color:var(--accent);background:#172c40;border-color:#34566b;
+  border-bottom:2px solid var(--accent);
+}
+#dil-tower-panel{padding:8px 0 0;margin-top:0}
+#dil-tower-frame{
+  width:100%;height:1600px;display:block;box-sizing:border-box;
+  border:1px solid var(--stroke);border-radius:13px;background:#0b1423;
+}
+#dil-reports button:disabled{opacity:.48;cursor:not-allowed}
 #dil-report-message{white-space:pre-wrap}
+#dil-home .grid .card{min-height:169px}
+@media(max-width:700px){
+  .dil-nav{margin-top:12px;padding:0 12px;gap:0;flex-wrap:nowrap;overflow-x:auto}
+  .dil-nav button{min-height:45px;padding:12px 13px}
+  #dil-tower-frame{height:1600px;border-radius:9px}
+}
 </style>
 <nav class="dil-nav" aria-label="Dashboard sections">
 <button type="button" id="dil-home-button"
@@ -64,7 +180,7 @@ small{color:#9fb1cc}
 <div class="card">
 <h2>Supervisor</h2>
 <span class="status warn">STATIC BASELINE</span>
-<p>Monitoring API connected; live agent telemetry not connected.</p>
+<p>Live agent telemetry is not connected. Open Control Tower for available engineering evidence.</p>
 </div>
 <div class="card">
 <h2>Independent QA</h2>
@@ -83,17 +199,11 @@ small{color:#9fb1cc}
 </div>
 </section>
 
-<section class="card">
-<h2>Backend API Reports</h2>
-<p><small>Protected monitoring reports — accessible through Google IAP authentication.</small></p>
-<div id="links"></div>
-</section>
-
-<section class="card">
-<h2>Dashboard Controls</h2>
-<button onclick="refreshDashboard()">Refresh Dashboard</button>
-<p id="updated">Awaiting refresh</p>
-<p><small>API monitoring refreshes every 30 seconds. Agent telemetry remains demonstration-only.</small></p>
+<section class="card" aria-label="Workspace controls">
+  <h2>Workspace</h2>
+  <p>Navigate using the tabs above. Control Tower shows verified engineering evidence when its sources are available.</p>
+  <button type="button" onclick="refreshDashboard()">Refresh interface</button>
+  <p id="updated" role="status" aria-live="polite"><small>Refresh affects this browser view only.</small></p>
 </section>
 
 <!-- DIL Excel Upload v1.3.0 -->
@@ -184,34 +294,12 @@ small{color:#9fb1cc}
 
 </main>
 <script>
-const paths = ["health", "qa", "supervisor", "agents"];
-const links = document.getElementById("links");
-
-for (const path of paths) {
-  const row = document.createElement("p");
-  const link = document.createElement("a");
-  link.href = "/api/" + path;
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
-  link.textContent = "/api/" + path;
-  row.appendChild(link);
-  links.appendChild(row);
-}
-
-async function refreshDashboard() {
-  const indicator = document.getElementById("updated");
-  indicator.textContent = "Requesting monitoring data...";
-  try {
-    await refreshMonitoring();
-    indicator.textContent =
-      "API requests finished: " + new Date().toLocaleString() +
-      " — check panels for endpoint errors";
-  } catch (error) {
-    indicator.textContent = "Refresh error: " + error.message;
-  }
+function refreshDashboard() {
+  const message = document.getElementById("updated");
+  if (message) message.textContent = "Refreshing interface…";
+  window.location.reload();
 }
 </script>
-<script src="/dashboard.js" defer></script>
 
 <main id="dil-reports" hidden>
 <section class="card" id="dil-reconciliation-changes" aria-labelledby="dil-change-title">
