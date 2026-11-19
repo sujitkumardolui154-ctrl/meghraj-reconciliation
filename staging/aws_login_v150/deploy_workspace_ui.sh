@@ -33,16 +33,32 @@ WORKSPACE_DIR="/var/lib/sbi-control-tower-workspace"
 HOST_CADDY="$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/etc/caddy/Caddyfile"}}{{.Source}}{{end}}{{end}}' "$PROXY")"
 [[ -n "$HOST_CADDY" && -f "$HOST_CADDY" && ! -L "$HOST_CADDY" ]] ||
   { echo "BLOCKED_CADDY_BIND_FILE"; exit 2; }
-# Detect the actual installed Control Tower release; fail if custom-modified.
-if cmp -s "$HOST_CADDY" "$ROOT/staging/aws_login_v150/Caddyfile.control_tower_tab"; then
-  PREV="sbi-login-control-tower-tab-stage"
-  BASELINE="$ROOT/staging/aws_login_v150/Caddyfile.control_tower_tab"
-elif cmp -s "$HOST_CADDY" "$ROOT/staging/aws_login_v150/Caddyfile.control_tower"; then
-  PREV="sbi-login-control-tower-stage"
-  BASELINE="$ROOT/staging/aws_login_v150/Caddyfile.control_tower"
+# Deploy accepts only known original releases. Rollback verifies the immutable
+# backup separately because the active config will then be the new candidate.
+if [[ "$MODE" == rollback ]]; then
+  [[ -f "$BACKUP" && ! -L "$BACKUP" ]] ||
+    { echo "BLOCKED_WORKSPACE_ROLLBACK_BACKUP_MISSING"; exit 2; }
+  if cmp -s "$BACKUP" "$ROOT/staging/aws_login_v150/Caddyfile.control_tower_tab"; then
+    PREV="sbi-login-control-tower-tab-stage"
+    BASELINE="$ROOT/staging/aws_login_v150/Caddyfile.control_tower_tab"
+  elif cmp -s "$BACKUP" "$ROOT/staging/aws_login_v150/Caddyfile.control_tower"; then
+    PREV="sbi-login-control-tower-stage"
+    BASELINE="$ROOT/staging/aws_login_v150/Caddyfile.control_tower"
+  else
+    echo "BLOCKED_UNRECOGNIZED_WORKSPACE_ROLLBACK_BACKUP"
+    exit 2
+  fi
 else
-  echo "BLOCKED_UNRECOGNIZED_LIVE_CADDY_BASELINE"
-  exit 2
+  if cmp -s "$HOST_CADDY" "$ROOT/staging/aws_login_v150/Caddyfile.control_tower_tab"; then
+    PREV="sbi-login-control-tower-tab-stage"
+    BASELINE="$ROOT/staging/aws_login_v150/Caddyfile.control_tower_tab"
+  elif cmp -s "$HOST_CADDY" "$ROOT/staging/aws_login_v150/Caddyfile.control_tower"; then
+    PREV="sbi-login-control-tower-stage"
+    BASELINE="$ROOT/staging/aws_login_v150/Caddyfile.control_tower"
+  else
+    echo "BLOCKED_UNRECOGNIZED_LIVE_CADDY_BASELINE"
+    exit 2
+  fi
 fi
 echo "VERIFIED_BASELINE_CONTAINER=$PREV"
 
@@ -139,7 +155,7 @@ if [[ "$MODE" == stage ]]; then
   done
   if ! check_stage; then
     docker rm -f "$NEW" >/dev/null 2>&1 || true
-    echo "CONTROL_TOWER_STAGE=FAILED_CLEANED_UP"
+    echo "SBI_WORKSPACE_STAGE=FAILED_CLEANED_UP"
     exit 2
   fi
   check_images || { echo "BLOCKED_ORIGINAL_IMAGE_PARITY"; exit 2; }
