@@ -49,7 +49,10 @@ class AWSPhase1SnapshotTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.dir = Path(self.temp.name)
-        self.headers53 = ["Source Field " + str(i + 1) for i in range(53)]
+        # Real approved contract contains intentional duplicate labels.
+        self.headers53 = json.loads(
+            (BACKEND / "invoice_import_contract.json").read_text()
+        )["headers"]
         self.headers18 = ["CN Field " + str(i + 1) for i in range(18)]
         self.environment = {
             "SBI_SOURCE_SHA": "b" * 40,
@@ -117,6 +120,13 @@ class AWSPhase1SnapshotTests(unittest.TestCase):
         self.assertEqual(report.status_code, 200)
         self.assertIn(b"SYNTHETIC_TEST", report.data)
         self.assertEqual(report.headers["X-Report-Classification"], "SOURCE_REFERENCE_ONLY")
+
+    def test_actual_sbi_53_headers_with_duplicates_are_allowed_when_pinned(self):
+        self.assertEqual(len(self.headers53), 53)
+        self.assertLess(len(set(self.headers53)), 53)
+        response = self.response("/reports/ok.csv")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"SYNTHETIC_TEST", response.data)
 
     def test_missing_snapshot_is_original_fail_closed_503(self):
         self.assertEqual(self.response("/readyz", env={}).status_code, 503)
