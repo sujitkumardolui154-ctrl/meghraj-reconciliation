@@ -63,7 +63,11 @@ class PrivateWorkspaceTests(unittest.TestCase):
             self.assertNotIn(b"Supervisor API Monitoring", dashboard.data)
             self.assertNotIn(b'<script src="/dashboard.js"', dashboard.data)
             self.assertIn(b"Plan, monitor and deliver", dashboard.data)
-            self.assertEqual(self.client.get("/dashboard-theme.css").status_code, 200)
+            css_response = self.client.get("/dashboard-theme.css")
+            self.assertEqual(css_response.status_code, 200,
+                "ROOT="+str(module.UI_ROOT)+
+                " FILE="+str((module.UI_ROOT/"dashboard-theme.css").exists())+
+                " ROUTES="+repr(sorted(str(r.rule) for r in module.app.url_map.iter_rules())))
             tower = self.client.get("/control-tower?embedded=1")
             self.assertEqual(tower.status_code, 200)
             for section in (b"Project priorities", b"Essential", b"Critical obstructions",
