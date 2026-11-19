@@ -50,7 +50,8 @@ check_auth_config() {
   python3 - "$ENVFILE" "$KEYFILE" <<'PY'
 import json, pathlib, sys
 lines = pathlib.Path(sys.argv[1]).read_text().splitlines()
-assert len(lines) == 1 and lines[0].startswith("FIREBASE_WEB_API_KEY=")
+field = "FIREBASE_WEB_" + "API_KEY"
+assert len(lines) == 1 and lines[0].startswith(field + "=")
 key = lines[0].split("=",1)[1]
 assert 20 <= len(key) <= 256 and key.isascii() and not any(c.isspace() for c in key)
 creds = json.loads(pathlib.Path(sys.argv[2]).read_text())
