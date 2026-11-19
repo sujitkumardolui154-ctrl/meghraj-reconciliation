@@ -6,6 +6,7 @@ Firebase Auth remains the original identity provider; credentials are held only
 in private AWS host runtime mounts, never in GitHub or Docker images.
 """
 import os
+import sys
 from pathlib import Path
 from flask import Flask, jsonify, send_from_directory
 from dashboard_sessions import ORIGINS, PUBLIC_PATHS, install_sessions
@@ -27,6 +28,11 @@ app = Flask(__name__, static_folder=None)
 install_sessions(app)
 install_login_pages(app)
 # Same Firebase session, separate read-only engineering Control Tower.
+# Support original source-level tests while Docker loads assets from /app.
+for _path in (Path(__file__).resolve().parent,
+              Path(__file__).resolve().parents[2] / 'staging/railway_public'):
+    if _path.is_dir() and str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
 from tower_readonly import tower
 app.register_blueprint(tower)
 
