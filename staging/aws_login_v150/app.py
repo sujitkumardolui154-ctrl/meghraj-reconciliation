@@ -13,6 +13,10 @@ from dashboard_login_pages import install_login_pages
 
 SITE_ORIGIN = "https://sbi-preview.13-232-241-221.sslip.io"
 UI_ROOT = Path(__file__).resolve().parent
+# In the sealed Docker image, assets are alongside app.py; in the source
+# checkout, tests load the same approved dashboard_source asset directory.
+if not (UI_ROOT / "index.html").is_file():
+    UI_ROOT = Path(__file__).resolve().parents[2] / "dashboard_source"
 
 # Preserve approved Cloud Run origins while adding only this exact AWS HTTPS
 # origin for CSRF; do not allow wildcard or arbitrary host-derived origins.
