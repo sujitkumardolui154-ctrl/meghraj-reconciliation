@@ -1,0 +1,75 @@
+name: SBI AWS Login v1.5 First — Source and Sealed UI QA (no deploy)
+
+on:
+  push:
+    branches:
+      - feature/sbi-aws-v150-login-first-20261119
+    paths:
+      - 'staging/aws_login_v150/**'
+      - 'tests/test_sbi_aws_login_v150.py'
+      - '.github/workflows/sbi-aws-login-v150-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  aws-login-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install only login dependencies
+        run: python -m pip install -r staging/aws_login_v150/requirements.txt
+      - name: Original login and AWS route source tests
+        run: |
+          python -B -m py_compile staging/aws_login_v150/app.py
+          python -B -m unittest discover -s tests -p 'test_sbi_aws_login_v150.py' -v
+          bash -n staging/aws_login_v150/deploy_aws_login_v150.sh
+      - name: Build AWS login-only Docker image
+        run: docker build -f staging/aws_login_v150/Dockerfile --build-arg SBI_SOURCE_SHA="$GITHUB_SHA" -t sbi-aws-login-v150-ci:$GITHUB_SHA .
+      - name: Disconnected real HTTP login-page smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --rm --name sbi-aws-login-v150-ci --network none --restart no --read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges --pids-limit 128 --memory 384m -e FIREBASE_WEB_API_KEY=synthetic-browser-test-key-not-live sbi-aws-login-v150-ci:$GITHUB_SHA
+          trap 'docker stop --time 3 sbi-aws-login-v150-ci >/dev/null 2>&1 || true' EXIT
+          docker exec -i sbi-aws-login-v150-ci python3 - <<'PY'
+          from urllib.request import Request,build_opener,HTTPRedirectHandler
+          from urllib.error import HTTPError,URLError
+          import time
+          class NoRedirect(HTTPRedirectHandler):
+              def redirect_request(self,*args,**kwargs): return None
+          opener=build_opener(NoRedirect())
+          def status(p):
+              try:
+                  with opener.open(Request('http://127.0.0.1:8080'+p),timeout=5) as r: return r.status
+              except HTTPError as e: return e.code
+          for _ in range(20):
+              try:
+                  if status('/login')==200: break
+              except URLError: time.sleep(.5)
+          else: raise SystemExit('LOGIN_STARTUP=FAIL')
+          assert status('/auth/config')==200
+          assert status('/auth/csrf')==200
+          assert status('/login.css')==200
+          assert status('/login.js')==200
+          assert status('/')==303
+          assert status('/api/reports')==401
+          print('ORIGINAL_V150_AWS_LOGIN_HTTP=PASS')
+          print('FIREBASE_REAL_USER_SIGNIN=NOT_TESTED')
+          print('FINANCIAL_API=NOT_CONNECTED')
+          PY
+      - name: Release restrictions
+        if: always()
+        run: |
+          echo 'AWS_DEPLOYMENT=NOT_PERFORMED_BY_CI'
+          echo 'REAL_FIREBASE_SIGNIN=NOT_TESTED'
+          echo 'REPORT_QA=DEFERRED_USER_APPROVED'
+          echo 'FINANCIAL_WRITES=NOT_PERFORMED'
+          echo 'PRODUCTION_FINANCIAL_CUTOVER=BLOCKED'
