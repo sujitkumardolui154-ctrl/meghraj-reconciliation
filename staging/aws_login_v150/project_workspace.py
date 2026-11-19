@@ -8,6 +8,7 @@ import os
 import re
 import secrets
 import sqlite3
+from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -28,10 +29,13 @@ def _db():
     name = os.environ.get("SBI_PRIVATE_WORKSPACE_DB", "")
     if not name or not Path(name).is_absolute():
         raise OSError("Workspace storage has not been configured")
-    parent = Path(name).parent
-    if not parent.is_dir() or parent.is_symlink():
+    target = Path(name)
+    parent = target.parent
+    if target.is_symlink() or not parent.is_dir() or parent.is_symlink():
         raise OSError("Private workspace directory unavailable")
     conn = sqlite3.connect(name, timeout=4)
+    # Private owner-only database, never an exposed temp or financial file.
+    os.chmod(name, 0o600)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA busy_timeout = 4000")
     conn.execute(
@@ -124,7 +128,7 @@ def personal_items():
         except ValueError as exc:
             return jsonify(error=str(exc)), 422
         try:
-            with _db() as conn:
+            with closing(_db()) as conn, conn:
                 count = conn.execute(
                     "SELECT COUNT(*) FROM personal_items WHERE owner_uid = ?",
                     (_owner(),),
@@ -146,7 +150,7 @@ def personal_items():
             return jsonify(error="Private workspace storage unavailable"), 503
 
     try:
-        with _db() as conn:
+        with closing(_db()) as conn, conn:
             rows = conn.execute(
                 "SELECT * FROM personal_items WHERE owner_uid = ? "
                 "ORDER BY updated_utc DESC LIMIT ?",
@@ -172,7 +176,7 @@ def modify_personal_item(item_id):
     if request.method == "DELETE" and data:
         return jsonify(error="Delete request must not include changes"), 422
     try:
-        with _db() as conn:
+        with closing(_db()) as conn, conn:
             row = conn.execute(
                 "SELECT * FROM personal_items WHERE item_id=? AND owner_uid=?",
                 (item_id, _owner()),
