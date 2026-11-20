@@ -144,7 +144,7 @@ async function refreshDashboard() {
     event.preventDefault();
     if (busy) return;
     const file = input.files[0];
-    if (!file || !/\\.xlsx$/i.test(file.name) ||
+    if (!file || !/\.xlsx$/i.test(file.name) ||
         !file.size || file.size > 8 * 1024 * 1024) {
       message.textContent = "Select a non-empty .xlsx workbook up to 8 MiB.";
       return;
