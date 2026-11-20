@@ -18,6 +18,10 @@ jobs:
           python-version: '3.12'
       - name: Install isolated Firebase and Excel dependencies
         run: python -m pip install -r staging/aws_login_v150/requirements.txt
+      - name: Syntax check guarded AWS staging and rollback script
+        run: bash -n staging/aws_login_v150/deploy_source_reports_v1.sh
+      - name: Source-only deployment invariants
+        run: python -m unittest discover -s tests -p 'test_sbi_aws_source_report_deploy.py' -v
       - name: Source-backed four-report and CSV safety regression
         run: python -m unittest discover -s tests -p 'test_sbi_aws_readonly_reports_gateway.py' -v
       - name: Payment evidence receipt regression
