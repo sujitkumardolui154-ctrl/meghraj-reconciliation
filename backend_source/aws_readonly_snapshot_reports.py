@@ -17,7 +17,7 @@ import re
 import stat
 
 KINDS = frozenset((
-    "unpaid", "ok", "balance-review", "suspense",
+    "unpaid", "ok", "balance-review", "error-value", "suspense",
     "credit-note", "reconciliation-changes",
 ))
 CORE = frozenset(("unpaid", "ok", "balance-review"))
@@ -123,7 +123,7 @@ def _validated_csv(root, kind, entry, *, include_bytes):
         raise NotCertified("SNAPSHOT_ROW_COUNT_INVALID")
     if type(columns) is not int or not (1 <= columns <= 100):
         raise NotCertified("SNAPSHOT_COLUMN_COUNT_INVALID")
-    if kind in CORE | {"suspense"} and columns != 53:
+    if kind in CORE | {"suspense", "error-value"} and columns != 53:
         raise NotCertified("SNAPSHOT_53_COLUMN_PARITY_REQUIRED")
     if kind == "credit-note" and columns != 18:
         raise NotCertified("SNAPSHOT_18_COLUMN_PARITY_REQUIRED")
@@ -132,13 +132,16 @@ def _validated_csv(root, kind, entry, *, include_bytes):
     headers = entry.get("headers")
     if not isinstance(headers, list) or len(headers) != columns or not all(
         isinstance(x, str) and x.strip() for x in headers
-    ) or len(headers) != len(set(headers)):
+    ):
+        # Approved 53-column SBI source legitimately repeats Client Name and
+        # Branch Code. Its *exact ordered* independent SHA256 header pin,
+        # not uniqueness, protects identity and prevents column reordering.
         raise NotCertified("SNAPSHOT_HEADERS_INVALID")
     # A pinned manifest must NOT be able to invent its own approved headers.
     # Match a separately operator-pinned approved source-header digest.
     header_pin_env = (
         "SBI_AWS_APPROVED_53_HEADERS_SHA256"
-        if kind in CORE | {"suspense"} else
+        if kind in CORE | {"suspense", "error-value"} else
         "SBI_AWS_APPROVED_18_HEADERS_SHA256"
         if kind == "credit-note" else
         "SBI_AWS_APPROVED_" + kind.replace("-", "_").upper() + "_HEADERS_SHA256"
@@ -165,7 +168,11 @@ def _validated_csv(root, kind, entry, *, include_bytes):
             # Refuse CSV cells which would execute as spreadsheet formulas.
             # Source exports must escape these as leading apostrophes.
             for value in row:
-                if value.lstrip().startswith(("=", "+", "-", "@")):
+                cell = value.lstrip()
+                if cell.startswith(("=", "+", "@")) or (
+                    cell.startswith("-") and
+                    re.fullmatch(r"-[0-9]+(?:\.[0-9]+)?", cell) is None
+                ):
                     raise NotCertified("SNAPSHOT_CSV_FORMULA_NOT_ESCAPED")
             rows += 1
             if rows > MAX_REPORT_ROWS:

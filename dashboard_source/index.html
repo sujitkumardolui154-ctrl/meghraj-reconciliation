@@ -121,9 +121,9 @@ small{color:#9fb1cc}
 })();
 </script>
 
-<h2>Reports <small>— Dashboard v1.4.2</small></h2>
-<p>Reports include the original database snapshot plus new invoices from completed imports. Preview uploads and unfinished imports are excluded. All 53 report headers remain in their original order; model fields absent from the source remain blank.</p>
-<p>Payment reports use the saved Payment Received value: blank or zero goes to Unpaid, non-zero numbers to OK, and invalid values to Error Value. OK does not confirm full payment. Reconciliation has not run.</p>
+<h2>Reports <small>— Verified Read-only Sources</small></h2>
+<p>Invoice CSV reports are available only from an independently certified private 53-column source snapshot. The AWS financial database is not connected; unverified source rows and incomplete imports are excluded. No totals are displayed until the underlying report data is verified.</p>
+<p>Report labels reflect source classification, not approved settlement: Unpaid, OK Payment Value, Error Value and Balance Review. These are not proof that an invoice is fully paid. Reconciliation has not run.</p>
 <button type="button" id="dil-report-refresh">Refresh report availability</button>
 <p id="dil-report-message" role="status" aria-live="polite">
 Open Reports to check availability.</p>
@@ -200,7 +200,10 @@ numbers to preserve leading zeros.</small></p>
         signal: controller.signal
       });
       if (!response.ok) {
-        throw new Error("Report unavailable (HTTP " + response.status + ").");
+        let detail = "";
+        try { const body=await response.json(); detail=body.reason || body.error || ""; } catch {}
+        throw new Error("Report source unavailable (HTTP " + response.status + ")" +
+          (detail ? ": " + detail : "") + ".");
       }
       const type = response.headers.get("Content-Type") || "";
       if (!type.toLowerCase().includes(format)) {
@@ -225,26 +228,33 @@ numbers to preserve leading zeros.</small></p>
         .textContent = "Checking...";
     });
     try {
-      const data = await requestReport("/api/reports", "application/json");
-      if (!data || !data.reports || data.version !== "1.4.2" ||
-          !Number.isSafeInteger(data.completed_import_rows) ||
-          data.completed_import_rows < 0 ||
+      const data = await requestReport("/api/reporting/v2", "application/json");
+      if (!data || !data.reports || data.version !== "aws-source-snapshot-v1" ||
+          data.financial_writes !== false ||
           data.reconciliation_executed !== false) {
-        throw new Error("Unexpected report metadata.");
+        throw new Error("Unexpected read-only report metadata.");
       }
       buttons.forEach(button => {
         const kind = button.dataset.dilReport;
         const item = data.reports[kind];
         const label = document.getElementById("dil-count-" + kind);
-        if (item && Number.isSafeInteger(item.rows) && item.rows >= 0) {
+        if (item && item.status === "AVAILABLE" &&
+            Number.isSafeInteger(item.rows) && item.rows >= 0 &&
+            item.classification === "SOURCE_REFERENCE_ONLY" &&
+            typeof item.source_sha256 === "string" &&
+            /^[a-f0-9]{64}$/.test(item.source_sha256)) {
           ready.add(kind);
-          label.textContent = item.rows.toLocaleString() + " rows";
+          label.textContent = item.rows.toLocaleString() + " verified source rows";
         } else {
-          label.textContent = "Unavailable";
+          label.textContent = item?.reason || "Not connected";
         }
       });
       message.textContent =
-        "Reports v1.4.2 available. Completed imported invoices: " + data.completed_import_rows.toLocaleString() + ". Reconciliation has not run.";
+        ready.size ? "Verified read-only source reports available: " +
+          ready.size + " of " + buttons.length +
+          ". Not a live financial database. Reconciliation has not run."
+        : "Reports not connected: " + (data.status_reason || "No independently approved source snapshot") +
+          ". Invoice CSV downloads remain disabled. Payment evidence uploads do not create invoice reports.";
     } catch (error) {
       buttons.forEach(button => {
         document.getElementById("dil-count-" + button.dataset.dilReport)
@@ -283,11 +293,11 @@ numbers to preserve leading zeros.</small></p>
     updateButtons();
     message.textContent = "Preparing " + kind + " CSV from the database...";
     try {
-      const blob = await requestReport("/api/reports/" + kind + ".csv", "text/csv");
+      const blob = await requestReport("/api/reporting/v2/" + kind + ".csv", "text/csv");
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "sbi-" + kind + "-v1.4.2.csv";
+      link.download = "sbi-" + kind + "-approved-source.csv";
       document.body.appendChild(link);
       link.click();
       link.remove();
