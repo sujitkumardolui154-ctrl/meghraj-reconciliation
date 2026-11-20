@@ -108,6 +108,22 @@ for path,expected in (
 print("SBI_PAYMENT_EVIDENCE_PRIVATE_HTTP=PASS")
 print("REAL_FIREBASE_SIGNIN=REQUIRES_BROWSER_TEST")
 PY
+  # Write only a tiny nonfinancial probe; never use live bank data for smoke tests.
+  docker exec -i "$NEW" python3 - <<'PY'
+import os, stat, tempfile
+directory="/evidence"
+info=os.stat(directory)
+assert stat.S_ISDIR(info.st_mode)
+assert info.st_uid==os.getuid()
+assert stat.S_IMODE(info.st_mode)==0o700
+fd,path=tempfile.mkstemp(prefix=".evidence-stage-check-",dir=directory)
+try:
+    os.write(fd,b"private-volume-ok")
+finally:
+    os.close(fd)
+    os.unlink(path)
+print("PAYMENT_EVIDENCE_PRIVATE_VOLUME_WRITE=PASS")
+PY
 }
 
 if [[ "$MODE" == stage ]]; then
