@@ -132,7 +132,10 @@ def _validated_csv(root, kind, entry, *, include_bytes):
     headers = entry.get("headers")
     if not isinstance(headers, list) or len(headers) != columns or not all(
         isinstance(x, str) and x.strip() for x in headers
-    ) or len(headers) != len(set(headers)):
+    ):
+        # Approved 53-column SBI source legitimately repeats Client Name and
+        # Branch Code. Its *exact ordered* independent SHA256 header pin,
+        # not uniqueness, protects identity and prevents column reordering.
         raise NotCertified("SNAPSHOT_HEADERS_INVALID")
     # A pinned manifest must NOT be able to invent its own approved headers.
     # Match a separately operator-pinned approved source-header digest.
@@ -165,7 +168,11 @@ def _validated_csv(root, kind, entry, *, include_bytes):
             # Refuse CSV cells which would execute as spreadsheet formulas.
             # Source exports must escape these as leading apostrophes.
             for value in row:
-                if value.lstrip().startswith(("=", "+", "-", "@")):
+                cell = value.lstrip()
+                if cell.startswith(("=", "+", "@")) or (
+                    cell.startswith("-") and
+                    re.fullmatch(r"-[0-9]+(?:\.[0-9]+)?", cell) is None
+                ):
                     raise NotCertified("SNAPSHOT_CSV_FORMULA_NOT_ESCAPED")
             rows += 1
             if rows > MAX_REPORT_ROWS:
