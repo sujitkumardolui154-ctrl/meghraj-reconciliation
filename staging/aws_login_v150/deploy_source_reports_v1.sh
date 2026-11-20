@@ -282,6 +282,14 @@ fi
 echo "=== SBI AWS READONLY REPORT CATALOG ACTIVATION ==="
 check_credentials
 report_config
+ACTUAL_REPORT_MOUNT="$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/report-snapshot"}}{{.Source}}{{end}}{{end}}' "$NEW" 2>/dev/null || true)"
+if [[ -e "$REPORT_ENV" ]]; then
+  [[ "$ACTUAL_REPORT_MOUNT" == "$REPORT_DIR" ]] ||
+    { echo "BLOCKED_STAGED_REPORT_VOLUME_NOT_MATCHING_APPROVED_SOURCE"; exit 2; }
+else
+  [[ -z "$ACTUAL_REPORT_MOUNT" ]] ||
+    { echo "BLOCKED_STAGED_REPORT_SOURCE_UNEXPECTED"; exit 2; }
+fi
 [[ "$(docker inspect -f '{{.State.Running}}' "$NEW" 2>/dev/null)" == true ]] ||
   { echo "BLOCKED_TOWER_STAGE_NOT_RUNNING"; exit 2; }
 [[ "$(docker inspect -f '{{.Config.Image}}' "$NEW")" == "$IMAGE" ]] ||
