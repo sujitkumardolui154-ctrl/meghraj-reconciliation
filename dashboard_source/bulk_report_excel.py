@@ -30,6 +30,8 @@ REPORT_SHEETS = (
     ("validation-review.csv", "Validation Review"),
 )
 REVIEW_HEADERS = ["Source Row", "Invoice No", "Review Flag"]
+LOOKUP_REVIEW = ("lookup-review.csv", "Lookup Review")
+LOOKUP_HEADERS = ["Invoice No", "Reason"]
 
 
 def combined_excel_from_report_zip(payload: bytes) -> bytes:
@@ -49,7 +51,11 @@ def combined_excel_from_report_zip(payload: bytes) -> bytes:
             manifest.get("database_updated") is not False):
             raise ValueError("Bulk Report financial safety manifest mismatch")
         entries = {item["name"]: item for item in manifest["files"]}
-        for filename, sheet_name in REPORT_SHEETS:
+        selected_source = manifest.get("schema") == "sbi-database-selected-bulk-report/v1"
+        if selected_source and manifest.get("source_kind") != "VERIFIED_READ_ONLY_REPORT_SOURCE":
+            raise ValueError("Selected report source was not verified")
+        required_sheets = REPORT_SHEETS + ((LOOKUP_REVIEW,) if selected_source else ())
+        for filename, sheet_name in required_sheets:
             info = entries.get(filename)
             if info is None:
                 raise ValueError("Missing source report: " + filename)
@@ -58,7 +64,11 @@ def combined_excel_from_report_zip(payload: bytes) -> bytes:
                 raise ValueError("Bulk Report source integrity check failed")
             reader = csv.reader(io.StringIO(raw.decode("utf-8-sig"), newline=""))
             sheet = wb.create_sheet(title=sheet_name)
-            expected = REVIEW_HEADERS if filename == "validation-review.csv" else HEADERS_53
+            expected = (
+                LOOKUP_HEADERS if filename == "lookup-review.csv"
+                else REVIEW_HEADERS if filename == "validation-review.csv"
+                else HEADERS_53
+            )
             # Write-only XLSX sheets serialize view/column metadata before rows.
             sheet.freeze_panes = "A2"
             sheet.sheet_view.showGridLines = False
