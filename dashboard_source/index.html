@@ -454,9 +454,9 @@ Reports include new invoices only after an import completes. Preview alone does 
       <div>
         <p class="dash-overline">PAYMENT EVIDENCE WORKFLOW</p>
         <h2 id="dil-payment-heading">Payment Reconciliation</h2>
-        <p>Dedicated space for importing SBI payment evidence and preparing payment-to-invoice reconciliation. No payment processing or financial updates are connected in this AWS stage.</p>
+        <p>Fixed-header Excel payment-evidence upload and review. Financial matching, allocations and settlement remain disabled.</p>
       </div>
-      <span class="status bad">BACKEND NOT CONNECTED</span>
+      <span class="status warn">RECONCILIATION ENGINE NOT CONNECTED</span>
     </div>
     <div class="dil-db-stages" aria-label="Future payment reconciliation stages">
       <div class="dil-db-stage"><strong>1. Payment evidence</strong><p>Source: PAYMNENT worksheet. Column I (Credit) provides payment amounts. Original payment source columns A–L must remain unchanged.</p></div>
@@ -465,17 +465,168 @@ Reports include new invoices only after an import completes. Preview alone does 
     </div>
   </section>
   <section class="card dil-db-payment" aria-labelledby="dil-payment-evidence-heading">
-    <h2 id="dil-payment-evidence-heading">Upload New Payment Evidence</h2>
-    <p>Payment evidence upload and reconciliation preview will be available only after the verified read-only payment API and independent financial QA are connected.</p>
-    <label for="dil-payment-evidence-file">Payment workbook (.xlsx or .xls)</label>
-    <input id="dil-payment-evidence-file" type="file" accept=".xlsx,.xls" disabled aria-describedby="dil-payment-lock-note">
-    <div class="dil-db-payment-actions">
-      <button type="button" id="dil-payment-preview" disabled>Upload &amp; Preview Payment Evidence</button>
-      <button type="button" id="dil-payment-reconcile" disabled>Run Payment Reconciliation</button>
+    <div class="dil-db-heading-row">
+      <div><p class="dash-overline">FIXED-HEADER EXCEL UPLOAD</p>
+      <h2 id="dil-payment-evidence-heading">Upload New Payment Evidence</h2>
+      <p>Upload and preview payment source evidence securely. Each workbook is stored as an immutable staging receipt, separate from invoice and financial databases.</p></div>
+      <span class="status good">EVIDENCE INTAKE ONLY</span>
     </div>
-    <p id="dil-payment-lock-note" role="status" class="dil-db-lock-note">Unavailable in this AWS release. No payment evidence is uploaded, no reconciliation is executed, and no financial records are modified through this option.</p>
+    <p><a id="dil-payment-template" href="/api/payment-evidence/template" download="SBI_Payment_Evidence_Fixed_Header_Template.xlsx">Download Fixed Excel Template (.xlsx)</a></p>
+    <div class="dil-payment-fixed-columns" aria-label="Required Excel columns">
+      <div><small>Excel Column A</small><strong>Description</strong><span>Payment narration</span></div>
+      <div><small>Excel Column B</small><strong>SOL ID</strong><span>Text; preserve leading zeros</span></div>
+      <div><small>Excel Column C</small><strong>Credit Amount</strong><span>Number, 2 decimals (INR)</span></div>
+    </div>
+    <p class="dil-db-context">Headers must be exactly <strong>Description | SOL ID | Credit Amount</strong> in row 1. Copy source values into the template; do not edit the original PAYMNENT worksheet (including its A–L columns). Upload .xlsx only, maximum 8 MiB.</p>
+    <form id="dil-payment-upload-form" enctype="multipart/form-data">
+      <label for="dil-payment-evidence-file">Choose completed payment evidence workbook (.xlsx)</label>
+      <input id="dil-payment-evidence-file" name="file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required aria-describedby="dil-payment-lock-note">
+      <div class="dil-db-payment-actions">
+        <button type="submit" id="dil-payment-preview">Upload &amp; Preview Payment Evidence</button>
+        <button type="button" id="dil-payment-reconcile" disabled>Run Payment Reconciliation — Not Enabled</button>
+      </div>
+    </form>
+    <p id="dil-payment-lock-note" role="status" aria-live="polite" class="dil-db-lock-note">Upload and preview can stage evidence for review. They do not merge payments into invoices, allocate payments or modify financial records. The reconciliation engine remains blocked.</p>
+    <p id="dil-payment-evidence-status" role="status" aria-live="polite">No evidence file uploaded in this session.</p>
+    <div id="dil-payment-evidence-summary" class="dil-payment-summary" hidden></div>
+    <div id="dil-payment-evidence-table" class="dil-payment-table-wrap" hidden>
+      <table><thead><tr><th>Excel Row</th><th>Description</th><th>SOL ID</th><th>Credit Amount</th><th>Verification Flags</th></tr></thead>
+      <tbody id="dil-payment-evidence-preview"></tbody></table>
+    </div>
+    <section class="dil-payment-receipts" aria-labelledby="dil-payment-receipts-title">
+      <h3 id="dil-payment-receipts-title">Previously Staged Payment Evidence</h3>
+      <button type="button" id="dil-payment-refresh">Refresh Receipts</button>
+      <div id="dil-payment-receipt-list"><p>No payment receipts loaded.</p></div>
+    </section>
   </section>
 </div>
+
+<script>
+/* Fixed-header payment evidence intake. No financial/reconciliation writes. */
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const form = $("dil-payment-upload-form");
+  const file = $("dil-payment-evidence-file");
+  const submit = $("dil-payment-preview");
+  const status = $("dil-payment-evidence-status");
+  const summary = $("dil-payment-evidence-summary");
+  const table = $("dil-payment-evidence-table");
+  const tbody = $("dil-payment-evidence-preview");
+  const listing = $("dil-payment-receipt-list");
+  const refresh = $("dil-payment-refresh");
+  let busy = false;
+
+  const money = value => "₹" + Number(value || 0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const cell = (tr, text) => {
+    const td = document.createElement("td");
+    td.textContent = String(text ?? "");
+    tr.appendChild(td);
+  };
+  async function call(path, options = {}) {
+    const response = await fetch(path, {
+      cache:"no-store",credentials:"same-origin",redirect:"error",...options
+    });
+    let result = {};
+    try { result = await response.json(); }
+    catch { throw new Error("Unexpected server response. Please sign in again."); }
+    if (!response.ok) throw new Error(result.error || "Payment evidence request unavailable (HTTP "+response.status+")");
+    return result;
+  }
+  function show(result) {
+    summary.hidden = false;
+    table.hidden = false;
+    const entries = [
+      ["Evidence receipt", result.receipt_id],
+      ["Source rows", result.source_rows],
+      ["Valid rows", result.valid_rows],
+      ["Rows requiring review", result.review_rows],
+      ["Valid credit sum (NOT reconciled)",money(result.valid_credit_total)],
+      ["Staging status",result.staging_status || result.status]
+    ];
+    summary.replaceChildren();
+    for (const [label, value] of entries) {
+      const block=document.createElement("div");
+      const key=document.createElement("small");
+      key.textContent=label;
+      const strong=document.createElement("strong");
+      strong.textContent=String(value ?? "—");
+      block.append(key,strong);
+      summary.appendChild(block);
+    }
+    tbody.replaceChildren();
+    for (const row of result.preview || []) {
+      const tr=document.createElement("tr");
+      cell(tr,row.excel_row);
+      cell(tr,row.description);
+      cell(tr,row.sol_id);
+      cell(tr,row.credit_amount);
+      cell(tr,(row.review_flags || []).join(", ") || "VALID");
+      tbody.appendChild(tr);
+    }
+    status.textContent="Evidence staged safely. Showing first "+(result.preview || []).length+
+       " rows of "+result.source_rows+". No financial allocation or reconciliation has run.";
+  }
+  async function loadReceipts() {
+    try {
+      const data=await call("/api/payment-evidence/uploads");
+      const results=data.evidence || [];
+      listing.replaceChildren();
+      if (!results.length) {
+        const p=document.createElement("p");
+        p.textContent="No staged payment evidence yet.";
+        listing.appendChild(p); return;
+      }
+      for (const item of results) {
+        const line=document.createElement("div");
+        line.className="dil-payment-receipt";
+        const label=document.createElement("div");
+        const name=document.createElement("strong");
+        name.textContent=item.source_name;
+        const info=document.createElement("small");
+        info.textContent=item.created_utc+" · "+item.source_rows+" rows · "+item.review_rows+" flagged · "+item.status;
+        label.append(name,info);
+        const view=document.createElement("button");
+        view.type="button";
+        view.textContent="View preview";
+        view.addEventListener("click",async()=>{
+          status.textContent="Loading verified evidence receipt…";
+          try { show(await call("/api/payment-evidence/uploads/"+encodeURIComponent(item.receipt_id))); }
+          catch(e) { status.textContent=e.message; }
+        });
+        line.append(label,view);
+        listing.appendChild(line);
+      }
+    } catch(e) { listing.textContent="Evidence receipts unavailable: "+e.message; }
+  }
+  form.addEventListener("submit",async event=>{
+    event.preventDefault();
+    if (busy || !form.reportValidity()) return;
+    const workbook=file.files?.[0];
+    if (!workbook) { status.textContent="Choose the fixed-header .xlsx file first.";return; }
+    if (!workbook.name.toLowerCase().endsWith(".xlsx") || workbook.size>8*1024*1024) {
+      status.textContent="Only .xlsx files up to 8 MiB are accepted.";return;
+    }
+    busy=true; submit.disabled=true; refresh.disabled=true;
+    status.textContent="Checking fixed headers and staging payment evidence…";
+    try {
+      const csrf=await call("/auth/csrf");
+      if (!csrf.csrf_token) throw new Error("Could not verify your login session");
+      const body=new FormData();
+      body.append("file",workbook,workbook.name);
+      const result=await call("/api/payment-evidence/upload",{
+        method:"POST",headers:{"X-DIL-CSRF":csrf.csrf_token},body
+      });
+      show(result);
+      form.reset();
+      await loadReceipts();
+    } catch(e) { status.textContent=e.message; }
+    finally {busy=false; submit.disabled=false;refresh.disabled=false;}
+  });
+  refresh.addEventListener("click",loadReceipts);
+  $("dil-db-payments-button").addEventListener("click",loadReceipts);
+})();
+</script>
 
 </main>
 <script>

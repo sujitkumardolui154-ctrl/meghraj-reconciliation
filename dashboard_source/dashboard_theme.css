@@ -98,3 +98,31 @@ small{color:#a7bdce}
 #dil-payment-evidence-file{display:block;width:100%;max-width:520px}
 @media(max-width:820px){.dil-db-stages{grid-template-columns:1fr}}
 @media(max-width:560px){.dil-db-switch{display:grid;grid-template-columns:1fr}.dil-db-switch button{width:100%}}
+
+/* Fixed-header payment evidence upload and financial read-only preview */
+.dil-payment-fixed-columns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}
+.dil-payment-fixed-columns>div{display:flex;flex-direction:column;gap:5px;border-radius:12px;background:#102d40;
+ border:1px solid #35627a;padding:15px}
+.dil-payment-fixed-columns small{font-size:10px;color:#9fc7d4;text-transform:uppercase}
+.dil-payment-fixed-columns strong{font-size:17px;color:#69e1d1}
+.dil-payment-fixed-columns span{font-size:11px;color:#b8d2df}
+#dil-payment-upload-form{margin:22px 0}
+#dil-payment-upload-form label{display:block;font-weight:750;margin-bottom:8px}
+#dil-payment-preview{background:linear-gradient(115deg,#27c5b5,#73d9d5);color:#09283a}
+#dil-payment-evidence-status{color:#a8e4db;font-size:13px;min-height:23px}
+.dil-payment-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:15px}
+.dil-payment-summary>div{padding:14px;background:#0f2a3e;border:1px solid #355771;border-radius:10px;display:grid;gap:8px}
+.dil-payment-summary small{color:#adc4d4;font-size:11px}
+.dil-payment-summary strong{font-size:14px;color:#e6f8ff;overflow-wrap:anywhere}
+.dil-payment-table-wrap{max-width:100%;overflow:auto;max-height:450px;margin:16px 0;border:1px solid #355771;border-radius:10px}
+.dil-payment-table-wrap table{width:100%;border-collapse:collapse;min-width:660px}
+.dil-payment-table-wrap th,.dil-payment-table-wrap td{border-bottom:1px solid #315069;padding:11px;text-align:left;font-size:12px;overflow-wrap:anywhere}
+.dil-payment-table-wrap th{position:sticky;top:0;background:#153147;color:#b8f0e4}
+.dil-payment-receipts{margin:20px 0 0;border-top:1px solid #315069;padding-top:15px}
+.dil-payment-receipts h3{font-size:16px}
+.dil-payment-receipt{display:flex;gap:16px;justify-content:space-between;align-items:center;border-bottom:1px solid #314e64;padding:10px 0}
+.dil-payment-receipt>div{display:grid;gap:5px;min-width:0}
+.dil-payment-receipt strong{font-size:12px;overflow-wrap:anywhere}
+.dil-payment-receipt small{color:#a5c5d2}
+@media(max-width:1050px){.dil-db-stages{grid-template-columns:1fr}.dil-payment-fixed-columns{grid-template-columns:1fr}}
+@media(max-width:540px){.dil-payment-receipt{align-items:flex-start;flex-direction:column}.dil-payment-summary{grid-template-columns:1fr 1fr}}

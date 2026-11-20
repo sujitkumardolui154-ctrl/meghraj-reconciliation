@@ -52,6 +52,9 @@ app.register_blueprint(tower)
 # User-owned project notes/tasks are separate from financial database APIs.
 from project_workspace import workspace
 app.register_blueprint(workspace)
+# Controlled payment evidence upload + fixed-header preview; financial execution stays disabled.
+from payment_evidence_upload import payment_evidence
+app.register_blueprint(payment_evidence)
 
 
 @app.after_request
