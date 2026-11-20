@@ -88,6 +88,107 @@ small{color:#9fb1cc}
 </main>
 
 <main id="dil-reports" hidden>
+<!-- Selected-Invoice Bulk Report: read-only database lookup; no financial writes. -->
+<section class="card" id="bulk-selected-report" aria-labelledby="bulk-selected-title">
+  <h2 id="bulk-selected-title">Bulk Report — Selected Invoice Numbers</h2>
+  <p>Upload an Excel file containing only one column, <strong>Invoice No</strong>.
+  Invoice numbers may be in any order. The system looks up exact matches from
+  verified saved invoice records and generates a combined Excel report with
+  full available 53-column details, plus a review tab for missing or conflicting numbers.
+  No reconciliation is performed and no financial records are changed.</p>
+  <form id="bulk-selected-form">
+    <label for="bulk-selected-file">Choose invoice number list (.xlsx, maximum 8 MiB)</label>
+    <input id="bulk-selected-file" type="file" accept=".xlsx" required
+           style="display:block;margin:12px 0;max-width:100%">
+    <button type="submit" id="bulk-selected-button">Generate Selected Invoice Report</button>
+  </form>
+  <p id="bulk-selected-message" role="status" aria-live="polite">
+    Requires an authorized report viewer and a verified invoice database connection.
+  </p>
+</section>
+<script>
+(() => {
+  "use strict";
+  const form = document.getElementById("bulk-selected-form");
+  const input = document.getElementById("bulk-selected-file");
+  const button = document.getElementById("bulk-selected-button");
+  const message = document.getElementById("bulk-selected-message");
+  let busy = false;
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (busy) return;
+    const file = input.files[0];
+    if (!file || !/\.xlsx$/i.test(file.name) ||
+        !file.size || file.size > 8 * 1024 * 1024) {
+      message.textContent = "Select an invoice number XLSX up to 8 MiB.";
+      return;
+    }
+    busy = true;
+    button.disabled = true;
+    input.disabled = true;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 180000);
+    message.textContent = "Checking selected invoice numbers against verified records...";
+    try {
+      const csrf = await fetch("/auth/csrf", {
+        credentials: "same-origin", cache: "no-store",
+        redirect: "error", signal: controller.signal
+      });
+      if (!csrf.ok) throw new Error("Sign in again to authorize this report.");
+      const token = (await csrf.json()).csrf_token || "";
+      if (!/^[a-f0-9]{64}$/.test(token))
+        throw new Error("Invalid report security token; refresh and retry.");
+      const body = new FormData();
+      body.append("file", file);
+      const response = await fetch("/api/bulk-report/select-invoices-excel", {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        redirect: "error",
+        headers: {"X-DIL-CSRF": token},
+        body,
+        signal: controller.signal
+      });
+      if (!response.ok) {
+        let reason = "Selected invoice report unavailable (HTTP " + response.status + ").";
+        if ((response.headers.get("Content-Type") || "").includes("application/json")) {
+          const errorData = await response.json();
+          reason = errorData.error || reason;
+        }
+        throw new Error(reason);
+      }
+      const contentType = (response.headers.get("Content-Type") || "").toLowerCase();
+      if (!contentType.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+        throw new Error("Expected Excel file, but server returned another format.");
+      const blob = await response.blob();
+      if (blob.size < 4) throw new Error("Excel report is empty.");
+      const signature = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
+      if (signature[0] !== 0x50 || signature[1] !== 0x4b)
+        throw new Error("Invalid Excel report signature.");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "SBI-Selected-Invoices-Combined.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      message.textContent =
+        "Selected invoice report downloaded. Check Lookup Review for missing or conflicting numbers. Not reconciled.";
+    } catch (error) {
+      message.textContent = error.name === "AbortError"
+        ? "Invoice lookup timed out; no download confirmed."
+        : error.message || "Invoice selection report unavailable.";
+    } finally {
+      clearTimeout(timer);
+      busy = false;
+      button.disabled = false;
+      input.disabled = false;
+    }
+  });
+})();
+</script>
+
 <!-- Bulk Report: source-only reporting; no financial database updates. -->
 <section class="card" id="bulk-report" aria-labelledby="bulk-report-title">
   <h2 id="bulk-report-title">Bulk Report</h2>
