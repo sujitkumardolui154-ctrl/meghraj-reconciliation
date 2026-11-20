@@ -7,6 +7,8 @@ on:
       - "tests/test_d031_synthetic_receipt_register.py"
       - "tests/test_d030_future_payment_provenance.py"
       - "docs/SBI_D031_SYNTHETIC_RECEIPT_REGISTER.md"
+      - "staging/aws_login_v150/fasttrack_source_recovery.sh"
+      - "docs/SBI_FASTTRACK_PRODUCTION_RELEASE.md"
       - ".github/workflows/sbi-d031-synthetic-receipt-registry.yml"
   workflow_dispatch:
 permissions:
@@ -33,6 +35,13 @@ jobs:
           python -m unittest discover -s tests -p 'test_sbi_payment_evidence_upload.py' -v
           python -m unittest discover -s tests -p 'test_sbi_reconciliation_readiness.py' -v
           python -m unittest discover -s tests -p 'test_d029_finance_unlock_requirements.py' -v
+      - name: Single read-only canonical source inventory (no private data)
+        run: |
+          bash -n staging/aws_login_v150/fasttrack_source_recovery.sh
+          bash staging/aws_login_v150/fasttrack_source_recovery.sh . |
+            tee /tmp/sbi-fasttrack-source-status.txt
+          grep -Fq 'FINANCIAL_PRODUCTION_APPLY=LOCKED' /tmp/sbi-fasttrack-source-status.txt
+          grep -Fq 'HISTORICAL_FINANCIAL_RECORDS=NOT_ACCESSED' /tmp/sbi-fasttrack-source-status.txt
       - name: Block finance release and historical financial access
         run: |
           echo "D031_MOCK_REGISTRY=MEMORY_ONLY"
