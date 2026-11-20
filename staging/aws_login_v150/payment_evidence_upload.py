@@ -373,10 +373,11 @@ def receipt_preview(receipt_id):
         path = base / row["filename"]
         if path.is_symlink() or not path.is_file():
             return jsonify(error="Stored evidence unavailable"), 503
-        parsed = _parse(path.read_bytes())
-        if hashlib.sha256(path.read_bytes()).hexdigest() != row["sha256"]:
+        contents = path.read_bytes()
+        if hashlib.sha256(contents).hexdigest() != row["sha256"]:
             return jsonify(error="Stored evidence digest changed"), 503
-        return jsonify(**_metadata(row), **parsed)
+        parsed = _parse(contents)
+        return jsonify({**_metadata(row), **parsed})
     except ValueError:
         return jsonify(error="Stored evidence workbook invalid"), 503
     except (OSError, sqlite3.Error):
