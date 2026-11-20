@@ -2,9 +2,12 @@
 import copy
 import importlib.util
 from pathlib import Path
+import sys
 import unittest
 
 base = Path(__file__).resolve().parents[1]
+if str(base) not in sys.path:
+    sys.path.insert(0, str(base))
 spec = importlib.util.spec_from_file_location(
     "synthetic_waterfall", base / "synthetic_waterfall.py"
 )
