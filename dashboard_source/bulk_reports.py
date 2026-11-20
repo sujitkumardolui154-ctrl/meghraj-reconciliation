@@ -22,6 +22,7 @@ from openpyxl.utils.exceptions import InvalidFileException
 from dashboard_sessions import csrf_valid
 from invoice_source_schema import HEADERS_53, sheet_layout, export_values_53
 from sbi_reporting_bundle import csv_bytes
+from bulk_report_excel import combined_excel_from_report_zip
 
 bulk_report = Blueprint("sbi_aws_bulk_report", __name__)
 
@@ -222,6 +223,8 @@ def status():
     return jsonify(
         available=True,
         mode="IN_MEMORY_SOURCE_ONLY",
+        combined_excel_available=True,
+        combined_excel_endpoint="/api/bulk-report/generate-excel",
         supported_input=".xlsx",
         accepted_headers=["Invoice Details. 34-column","Invoice Details. 35-column",
                           "Approved 53-column original"],
@@ -234,6 +237,7 @@ def status():
 
 
 @bulk_report.post("/api/bulk-report/generate")
+@bulk_report.post("/api/bulk-report/generate-excel")
 def generate():
     # Firebase dashboard session is required by global before_request hook.
     request.max_content_length=MAX_UPLOAD+262144
@@ -256,12 +260,22 @@ def generate():
                        financial_writes=False),413
     try:
         payload,manifest=_build(content)
+        excel_mode = request.path.endswith("/generate-excel")
+        if excel_mode:
+            # Same validated source classifications, one XLSX with six tabs.
+            payload = combined_excel_from_report_zip(payload)
     except (ValueError,InvalidFileException,zipfile.BadZipFile) as error:
         return jsonify(error=str(error)[:240],financial_writes=False),422
-    response=Response(payload,content_type="application/zip")
-    response.headers["Content-Disposition"]=(
-        'attachment; filename="SBI-Bulk-Report-'+manifest["source_sha256"][:12]+'.zip"'
-    )
+    if excel_mode:
+        response=Response(
+            payload,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        filename='SBI-Bulk-Report-Combined-'+manifest["source_sha256"][:12]+'.xlsx'
+    else:
+        response=Response(payload,content_type="application/zip")
+        filename='SBI-Bulk-Report-'+manifest["source_sha256"][:12]+'.zip'
+    response.headers["Content-Disposition"]='attachment; filename="'+filename+'"'
     response.headers["X-Bulk-Report-Summary"]=json.dumps(manifest["counts"],
                                                          separators=(",",":"))
     response.headers["X-Bulk-Report-Mode"]="SOURCE_ONLY_NOT_RECONCILED"
