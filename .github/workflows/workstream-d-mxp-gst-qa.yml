@@ -1,0 +1,41 @@
+name: Workstream D MXP GST contract QA (synthetic)
+on:
+  pull_request:
+    paths:
+      - 'staging/mxp-gst/**'
+      - '.github/workflows/workstream-d-mxp-gst-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gst-contract-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out proposed source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run existing and Workstream D GST tests (offline)
+        run: python -m unittest discover -s staging/mxp-gst/tests -p 'test_*.py' -v
+      - name: Confirm finance safe staging contract
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("staging/mxp-gst/config/approved_alias_rules_v2_7.json")
+          cfg=json.loads(p.read_text(encoding="utf-8"))
+          assert cfg["automatic_write_to_production"] is False
+          assert cfg["status"] == "REVIEW_REQUIRED"
+          assert cfg["column_count"] == 16
+          print("GST_SOURCE_CONTRACT=PASS")
+          print("FINANCIAL_WRITES=DISABLED_IN_STAGING_CONFIG")
+          print("LIVE_FINANCIAL_PARITY=NOT_TESTED")
+          print("WORKSPACE_DEPLOYMENT=NOT_PERFORMED")
+          PY
