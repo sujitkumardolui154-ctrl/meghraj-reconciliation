@@ -55,6 +55,9 @@ app.register_blueprint(workspace)
 # Controlled payment evidence upload + fixed-header preview; financial execution stays disabled.
 from payment_evidence_upload import payment_evidence
 app.register_blueprint(payment_evidence)
+# Strict nonfinancial receipt-to-engine readiness gate; no allocation runner.
+from reconciliation_readiness import reconciliation_readiness
+app.register_blueprint(reconciliation_readiness)
 
 
 @app.after_request
