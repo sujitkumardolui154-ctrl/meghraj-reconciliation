@@ -24,11 +24,15 @@ def source():
         "independent_source_checks": dict(CHECKS),
     }
 
+def original(record):
+    return {**record, "source_ref": "private-original/test-only",
+            "source_sha256": "a" * 64}
+
 class PreviewTests(unittest.TestCase):
     def test_verified_preview_16_positional_and_non_mutating(self):
         record = source()
         before = repr(record)
-        out = gst_preview(record, MASTER)
+        out = gst_preview(record, MASTER, original_record=original(record))
         self.assertEqual(out["status"], "READY_FOR_REVIEW")
         self.assertEqual(len(out["values"]), 16)
         self.assertEqual(out["values"][5], "01234")
@@ -43,7 +47,7 @@ class PreviewTests(unittest.TestCase):
     def test_missing_independent_check_never_ready(self):
         record = source()
         record["independent_source_checks"]["source_gross"] = False
-        out = gst_preview(record, MASTER)
+        out = gst_preview(record, MASTER, original_record=original(record))
         self.assertEqual(out["status"], "REVIEW_REQUIRED")
         self.assertIn("ORIGINAL_SOURCE_VERIFICATION_INCOMPLETE", out["flags"])
 
