@@ -27,6 +27,7 @@ ALLOWLIST = (
     "staging/combined-financial-engine/offline_review.py",
     "staging/combined-financial-engine/reference_financial_math.py",
     "staging/combined-financial-engine/synthetic_allocation_candidates.py",
+    "staging/combined-financial-engine/synthetic_waterfall.py",
     "staging/combined-financial-engine/readiness_gate.py",
     "staging/combined-financial-engine/logic_only_deploy_gate.py",
     "staging/combined-financial-engine/synthetic_only_probe.py",
@@ -38,6 +39,7 @@ ALLOWED_IMPORT_ROOTS = frozenset((
     "credit_note_53_adapter", "gst_batch_preview", "gst_preview",
     "matcher", "offline_review", "reference_financial_math",
     "logic_only_deploy_gate", "synthetic_allocation_candidates",
+    "synthetic_waterfall",
 ))
 DISALLOWED_FUNCTIONS = frozenset((
     "eval", "exec", "compile", "__import__", "input",
