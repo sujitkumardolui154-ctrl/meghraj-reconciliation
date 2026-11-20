@@ -16,6 +16,7 @@ from decimal import Decimal, InvalidOperation
 
 from flask import Blueprint, Response, jsonify, request
 from openpyxl import load_workbook
+from openpyxl.cell.read_only import EmptyCell
 from openpyxl.utils.exceptions import InvalidFileException
 
 from dashboard_sessions import csrf_valid
@@ -111,15 +112,26 @@ def _build(data):
             raise ValueError("Provide exactly one approved Invoice Details. (34/35 columns) or 53-column source sheet")
         sheet, source_headers, layout = matched[0]
         width, invoice_col = layout
-        if (not isinstance(sheet.max_row, int) or
-            not isinstance(sheet.max_column, int) or
-            sheet.max_row > MAX_ROWS+1 or sheet.max_column != width):
+        # Read-only XLSX files may legitimately omit the optional worksheet
+        # <dimension> element. In that case openpyxl reports None for the
+        # worksheet bounds even when the approved headers and data are valid.
+        # Enforce known dimensions, and always verify the actual streamed rows.
+        if ((isinstance(sheet.max_row, int) and sheet.max_row > MAX_ROWS+1) or
+            (isinstance(sheet.max_column, int) and sheet.max_column != width)):
             raise ValueError("Workbook exceeds 20,000 rows or approved source column width")
 
         accepted = []
         reviewed = []
         frequency = Counter()
-        for i, cells in enumerate(sheet.iter_rows(min_row=2,max_col=width),start=2):
+        # Do not set max_col here: when worksheet dimensions are absent, scan
+        # the actual row width instead of silently dropping unexpected columns.
+        for i, cells in enumerate(sheet.iter_rows(min_row=2),start=2):
+            if i > MAX_ROWS+1 or len(cells) > width:
+                raise ValueError("Workbook exceeds 20,000 rows or approved source column width")
+            # Streaming XML rows may omit empty trailing cells. Normalize only
+            # those missing cells so approved source fields retain their indexes.
+            if len(cells) < width:
+                cells = tuple(cells) + tuple(EmptyCell() for _ in range(width-len(cells)))
             if all(cell.value is None or cell.value=="" for cell in cells):
                 continue
             row_values = [_as_text(cell) for cell in cells]
