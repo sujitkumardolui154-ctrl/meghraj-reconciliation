@@ -126,3 +126,30 @@ small{color:#a7bdce}
 .dil-payment-receipt small{color:#a5c5d2}
 @media(max-width:1050px){.dil-db-stages{grid-template-columns:1fr}.dil-payment-fixed-columns{grid-template-columns:1fr}}
 @media(max-width:540px){.dil-payment-receipt{align-items:flex-start;flex-direction:column}.dil-payment-summary{grid-template-columns:1fr 1fr}}
+
+
+/* Reports tab: source-only Bulk Report workbook upload and generated ZIP */
+.bulk-report-card{border-color:#347c82;background:linear-gradient(125deg,#173c49,#132c46 57%,#102137)}
+.bulk-report-head{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap}
+.bulk-report-head h2{font-size:26px!important;color:#f5fcff;margin:0 0 10px}
+.bulk-report-head p:not(.dash-overline){max-width:880px;margin:0}
+.bulk-report-head .status{white-space:nowrap}
+.bulk-report-flow{display:flex;gap:10px;flex-wrap:wrap;margin:23px 0}
+.bulk-report-flow span{background:#0d293a;border:1px solid #355d70;border-radius:9px;
+ color:#c5e2ee;font-size:12px;padding:9px 13px}
+.bulk-report-flow strong{color:#5fe4cf;margin-right:10px}
+#bulk-report-form label{display:block;font-weight:750;margin-bottom:9px;color:#e4f6ff}
+.bulk-report-form-row{display:flex;gap:13px;align-items:center;flex-wrap:wrap}
+#bulk-report-file{flex:1 1 350px;width:100%;max-width:none}
+#bulk-report-button{background:linear-gradient(115deg,#31cbbb,#8cddde);color:#073045;
+ font-weight:800;padding:13px 23px;box-shadow:0 8px 20px #04bca92e}
+#bulk-report-button:disabled{background:#264759;color:#9bb4c3}
+.bulk-report-note{font-size:12px;color:#bad5df;margin-top:13px}
+#bulk-report-result{padding:12px 15px;background:#10354a;border:1px solid #3d7180;
+ border-radius:9px;font-size:13px;color:#d0e8f2;overflow-wrap:anywhere}
+.bulk-report-counts{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:10px;margin-top:14px}
+.bulk-report-counts div{padding:12px;border:1px solid #356075;background:#0b2c3e;
+ border-radius:10px;display:grid;gap:4px}
+.bulk-report-counts small{color:#b9d5df;font-size:10px}
+.bulk-report-counts strong{font-size:20px;color:#55e0ce}
+@media(max-width:650px){.bulk-report-head{flex-direction:column}.bulk-report-form-row{flex-direction:column;align-items:stretch}}

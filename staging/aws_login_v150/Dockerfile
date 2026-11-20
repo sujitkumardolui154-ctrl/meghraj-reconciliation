@@ -15,6 +15,9 @@ COPY staging/aws_login_v150/payment_evidence_upload.py /app/payment_evidence_upl
 COPY staging/aws_login_v150/reconciliation_readiness.py /app/reconciliation_readiness.py
 COPY staging/aws_login_v150/readonly_reports_gateway.py /app/readonly_reports_gateway.py
 COPY backend_source/aws_readonly_snapshot_reports.py /app/aws_readonly_snapshot_reports.py
+COPY staging/aws_login_v150/bulk_reports.py /app/bulk_reports.py
+COPY backend_source/invoice_source_schema.py backend_source/sbi_reporting_bundle.py /app/
+COPY backend_source/invoice_import_contract.json /app/invoice_import_contract.json
 COPY staging/aws_login_v150/workspace_ui.html /app/workspace_ui.html
 COPY staging/aws_login_v150/github_workstream_board.html /app/github_workstream_board.html
 COPY staging/aws_login_v150/tower_theme.css /app/tower_theme.css
