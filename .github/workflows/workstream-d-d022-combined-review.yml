@@ -1,0 +1,36 @@
+name: Workstream D D-022 combined source review (offline)
+on:
+  pull_request:
+    paths:
+      - 'staging/combined-financial-engine/**'
+      - 'staging/mxp-gst/**'
+      - 'backend_source/invoice_source_schema.py'
+      - 'backend_source/payment_report_rules.py'
+      - 'backend_source/credit_note_53_adapter.py'
+      - '.github/workflows/workstream-d-d022-combined-review.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: D-022 combined no-write synthetic source review
+        run: python -m unittest discover -s staging/combined-financial-engine/tests -p 'test_*.py' -v
+      - name: Existing MXP GST synthetic QA remains intact
+        run: python -m unittest discover -s staging/mxp-gst/tests -p 'test_*.py' -v
+      - name: Confirm financial release boundary
+        run: |
+          echo "OFFLINE_COMBINED_SOURCE_QA=TESTED"
+          echo "REAL_BANK_INVOICE_PARITY=NOT_TESTED"
+          echo "FINANCIAL_ALLOCATION=NOT_EXECUTED"
+          echo "FINANCIAL_WRITES=0"
+          echo "AWS_GST_DEPLOYMENT=NOT_PERFORMED"
+          echo "PRODUCTION_CUTOVER=BLOCKED"
