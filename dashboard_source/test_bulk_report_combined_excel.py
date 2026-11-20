@@ -71,7 +71,10 @@ class CombinedExcelTest(unittest.TestCase):
         self.assertEqual(first.cell(2, 13).data_type, "s")
         self.assertEqual(first.cell(2, 7).value, "00001")
         self.assertEqual(first.cell(2, 30).data_type, "s")
-        self.assertTrue(first.cell(2, 30).value.startswith("=HYPERLINK"))
+        # The upstream csv_bytes() intentionally prefixes an apostrophe to
+        # any Excel-like formula. The combined exporter must retain that
+        # neutralized literal, NOT strip the apostrophe or execute the formula.
+        self.assertTrue(first.cell(2, 30).value.startswith("'=HYPERLINK"))
         self.assertEqual(len(next(iter(first.values))), 53)
         self.assertEqual(len(next(iter(report["Validation Review"].values))), 3)
 
