@@ -112,9 +112,24 @@ done
 if [ "$HTTP" != 200 ]; then
   echo "PREVIEW_LOGIN_HTTP=$HTTP"; false
 fi
+
+# Confirm the existing preview hostname reaches this replacement via Caddy.
+HOST='pr129.13-232-241-221.sslip.io'
+HTTPS='000'
+for i in 1 2 3 4 5 6; do
+  HTTPS="$(curl --noproxy '*' --resolve "$HOST:443:127.0.0.1" \
+    -sS --max-time 8 -o /dev/null -w '%{http_code}' \
+    "https://$HOST/login" 2>/dev/null || true)"
+  [ "$HTTPS" = 200 ] && break
+  sleep 2
+done
+if [ "$HTTPS" != 200 ]; then
+  echo "PREVIEW_HTTPS_LOGIN_HTTP=$HTTPS"; false
+fi
 trap 'rm -rf "$TMP"' EXIT
 trap - ERR
 echo "PREVIEW_LOGIN_HTTP=$HTTP"
+echo "PREVIEW_HTTPS_LOGIN_HTTP=$HTTPS"
 echo 'PREVIEW_FIREBASE_ADMIN_FIX=PASS'
 echo "OLD_PREVIEW_ROLLBACK_CONTAINER=$BACKUP"
 echo 'PUBLIC_CADDYFILE=UNCHANGED'
