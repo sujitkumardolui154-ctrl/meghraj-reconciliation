@@ -100,7 +100,7 @@ class D025SyntheticAllocatorTests(unittest.TestCase):
                                  else "CREDIT_NOTE_REVIEW")
 
     def test_180_day_boundary_and_future_block(self):
-        for date_string, should_hold in (("2027-01-07", True),
+        for date_string, should_hold in (("2027-01-08", True),
                                          ("2026-07-01", True),
                                          ("2026-07-15", False)):
             with self.subTest(date=date_string):
