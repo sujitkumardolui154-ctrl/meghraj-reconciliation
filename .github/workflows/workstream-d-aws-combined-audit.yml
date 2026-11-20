@@ -1,0 +1,30 @@
+name: Workstream D AWS combined audit safety (synthetic)
+on:
+  pull_request:
+    paths:
+      - 'scripts/aws_combined_engine_audit.py'
+      - 'scripts/tests/test_aws_combined_engine_audit.py'
+      - '.github/workflows/workstream-d-aws-combined-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test read-only audit sanitization
+        run: python -m unittest discover -s scripts/tests -p 'test_aws_combined_engine_audit.py' -v
+      - name: Release boundary
+        run: |
+          echo "AUDIT_SCRIPT_LOCAL_SYNTHETIC_QA=PASS"
+          echo "AWS_HOST_AUDIT=NOT_YET_EXECUTED"
+          echo "FINANCIAL_ENGINE_PARITY=NOT_VERIFIED"
+          echo "GST_WORKSPACE_DEPLOYMENT=NOT_PERFORMED"
+          echo "FINANCIAL_WRITES=NOT_PERFORMED"
