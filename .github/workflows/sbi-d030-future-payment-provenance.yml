@@ -1,0 +1,42 @@
+name: SBI D-030 Synthetic Future Payment Provenance Gate
+on:
+  pull_request:
+    paths:
+      - "staging/aws_login_v150/d030_future_payment_provenance.py"
+      - "tests/test_d030_future_payment_provenance.py"
+      - "docs/SBI_D030_FUTURE_PAYMENT_PROVENANCE.md"
+      - ".github/workflows/sbi-d030-future-payment-provenance.yml"
+      - "staging/aws_login_v150/reconciliation_readiness.py"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-future-provenance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: D-030 isolated pure in-memory future-only evidence negative tests
+        run: |
+          python -m unittest discover -s tests -p 'test_d030_future_payment_provenance.py' -v
+      - name: Install existing nonfinancial UI test dependencies
+        run: python -m pip install -r staging/aws_login_v150/requirements.txt
+      - name: D-029 prior financial unlock and Firebase synthetic regression
+        run: |
+          python -m unittest discover -s tests -p 'test_d029_finance_unlock_requirements.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_reconciliation_readiness.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_payment_evidence_upload.py' -v
+      - name: Nonrelease evidence
+        run: |
+          echo "D030_EXISTING_PAYMENT_EVIDENCE_HEADERS=UNCHANGED"
+          echo "D030_HISTORICAL_FINANCIAL_RECORDS=NOT_ACCESSED"
+          echo "D030_GLOBAL_UTR_DEDUP=MOCK_ONLY"
+          echo "D030_SOURCE_I_AUTHORITY=NOT_VERIFIED"
+          echo "D030_REAL_FINANCIAL_APPLY=LOCKED"
+          echo "D030_AWS_APPLICATION=NOT_DEPLOYED"
+          echo "D030_FINANCIAL_WRITES=NOT_PERFORMED"
