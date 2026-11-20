@@ -80,17 +80,21 @@ class DatabaseUpdateNavigationTests(unittest.TestCase):
         self.assertIn(".dil-db-switch button[aria-selected=\"true\"]",self.css)
         self.assertIn(".dil-db-stages",self.css)
         self.assertIn('id="dil-tower-button"',self.html)
-    def test_payment_option_is_fully_disabled_and_claims_no_processing(self):
+    def test_payment_evidence_upload_enabled_but_reconciliation_still_disabled(self):
         nodes=self.parser.by_id
         for name in ("dil-payment-evidence-file","dil-payment-preview",
                      "dil-payment-reconcile"):
             self.assertIn("dil-db-payments",nodes[name]["ancestor_ids"])
-            self.assertIn("disabled",nodes[name]["attributes"])
-        self.assertIn("BACKEND NOT CONNECTED",self.html)
+        self.assertNotIn("disabled",nodes["dil-payment-evidence-file"]["attributes"])
+        self.assertNotIn("disabled",nodes["dil-payment-preview"]["attributes"])
+        self.assertIn("disabled",nodes["dil-payment-reconcile"]["attributes"])
+        self.assertIn('id="dil-payment-upload-form"',self.html)
+        self.assertIn('href="/api/payment-evidence/template"',self.html)
+        self.assertIn("Description | SOL ID | Credit Amount",self.html)
         self.assertIn("PAYMNENT worksheet",self.html)
         self.assertIn("Column I (Credit)",self.html)
-        self.assertIn("columns A–L must remain unchanged",self.html)
-        self.assertIn("no reconciliation is executed",self.html)
+        self.assertIn("original PAYMNENT worksheet",self.html)
+        self.assertIn("no reconciliation has run",self.html)
         self.assertNotIn('fetch("/api/reconcile"',self.html)
     def test_authenticated_dashboard_and_existing_financial_denials(self):
         self.assertEqual(self.client.get("/dashboard").status_code,401)
