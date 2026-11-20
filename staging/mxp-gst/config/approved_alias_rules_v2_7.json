@@ -1,0 +1,90 @@
+{
+  "version": "2.7",
+  "status": "REVIEW_REQUIRED",
+  "column_count": 16,
+  "headers": [
+    "FY",
+    "Invoice Branch",
+    "Invoice Generate Location",
+    "Month",
+    "Invoice Date",
+    "Branch Code",
+    "Client Name",
+    "Branch Code",
+    "GST NO",
+    "Invoice No",
+    "Taxable Amount",
+    "CGST",
+    "SGST",
+    "Total Bill Amount",
+    "Error / Verification Flags",
+    "Original Extracted Branch Name"
+  ],
+  "approved_specific": [
+    {
+      "input": "CAC MALDA",
+      "official_name": "CASH ADMINSTRATION CELL MALDA",
+      "sol_id": "18583",
+      "requires_location": true
+    },
+    {
+      "input": "RBO 6 KALYANI",
+      "official_name": "RBO 6 - KALYANI (NADIA)",
+      "sol_id": "18252",
+      "requires_location": true
+    },
+    {
+      "input": "SBI FUND MANAGEMENT LTD KRISHNANAGAR",
+      "official_name": "SBI FUND MANAGEMENT LTD",
+      "sol_id": "99922",
+      "requires_location": true,
+      "classification": "SBI_FUND"
+    }
+  ],
+  "blocked_aliases": [
+    {
+      "alias": "Office Administration Departement (LHO)",
+      "wrong_official": "LHO(cramc)",
+      "wrong_sol": "03970"
+    },
+    {
+      "alias": "RBO 3 BIDHANNAGAR",
+      "wrong_official": "RBO 4 BIDHANNAGAR",
+      "wrong_sol": "14871"
+    },
+    {
+      "alias": "RBO 6 KALYANI",
+      "wrong_official": "RBO 5 KRISHNAGAR",
+      "wrong_sol": "14872"
+    },
+    {
+      "alias": "R.B.O.",
+      "wrong_official": "RBO 4 DURGAPUR",
+      "wrong_sol": "14877"
+    },
+    {
+      "alias": "RBO-III",
+      "wrong_official": "RBO 3 SILIGURI",
+      "wrong_sol": "62948"
+    },
+    {
+      "alias": "RBO 3 SILIGURI",
+      "wrong_official": "RBO 2 SILIGURI",
+      "wrong_sol": "14879"
+    }
+  ],
+  "non_unique_names_require_context": [
+    "RBO",
+    "R.B.O.",
+    "RBO-III",
+    "CAC",
+    "AMCC"
+  ],
+  "gstin": {
+    "SBI_BANK": "19AAACS8577K3ZK",
+    "SBI_FUND": "19AAACS7339D1ZB",
+    "OTHER": null,
+    "UNVERIFIED": null
+  },
+  "automatic_write_to_production": false
+}
