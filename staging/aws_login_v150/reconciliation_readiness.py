@@ -30,6 +30,80 @@ BLOCKERS = (
 )
 
 
+def _unlock_requirements():
+    """Read-only remediation checklist; never grants finance execution.
+
+    The original historical bank and invoice ledgers are out of scope under
+    the owner's policy. Missing requirements cannot be satisfied by changing
+    HTML, a feature flag, user-supplied claims, or synthetic QA success.
+    """
+    return [
+        {
+            "id": "NEW_PAYMENT_IDENTITY_AND_DATE",
+            "status": "BLOCKED",
+            "explanation": (
+                "The three-column upload has no verified bank transaction date "
+                "or UTR. Workbook duplicate hashes do not establish uniqueness."
+            ),
+            "required_work": (
+                "Add a versioned, authenticated, server-validated NEW payment "
+                "evidence contract with bank date, unique reference, original "
+                "Credit-I provenance and an enforced activation cutoff."
+            ),
+        },
+        {
+            "id": "POST_ACTIVATION_INVOICE_AND_LEDGER",
+            "status": "BLOCKED",
+            "explanation": (
+                "There is no certified, isolated post-activation invoice ledger "
+                "and prior allocations must not be accessed or recomputed."
+            ),
+            "required_work": (
+                "Define a new-only invoice source and an isolated allocation "
+                "store that never mounts, reads or changes legacy financial data."
+            ),
+        },
+        {
+            "id": "CANONICAL_ALLOCATOR",
+            "status": "BLOCKED",
+            "explanation": (
+                "Synthetic candidate/waterfall previews do not implement or "
+                "certify all approved SBI reconciliation rules."
+            ),
+            "required_work": (
+                "Implement and independently certify new-only SOL, service "
+                "period, GST/TDS, full/partial waterfall, SBISA and "
+                "duplicate/credit-note conflict rules with synthetic QA."
+            ),
+        },
+        {
+            "id": "TRANSACTIONAL_WRITER_AND_REVIEW",
+            "status": "BLOCKED",
+            "explanation": (
+                "No authorized reconciliation writer, duplicate-safe new "
+                "record receipt, owner review approval or rollback is connected."
+            ),
+            "required_work": (
+                "Build isolated append-only new-ledger posting with "
+                "idempotency, authenticated reviewer approval, audit and rollback."
+            ),
+        },
+        {
+            "id": "INDEPENDENT_RELEASE_EVIDENCE",
+            "status": "BLOCKED",
+            "explanation": (
+                "An AWS-running UI and successful synthetic tests alone do "
+                "not prove financial engine production readiness."
+            ),
+            "required_work": (
+                "Complete independent synthetic integration/negative QA, "
+                "source-pinned staging, permission checks, rollback rehearsal "
+                "and separate owner sign-off before any finance activation."
+            ),
+        },
+    ]
+
+
 def _base_response():
     return {
         "engine": "NOT_CONNECTED",
@@ -44,6 +118,21 @@ def _base_response():
         "required_source_protection": "PAYMNENT!A:L and invoice originals unchanged",
         "staged_three_column_evidence_is_authoritative": False,
         "blockers": list(BLOCKERS),
+        "unlock_requirements": _unlock_requirements(),
+        "unlock_allowed": False,
+        "execution_mode": "FINANCIAL_APPLY_BLOCKED",
+        "synthetic_qa_is_production_approval": False,
+        "historical_financial_read_authorized": False,
+        "historical_financial_write_authorized": False,
+        "historical_reconciliation_authorized": False,
+        "eligible_future_only_scope": "NOT_YET_CERTIFIED",
+        "existing_payment_evidence_format": [
+            "Description", "SOL ID", "Credit Amount",
+        ],
+        "note": (
+            "This status inspects only fixed release contracts. It does not "
+            "load invoice, PAYMNENT, credit-note or financial database records."
+        ),
     }
 
 
