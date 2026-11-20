@@ -512,14 +512,14 @@ Reports include new invoices only after an import completes. Preview alone does 
     result.textContent = message;
     result.dataset.error = String(error);
   }
-  function state() {
+  function state(showSelection = true) {
     const files = Array.from(input.files || []);
     const valid = files.length > 0 && files.length <= 6 &&
        files.every(file => /\.xlsx$/i.test(file.name) && file.size > 0 &&
                             file.size <= 8*1024*1024);
     preview.disabled = busy || !valid;
     merge.disabled = busy || !valid || files.length < 2;
-    if (!busy) {
+    if (!busy && showSelection) {
       if (valid) show(files.length + " file(s) selected. Preview for validation" +
           (files.length > 1 ? " or merge into a review copy." : ". Choose two or more to merge."));
       else show(files.length === 0 ? "Choose .xlsx workbooks to begin." :
@@ -596,7 +596,7 @@ Reports include new invoices only after an import completes. Preview alone does 
       show(error.message || "Excel operation failed.", true);
     } finally {
       busy = false;
-      state();
+      state(false);
     }
   }
   preview.addEventListener("click", () => execute("preview"));
