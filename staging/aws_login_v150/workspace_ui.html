@@ -35,11 +35,12 @@
     </article>
     <div class="workspace-lists">
       <article class="panel workspace-feed" aria-labelledby="mw-task-heading">
-        <div class="section-head"><div><h3 id="mw-task-heading">Owner-added priority tasks</h3><p>Personal planning, separate from mandatory release gates</p></div>
+        <div class="section-head"><div><h3 id="mw-task-heading">My task buckets</h3><p>Arrange your personal tasks within P0 / P1 / P2. Completed tasks move out of active buckets into the archive.</p></div>
           <span class="bubble neutral" id="mw-task-count">—</span></div>
-        <div class="workspace-filter"><label for="mw-filter">Show</label><select id="mw-filter"><option value="active">Pending &amp; in progress</option>
-          <option value="all">All tasks</option><option value="done">Completed</option></select></div>
-        <div id="mw-task-list" class="workspace-item-list"><p class="workspace-empty">Loading personal tasks…</p></div>
+        <div class="workspace-filter"><label for="mw-filter">View</label><select id="mw-filter"><option value="active">Active priority buckets</option>
+          <option value="done">Completed archive</option></select></div>
+        <p class="sub" id="mw-bucket-help">Move tasks between priority buckets using Edit, and reorder within a bucket using the arrows. Finished tasks are archived, not deleted.</p>
+        <div id="mw-task-list" class="workspace-priority-lanes"><p class="workspace-empty">Loading personal tasks…</p></div>
       </article>
       <article class="panel workspace-feed" aria-labelledby="mw-note-heading">
         <div class="section-head"><div><h3 id="mw-note-heading">Project notes</h3><p>Your private decision and working notes</p></div><span class="bubble neutral" id="mw-note-count">—</span></div>
@@ -153,7 +154,20 @@
       note("Editing your private "+item.kind+".");
     }));
     if (item.kind === "task" && item.status !== "done") {
-      buttons.appendChild(action("Mark done", () => update(item.item_id,{status:"done"})));
+      const lane = items.filter(t => t.kind === "task" && t.priority === item.priority &&
+        t.status !== "done").sort(taskOrder);
+      const index = lane.findIndex(t=>t.item_id===item.item_id);
+      const up = action("↑ Move up", () => moveTask(item, -1));
+      const down = action("↓ Move down", () => moveTask(item, 1));
+      up.disabled = index <= 0;
+      down.disabled = index >= lane.length - 1;
+      up.setAttribute("aria-label","Move "+item.title+" up within "+item.priority);
+      down.setAttribute("aria-label","Move "+item.title+" down within "+item.priority);
+      buttons.appendChild(up);
+      buttons.appendChild(down);
+      buttons.appendChild(action("Complete", () => update(item.item_id,{status:"done"})));
+    } else if(item.kind === "task" && item.status === "done") {
+      buttons.appendChild(action("Restore to active", () => update(item.item_id,{status:"pending"})));
     }
     buttons.appendChild(action("Delete", () => {
       if (window.confirm("Delete this personal "+item.kind+"? This cannot be undone.")) {
@@ -163,18 +177,65 @@
     box.appendChild(buttons);
     return box;
   }
+  const priorities = ["P0","P1","P2"];
+  const priorityText = {P0:"Essential · do first",P1:"Important · next",P2:"Later · planned"};
+  function taskOrder(a,b) {
+    return (Number(a.sort_order)||0)-(Number(b.sort_order)||0)
+      || a.created_utc.localeCompare(b.created_utc);
+  }
   function render() {
     const tasks = items.filter(it => it.kind === "task");
     const notes = items.filter(it => it.kind === "note");
-    const filter = $("mw-filter").value;
-    const visible = tasks.filter(it =>
-      filter === "all" || (filter === "done" ? it.status === "done" : it.status !== "done"));
-    $("mw-task-count").textContent = tasks.length + " tasks";
+    const done = tasks.filter(it=>it.status==="done").sort(
+      (a,b)=>b.updated_utc.localeCompare(a.updated_utc));
+    const active = tasks.filter(it=>it.status!=="done");
+    $("mw-task-count").textContent = active.length+" active · "+done.length+" archived";
     $("mw-note-count").textContent = notes.length + " notes";
-    taskList.replaceChildren(...(visible.length ? visible.map(card) :
-      [el("p","No matching personal tasks yet.","workspace-empty")]));
+    const showArchive = $("mw-filter").value === "done";
+    $("mw-bucket-help").textContent = showArchive
+      ? "Completed personal tasks remain saved here. Use Restore to active to move a task back into its priority bucket."
+      : "Move tasks between P0/P1/P2 using Edit, and order tasks within a bucket using ↑ / ↓. Completing a task removes it from these active lanes.";
+    taskList.replaceChildren();
+    if (showArchive) {
+      taskList.appendChild(el("h4","Completed tasks · personal archive","workspace-lane-title"));
+      taskList.appendChild(el("p",done.length+" completed tasks · not GitHub QA or financial approvals","workspace-item-meta"));
+      if (!done.length) taskList.appendChild(el("p","No completed personal tasks yet.","workspace-empty"));
+      else done.forEach(it=>taskList.appendChild(card(it)));
+    } else {
+      for (const priority of priorities) {
+        const laneItems = active.filter(it=>it.priority===priority).sort(taskOrder);
+        const lane = el("section",null,"workspace-lane");
+        lane.setAttribute("aria-label",priority+" task bucket");
+        const heading=el("div",null,"workspace-lane-heading");
+        heading.appendChild(el("h4",priority+" · "+priorityText[priority],"workspace-lane-title"));
+        heading.appendChild(el("span",laneItems.length+" active","workspace-bubble"));
+        lane.appendChild(heading);
+        const list=el("div",null,"workspace-lane-items");
+        if (laneItems.length) laneItems.forEach(it=>list.appendChild(card(it)));
+        else list.appendChild(el("p","No active tasks in this priority bucket.","workspace-empty"));
+        lane.appendChild(list);
+        taskList.appendChild(lane);
+      }
+    }
     noteList.replaceChildren(...(notes.length ? notes.map(card) :
       [el("p","No private project notes yet.","workspace-empty")]));
+  }
+  async function moveTask(item, offset) {
+    if (busy || item.kind !== "task" || item.status === "done") return;
+    const lane = items.filter(it=>it.kind==="task" && it.priority===item.priority
+       && it.status!=="done").sort(taskOrder);
+    const currentIndex = lane.findIndex(it=>it.item_id===item.item_id);
+    const otherIndex = currentIndex+offset;
+    if (currentIndex<0 || otherIndex<0 || otherIndex>=lane.length) return;
+    [lane[currentIndex],lane[otherIndex]]=[lane[otherIndex],lane[currentIndex]];
+    busyState(true);
+    try {
+      await mutate(path+"/reorder","POST",
+        {priority:item.priority,ordered_ids:lane.map(it=>it.item_id)});
+      await load(false);
+      note("Task order saved in your private "+item.priority+" bucket.");
+    } catch(error) { note(error.message,true); await load(false); }
+    finally { busyState(false); }
   }
   async function load(showMessage = true) {
     try {

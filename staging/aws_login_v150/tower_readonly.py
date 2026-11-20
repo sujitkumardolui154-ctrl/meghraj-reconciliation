@@ -84,6 +84,36 @@ def control_tower():
         '  <section class="section" id="pipeline">',
         ui_file.read_text(encoding="utf-8") + '\n  <section class="section" id="pipeline">', 1,
     )
+    board_file = Path(__file__).resolve().parent / "github_workstream_board.html"
+    if not board_file.is_file():
+        return jsonify(error="GitHub workstream task board asset missing"), 503
+    source = source.replace(
+        '  <section class="section two" id="obstructions">',
+        board_file.read_text(encoding="utf-8") +
+        '\n  <section class="section two" id="obstructions">', 1,
+    )
+    # The historical read-only refresh loop is kept, but it now runs every
+    # 10 minutes and distributes the same authenticated snapshot to the
+    # combined workstream board. The source register cannot be mutated.
+    original = 'refresh();setInterval(refresh,90000);'
+    original_render = 'current=data;var register=data.register;var available=register && register.available;'
+    if original not in source or original_render not in source:
+        return jsonify(error="Control Tower GitHub refresh contract changed"), 503
+    source = source.replace(original, 'refresh();setInterval(refresh,600000);', 1)
+    source = source.replace(original_render, original_render +
+        '\n    window.dispatchEvent(new CustomEvent("sbi-github-snapshot",{detail:data}));', 1)
+    source = source.replace(
+        '$("last-sync").textContent="Refresh failed: "+err.message;',
+        '$("last-sync").textContent="Refresh failed: "+err.message;'
+        'window.dispatchEvent(new CustomEvent("sbi-github-refresh-error",{detail:err.message}));',
+        1,
+    )
+    source = source.replace('refresh every 90s', 'refresh every 10 minutes')
+    source = source.replace('90-second browser refresh, up to 5-minute server cache',
+                            '10-minute browser refresh, up to 10-minute GitHub cache')
+    source = source.replace('Automatically refreshes every 90 seconds',
+                            'Automatically refreshes every 10 minutes')
+
     response = Response(source, mimetype="text/html; charset=utf-8")
     response.headers["Content-Security-Policy"] = (
         "default-src 'none'; script-src 'self' 'unsafe-inline'; "
