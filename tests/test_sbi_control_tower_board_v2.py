@@ -48,7 +48,8 @@ class BoardV2Tests(unittest.TestCase):
         return response.json["items"]
     def test_github_board_refresh_and_privilege_guards(self):
         self.assertEqual(pipeline_data.TTL_SECONDS,600)
-        self.assertEqual(self.client.get("/control-tower").status_code,401)
+        anonymous=module.app.test_client()
+        self.assertEqual(anonymous.get("/control-tower").status_code,401)
         with self.session():
             page=self.client.get("/control-tower?embedded=1")
             self.assertEqual(page.status_code,200)
