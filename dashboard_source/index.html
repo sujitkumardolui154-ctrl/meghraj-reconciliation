@@ -91,12 +91,12 @@ small{color:#9fb1cc}
 <!-- Bulk Report: source-only reporting; no financial database updates. -->
 <section class="card" id="bulk-report" aria-labelledby="bulk-report-title">
   <h2 id="bulk-report-title">Bulk Report</h2>
-  <p>Upload one approved Invoice Details. workbook (.xlsx, up to 8 MiB) to generate a source-only ZIP report. This does not reconcile payments or update the financial database.</p>
+  <p>Upload one approved Invoice Details. workbook (.xlsx, up to 8 MiB) to generate one source-only Excel workbook with six report worksheets. This does not reconcile payments or update the financial database.</p>
   <form id="bulk-report-form">
     <label for="bulk-report-file">Choose Excel workbook</label>
     <input id="bulk-report-file" type="file" accept=".xlsx" required
            style="display:block;margin:12px 0;max-width:100%">
-    <button id="bulk-report-generate" type="submit">Generate Bulk Report</button>
+    <button id="bulk-report-generate" type="submit">Generate Combined Excel Report</button>
   </form>
   <p id="bulk-report-message" role="status" aria-live="polite">Ready to generate a source-only report.</p>
 </section>
@@ -121,7 +121,7 @@ small{color:#9fb1cc}
     busy = true;
     button.disabled = true;
     input.disabled = true;
-    message.textContent = "Generating source-only report...";
+    message.textContent = "Generating combined source-only Excel report...";
     const body = new FormData();
     body.append("file", file);
     const controller = new AbortController();
@@ -140,7 +140,7 @@ small{color:#9fb1cc}
       if (!/^[a-f0-9]{64}$/.test(csrfData.csrf_token || "")) {
         throw new Error("Upload security token missing. Refresh and retry.");
       }
-      const response = await fetch("/api/bulk-report/generate", {
+      const response = await fetch("/api/bulk-report/generate-excel", {
         method: "POST",
         credentials: "same-origin",
         cache: "no-store",
@@ -162,25 +162,24 @@ small{color:#9fb1cc}
         throw new Error(reason || "Bulk Report generation failed (HTTP " + response.status + ").");
       }
       const contentType = (response.headers.get("Content-Type") || "").toLowerCase();
-      if (!contentType.includes("application/zip") &&
-          !contentType.includes("application/octet-stream")) {
-        throw new Error("Unexpected response type; ZIP download cancelled.");
+      if (!contentType.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) {
+        throw new Error("Unexpected response type; Excel download cancelled.");
       }
       const blob = await response.blob();
-      if (blob.size < 4) throw new Error("Empty or invalid report archive.");
+      if (blob.size < 4) throw new Error("Empty or invalid Excel report.");
       const magic = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
       if (magic[0] !== 0x50 || magic[1] !== 0x4b) {
-        throw new Error("Response is not a ZIP archive.");
+        throw new Error("Response is not a valid XLSX archive.");
       }
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "sbi-bulk-report.zip";
+      link.download = "SBI-Bulk-Report-Combined.xlsx";
       document.body.appendChild(link);
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 60000);
-      message.textContent = "Source-only Bulk Report generated. Check browser downloads. Reconciliation has not run.";
+      message.textContent = "Combined Excel Report generated (6 worksheets). Check browser downloads. Reconciliation has not run.";
     } catch (error) {
       message.textContent = error.name === "AbortError"
         ? "Report generation timed out. No download was confirmed."
