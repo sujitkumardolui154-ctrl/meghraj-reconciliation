@@ -1,0 +1,57 @@
+name: SBI D-024 Logic-Only Candidate Packaging
+on:
+  pull_request:
+    paths:
+      - "staging/combined-financial-engine/**"
+      - "staging/mxp-gst/**"
+      - "backend_source/invoice_import_contract.json"
+      - "backend_source/invoice_source_schema.py"
+      - "backend_source/payment_report_rules.py"
+      - "backend_source/credit_note_53_adapter.py"
+      - ".github/workflows/sbi-d024-logic-only-candidate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run logic-only, code and negative-case tests with synthetic fixtures
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s staging/combined-financial-engine/tests -p "test_*.py" -v
+          python -m unittest discover -s staging/mxp-gst/tests -p "test_*.py" -v
+      - name: Package only allowlisted calculation and validation source
+        run: |
+          set -euo pipefail
+          python staging/combined-financial-engine/logic_only_package.py \
+            --repo . \
+            --output "$RUNNER_TEMP/sbi-d024-logic-only-candidate.tar.gz"
+          sha256sum "$RUNNER_TEMP/sbi-d024-logic-only-candidate.tar.gz"
+      - name: Upload candidate evidence, not application release or production deploy
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbi-d024-logic-only-candidate
+          path: ${{ runner.temp }}/sbi-d024-logic-only-candidate.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+      - name: Mandatory release status
+        run: |
+          echo "D024_SYNTHETIC_TESTS=PASS"
+          echo "D024_SOURCE_BUNDLE=CREATED"
+          echo "COMPLETE_FINANCIAL_ALLOCATOR=NOT_CERTIFIED"
+          echo "HISTORICAL_RECALCULATION=PROHIBITED"
+          echo "HISTORICAL_RECORDS=NOT_INCLUDED"
+          echo "LIVE_FINANCIAL_DATABASE=NOT_CONNECTED"
+          echo "AWS_STAGING_DEPLOYMENT=NOT_PERFORMED"
+          echo "PRODUCTION_FINANCIAL_WRITES=BLOCKED"
