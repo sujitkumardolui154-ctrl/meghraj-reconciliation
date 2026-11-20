@@ -3,9 +3,10 @@
 Only caller-provided, independently verified original-invoice evidence may make
 a row READY_FOR_REVIEW. The module does not fetch or trust private source data.
 """
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 import json
+import re
 
 from matcher import resolve_name
 
@@ -32,11 +33,38 @@ def _amount(raw):
     return val
 
 
-def gst_preview(source, master, *, seen_invoices=None):
+def _original_evidence_matches(source, original):
+    """Compare invoice values to a separately supplied original-source record.
+
+    Private adapter must authenticate and retrieve the original. Matching values
+    and source metadata are NOT independent proof of trusted provenance.
+    """
+    if not isinstance(original, dict):
+        return False
+    if not isinstance(original.get("source_ref"), str) or not original["source_ref"].strip():
+        return False
+    digest = original.get("source_sha256")
+    if not isinstance(digest, str) or re.fullmatch(r"[0-9a-fA-F]{64}", digest) is None:
+        return False
+    keys = ("invoice_no", "fy", "original_branch_name", "invoice_branch",
+            "service_month", "invoice_date", "verified_client_class")
+    if not all(isinstance(source.get(k), str) and source[k].strip()
+               and source[k] == original.get(k) for k in keys):
+        return False
+    try:
+        return all(_amount(source.get(k)) == _amount(original.get(k))
+                   for k in ("taxable", "cgst", "sgst", "source_gross"))
+    except ValueError:
+        return False
+
+
+def gst_preview(source, master, *, seen_invoices=None, original_record=None):
     """Return a 16-position preview and explicit verification flags.
 
-    The input is a *single* private-source record supplied by trusted caller.
-    The output is in REVIEW state, never a posting/settlement instruction.
+    The private caller supplies independent original evidence. Caller-provided
+    booleans alone are never enough; missing original keeps REVIEW_REQUIRED.
+    This function does not authenticate the external source.
+    Never a posting/settlement instruction.
     """
     if not isinstance(source, dict):
         raise ValueError("INVALID_SOURCE")
@@ -59,7 +87,9 @@ def gst_preview(source, master, *, seen_invoices=None):
         flag("DUPLICATE_INVOICE")
 
     evidence = source.get("independent_source_checks")
-    if not isinstance(evidence, dict) or not all(evidence.get(k) is True for k in SOURCE_CHECKS):
+    if (not isinstance(evidence, dict)
+            or not all(evidence.get(k) is True for k in SOURCE_CHECKS)
+            or not _original_evidence_matches(source, original_record)):
         flag("ORIGINAL_SOURCE_VERIFICATION_INCOMPLETE")
     if not str(source.get("service_month") or "").strip():
         flag("SERVICE_MONTH_MISSING")
@@ -81,7 +111,8 @@ def gst_preview(source, master, *, seen_invoices=None):
         total = None
 
     client_class = source.get("verified_client_class")
-    if client_class in ("SBI_BANK", "SBI_FUND") and evidence and evidence.get("client_identity") is True:
+    if (client_class in ("SBI_BANK", "SBI_FUND")
+            and "ORIGINAL_SOURCE_VERIFICATION_INCOMPLETE" not in flags):
         gstin = CONTRACT["gstin"][client_class]
     else:
         gstin = ""
