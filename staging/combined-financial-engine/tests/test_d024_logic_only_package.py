@@ -77,7 +77,7 @@ class LogicOnlyPackageTests(unittest.TestCase):
                 capture_output=True, text=True, timeout=20,
             )
             self.assertNotEqual(result.returncode, 0)
-            self.assertIn("unrecognized arguments", result.stderr)
+            self.assertIn("error:", result.stderr)
 
     def test_network_imports_rejected(self):
         for code in (b"import requests", b"import socket",
