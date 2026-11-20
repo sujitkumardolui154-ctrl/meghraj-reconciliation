@@ -88,7 +88,7 @@ def assess_existing_interface(html_source, app_source, upload_source):
             or 'receipts.sqlite3' not in upload_source):
         blockers.append("NONFINANCIAL_STAGING_RECEIPT_STORE_MISSING")
     if ("def disabled_financial_api(" not in app_source
-            or '"financial_execution_enabled=False' not in app_source):
+            or "financial_execution_enabled=False" not in app_source):
         # Static assertions are necessary but not sufficient for runtime denial.
         blockers.append("FINANCIAL_API_DENY_CONTRACT_MISSING")
     if blockers:
