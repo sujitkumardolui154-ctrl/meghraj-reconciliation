@@ -75,3 +75,26 @@ small{color:#a7bdce}
   #dil-tower-frame{border-radius:8px}
 }
 @media(prefers-reduced-motion:reduce){.dil-nav button{transition:none}}
+
+/* Database Update: distinct invoice upload and payment reconciliation views */
+.dil-db-switch{display:flex;flex-wrap:wrap;gap:10px;margin:19px 0 10px;padding:5px;background:#0a1b2d;border:1px solid #36536c;border-radius:13px}
+.dil-db-switch button{border:1px solid transparent;background:transparent;color:#bad0df;padding:12px 18px;border-radius:10px;font-weight:750}
+.dil-db-switch button[aria-selected="true"]{background:linear-gradient(115deg,#35cdbf,#7fcada);color:#0b2434;border-color:#83e9dc;box-shadow:0 5px 22px #18bdab32}
+.dil-db-switch button:hover:not([aria-selected="true"]){background:#19374f;color:#effaff}
+#dil-db-invoices,#dil-db-payments{min-width:0}
+.dil-db-context{color:#b7cede;padding:5px 1px 0;font-size:13px}
+#dil-db-invoices #excel-upload{border-color:#375d72}
+#dil-db-invoices #excel-upload h2{margin:0 0 10px}
+#dil-db-invoices #excel-upload-result{font-size:13px;color:#bdd3e2}
+#dil-db-invoices .card,#dil-db-payments .card{margin-top:17px}
+.dil-db-heading-row{display:flex;gap:20px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}
+.dil-db-heading-row p{max-width:790px}
+.dil-db-stages{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:22px}
+.dil-db-stage{background:#0c2236;border:1px solid #355771;border-radius:12px;padding:18px}
+.dil-db-stage strong{font-size:13px;color:#e9f9ff}
+.dil-db-stage p{font-size:12px;line-height:1.6;color:#aec6d7;margin-bottom:0}
+.dil-db-payment-actions{display:flex;gap:10px;flex-wrap:wrap;margin:13px 0}
+.dil-db-lock-note{padding:13px 15px;border:1px solid #7b5261;border-radius:10px;background:#352734;color:#ffc9d1!important;font-size:12px}
+#dil-payment-evidence-file{display:block;width:100%;max-width:520px}
+@media(max-width:820px){.dil-db-stages{grid-template-columns:1fr}}
+@media(max-width:560px){.dil-db-switch{display:grid;grid-template-columns:1fr}.dil-db-switch button{width:100%}}
