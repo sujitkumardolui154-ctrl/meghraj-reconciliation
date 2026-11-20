@@ -32,7 +32,7 @@ ALLOWLIST = (
     "staging/combined-financial-engine/OWNER_LOGIC_ONLY_DEPLOYMENT_RULE.md",
 )
 ALLOWED_IMPORT_ROOTS = frozenset((
-    "__future__", "ast", "collections", "decimal", "json", "pathlib", "re",
+    "__future__", "argparse", "ast", "collections", "decimal", "json", "pathlib", "re",
     "sys", "typing", "invoice_source_schema", "payment_report_rules",
     "credit_note_53_adapter", "gst_batch_preview", "gst_preview",
     "matcher", "offline_review", "reference_financial_math",
