@@ -1,0 +1,31 @@
+name: Workstream D combined engine evidence gate (synthetic)
+on:
+  pull_request:
+    paths:
+      - 'staging/combined-financial-engine/**'
+      - '.github/workflows/workstream-d-combined-engine-gate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  gate-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Fail-closed combined readiness regression
+        run: python -m unittest discover -s staging/combined-financial-engine/tests -p 'test_*.py' -v
+      - name: Explicitly record release boundary
+        run: |
+          echo "COMBINED_SOURCE_EVIDENCE_GATE=TESTED"
+          echo "CANONICAL_FINANCIAL_ENGINE=NOT_RECOVERED"
+          echo "PRIVATE_ORIGINAL_SOURCE_PARITY=NOT_TESTED"
+          echo "AWS_FINANCIAL_READYZ=503_LAST_OPERATOR_OBSERVATION"
+          echo "FINANCIAL_WRITES=NOT_PERFORMED"
+          echo "WORKSPACE_GST_DEPLOYMENT=NOT_PERFORMED"
+          echo "FINANCIAL_PRODUCTION_CUTOVER=BLOCKED"
