@@ -465,19 +465,146 @@ Reports include new invoices only after an import completes. Preview alone does 
     </div>
   </section>
   <section class="card dil-db-payment" aria-labelledby="dil-payment-evidence-heading">
-    <h2 id="dil-payment-evidence-heading">Upload New Payment Evidence</h2>
-    <p>Payment evidence upload and reconciliation preview will be available only after the verified read-only payment API and independent financial QA are connected.</p>
-    <label for="dil-payment-evidence-file">Payment workbook (.xlsx or .xls)</label>
-    <input id="dil-payment-evidence-file" type="file" accept=".xlsx,.xls" disabled aria-describedby="dil-payment-lock-note">
-    <div class="dil-db-payment-actions">
-      <button type="button" id="dil-payment-preview" disabled>Upload &amp; Preview Payment Evidence</button>
-      <button type="button" id="dil-payment-reconcile" disabled>Run Payment Reconciliation</button>
+    <div class="dil-db-heading-row">
+      <div>
+        <p class="dash-overline">EXCEL FILE PREPARATION · READ ONLY</p>
+        <h2 id="dil-payment-evidence-heading">Excel Merge &amp; Payment Evidence Preview</h2>
+        <p>Select up to 6 SBI payment workbooks to validate and merge as an Excel review copy. Source columns A–L, including Column I (Credit), are preserved. No database imports or financial allocations occur.</p>
+      </div>
+      <span class="status good">EXCEL MERGE AVAILABLE</span>
     </div>
-    <p id="dil-payment-lock-note" role="status" class="dil-db-lock-note">Unavailable in this AWS release. No payment evidence is uploaded, no reconciliation is executed, and no financial records are modified through this option.</p>
+    <form id="dil-payment-excel-form">
+      <label for="dil-payment-evidence-file">Choose payment workbooks (.xlsx only, 8 MiB each)</label>
+      <input id="dil-payment-evidence-file" type="file" name="files" accept=".xlsx" multiple required aria-describedby="dil-payment-evidence-help">
+      <p id="dil-payment-evidence-help" class="dil-db-context">Every workbook must contain a PAYMNENT sheet with “Credit” in Column I. .xls files must first be converted to .xlsx. Nothing is stored on the server.</p>
+      <div class="dil-db-payment-actions">
+        <button type="button" id="dil-payment-preview" disabled>Preview Selected Excel Files</button>
+        <button type="button" id="dil-payment-merge" disabled>Merge &amp; Download Excel</button>
+      </div>
+    </form>
+    <p id="dil-payment-excel-result" role="status" aria-live="polite" class="dil-db-context">Select one or more .xlsx files to preview. Choose two or more to merge.</p>
+    <div id="dil-payment-excel-audit" class="dil-db-merge-audit" hidden aria-label="Payment Excel evidence audit"></div>
+    <div class="dil-db-separator"></div>
+    <h3>Financial Reconciliation Engine</h3>
+    <p>The Excel review-copy download does not reconcile invoices or apply payments. Financial reconciliation requires a separately validated backend and owner approval.</p>
+    <div class="dil-db-payment-actions">
+      <button type="button" id="dil-payment-reconcile" disabled>Run Payment Reconciliation — Unavailable</button>
+    </div>
+    <p id="dil-payment-lock-note" role="status" class="dil-db-lock-note">Financial engine not connected. No reconciliation is executed and no invoice, payment or settlement database records are modified.</p>
   </section>
 </div>
 
 </main>
+
+<script>
+/* SBI PAYMNENT Excel review-copy merge. No financial API or persistent uploads. */
+(() => {
+  "use strict";
+  const byId = id => document.getElementById(id);
+  const input = byId("dil-payment-evidence-file");
+  const preview = byId("dil-payment-preview");
+  const merge = byId("dil-payment-merge");
+  const result = byId("dil-payment-excel-result");
+  const audit = byId("dil-payment-excel-audit");
+  let busy = false;
+
+  function show(message, error = false) {
+    result.textContent = message;
+    result.dataset.error = String(error);
+  }
+  function state() {
+    const files = Array.from(input.files || []);
+    const valid = files.length > 0 && files.length <= 6 &&
+       files.every(file => /\.xlsx$/i.test(file.name) && file.size > 0 &&
+                            file.size <= 8*1024*1024);
+    preview.disabled = busy || !valid;
+    merge.disabled = busy || !valid || files.length < 2;
+    if (!busy) {
+      if (valid) show(files.length + " file(s) selected. Preview for validation" +
+          (files.length > 1 ? " or merge into a review copy." : ". Choose two or more to merge."));
+      else show(files.length === 0 ? "Choose .xlsx workbooks to begin." :
+        "Only 1–6 valid .xlsx workbooks (up to 8 MiB each) are supported.", files.length > 0);
+    }
+  }
+  input.addEventListener("change", () => {
+    audit.hidden = true;
+    audit.replaceChildren();
+    state();
+  });
+  byId("dil-payment-excel-form").addEventListener("submit", event => event.preventDefault());
+
+  async function execute(mode) {
+    if (busy) return;
+    state();
+    if ((mode === "preview" && preview.disabled) ||
+        (mode === "merge" && merge.disabled)) return;
+    busy = true;
+    state();
+    show(mode === "preview" ? "Validating workbook headers and payment evidence…" :
+       "Preparing a merged Excel review copy…");
+    audit.hidden = true;
+    audit.replaceChildren();
+    try {
+      const csrf = await fetch("/auth/csrf", {
+        credentials:"same-origin",cache:"no-store",redirect:"error"
+      });
+      if (!csrf.ok) throw new Error("Firebase session unavailable. Sign in again.");
+      const token = await csrf.json();
+      if (!token.csrf_token) throw new Error("Secure session verification failed.");
+      const body = new FormData();
+      for (const file of input.files) body.append("files",file,file.name);
+      const response = await fetch("/payment-evidence/excel/" + mode, {
+        method:"POST", credentials:"same-origin",cache:"no-store",
+        redirect:"error", headers:{"X-DIL-CSRF":token.csrf_token}, body
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Could not validate Excel evidence.");
+      }
+      if (mode === "merge") {
+        const content = await response.blob();
+        const url = URL.createObjectURL(content);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "SBI_Payment_Evidence_Merged_Review.xlsx";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
+        show("Merged review workbook downloaded. Source A–L preserved. No financial database changes made.");
+      } else {
+        const data = await response.json();
+        const overview = document.createElement("p");
+        overview.textContent = data.workbooks + " workbook(s) · " + data.rows +
+          " payment row(s) · Total Column I Credit: ₹" + data.total_credit +
+          " · " + data.duplicate_rows + " repeated row(s)";
+        audit.appendChild(overview);
+        for (const source of data.sources || []) {
+          const p = document.createElement("p");
+          p.textContent = source.filename + ": " + source.data_rows +
+            " rows · sheet " + source.worksheet +
+            " · header row " + source.header_row +
+            " · credit ₹" + source.credit_total;
+          audit.appendChild(p);
+        }
+        audit.hidden = false;
+        show(data.duplicate_rows ?
+          "Preview complete: repeated rows detected. Merge blocked until source duplicates are reviewed." :
+          "Preview passed. No reconciliation performed. Review counts before merging.");
+      }
+    } catch (error) {
+      show(error.message || "Excel operation failed.", true);
+    } finally {
+      busy = false;
+      state();
+    }
+  }
+  preview.addEventListener("click", () => execute("preview"));
+  merge.addEventListener("click", () => execute("merge"));
+  state();
+})();
+</script>
+
 <script>
 /* Database Update inner views. UI navigation only; no financial API action. */
 (() => {

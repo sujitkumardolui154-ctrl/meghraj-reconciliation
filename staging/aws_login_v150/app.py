@@ -52,6 +52,9 @@ app.register_blueprint(tower)
 # User-owned project notes/tasks are separate from financial database APIs.
 from project_workspace import workspace
 app.register_blueprint(workspace)
+# Read-only Excel evidence preview/merge, distinct from blocked financial APIs.
+from payment_excel_merge import payment_excel
+app.register_blueprint(payment_excel)
 
 
 @app.after_request
