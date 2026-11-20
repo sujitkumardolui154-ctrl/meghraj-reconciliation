@@ -1,0 +1,38 @@
+name: SBI D-029 Financial Reconciliation Lock Diagnostics (Synthetic Only)
+on:
+  pull_request:
+    paths:
+      - "staging/aws_login_v150/reconciliation_readiness.py"
+      - "dashboard_source/index.html"
+      - "tests/test_d029_finance_unlock_requirements.py"
+      - ".github/workflows/sbi-d029-finance-unlock-diagnostics.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lock-diagnostics:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install existing UI/auth/Excel testing dependencies
+        run: python -m pip install -r staging/aws_login_v150/requirements.txt
+      - name: New-only release contract and locked financial API regression
+        run: |
+          python -m unittest discover -s tests -p 'test_d029_finance_unlock_requirements.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_reconciliation_readiness.py' -v
+      - name: Existing fixed Excel evidence security regression (synthetic fixtures)
+        run: python -m unittest discover -s tests -p 'test_sbi_payment_evidence_upload.py' -v
+      - name: Mandatory release lock
+        run: |
+          echo "D029_FINANCE_DIAGNOSTICS=SOURCE_ONLY"
+          echo "D029_PAYMENT_EVIDENCE=EXISTING_3_COLUMNS"
+          echo "D029_HISTORY_READ=FORBIDDEN"
+          echo "D029_HISTORY_WRITE=FORBIDDEN"
+          echo "D029_FINANCIAL_RECONCILIATION_APPLY=BLOCKED"
+          echo "D029_LIVE_AWS_DEPLOYMENT=NOT_PERFORMED"
