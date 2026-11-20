@@ -498,6 +498,13 @@ Reports include new invoices only after an import completes. Preview alone does 
       </div>
     </form>
     <p id="dil-payment-lock-note" role="status" aria-live="polite" class="dil-db-lock-note">Upload and preview can stage evidence for review. They do not merge payments into invoices, allocate payments or modify financial records. The reconciliation engine remains blocked.</p>
+    <section aria-labelledby="dil-finance-unlock-heading" class="dil-payment-receipts">
+      <h3 id="dil-finance-unlock-heading">Financial Reconciliation — Release Requirements</h3>
+      <p>Check why financial reconciliation is locked and the safe new-only steps required. This does not upload evidence or access historical financial records.</p>
+      <button id="dil-finance-unlock-status" type="button">View Locked Requirements</button>
+      <p id="dil-finance-unlock-result" role="status" aria-live="polite">The financial engine is not connected. Financial Apply remains disabled.</p>
+      <div id="dil-finance-unlock-details" hidden></div>
+    </section>
     <p id="dil-payment-readiness-result" role="status" aria-live="polite">Select a verified payment evidence receipt to check reconciliation prerequisites. The financial engine is not connected.</p>
     <p id="dil-payment-evidence-status" role="status" aria-live="polite">No evidence file uploaded in this session.</p>
     <div id="dil-payment-evidence-summary" class="dil-payment-summary" hidden></div>
@@ -529,6 +536,9 @@ Reports include new invoices only after an import completes. Preview alone does 
   const refresh = $("dil-payment-refresh");
   const readiness = $("dil-payment-readiness");
   const readinessResult = $("dil-payment-readiness-result");
+  const unlockButton = $("dil-finance-unlock-status");
+  const unlockResult = $("dil-finance-unlock-result");
+  const unlockDetails = $("dil-finance-unlock-details");
   let currentReceipt = "";
   let busy = false;
 
@@ -663,7 +673,48 @@ Reports include new invoices only after an import completes. Preview alone does 
     } catch(e) { readinessResult.textContent="Readiness check failed: "+e.message; }
     finally {busy=false;readiness.disabled=!currentReceipt;}
   });
-  refresh.addEventListener("click",loadReceipts);
+  unlockButton.addEventListener("click", async()=>{
+    unlockButton.disabled = true;
+    unlockResult.textContent = "Checking financial release requirements…";
+    unlockDetails.hidden = true;
+    unlockDetails.replaceChildren();
+    try {
+      const result = await call("/api/payment-reconciliation/status");
+      if (result.unlock_allowed !== false || result.financial_writes !== false ||
+          result.reconciliation_executed !== false) {
+        throw new Error("Unverified engine response — financial operations remain blocked");
+      }
+      const requirements = Array.isArray(result.unlock_requirements)
+        ? result.unlock_requirements : [];
+      if (requirements.length !== 5) {
+        throw new Error("Readiness report incomplete. Financial operations remain blocked.");
+      }
+      const list = document.createElement("ol");
+      for (const item of requirements) {
+        if (item.status !== "BLOCKED") {
+          throw new Error("Unexpected readiness state. Financial operations remain blocked.");
+        }
+        const li = document.createElement("li");
+        const heading = document.createElement("strong");
+        heading.textContent = String(item.id || "Requirement");
+        const explanation = document.createElement("p");
+        explanation.textContent = String(item.explanation || "");
+        const action = document.createElement("p");
+        action.textContent = "Required work: " + String(item.required_work || "");
+        li.append(heading,explanation,action);
+        list.appendChild(li);
+      }
+      unlockDetails.appendChild(list);
+      unlockDetails.hidden = false;
+      unlockResult.textContent = "5 unresolved release requirements. This is not an authorization to reconcile or change financial records.";
+    } catch(error) {
+      unlockResult.textContent = "Readiness unavailable: " + error.message +
+        ". Financial reconciliation remains locked.";
+    } finally {
+      unlockButton.disabled = false;
+    }
+  });
+    refresh.addEventListener("click",loadReceipts);
   $("dil-db-payments-button").addEventListener("click",loadReceipts);
 })();
 </script>
