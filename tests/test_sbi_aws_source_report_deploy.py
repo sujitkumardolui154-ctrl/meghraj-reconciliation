@@ -29,6 +29,14 @@ class SourceReportDeploymentQA(unittest.TestCase):
             "PRIVATE_SOURCE_REPORT_PARITY=PASS",
         ):
             self.assertIn(line,sh,line)
+        self.assertIn(
+            'git -C "$ROOT" show "$SHA:staging/aws_login_v150/deploy_source_reports_v1.sh" |',
+            sh
+        )
+        self.assertNotIn(
+            'git -C "$ROOT" show "$SHA:staging/aws_login_v150/deploy_payment_evidence_v1.sh" |',
+            sh
+        )
         self.assertIn("reverse_proxy sbi-source-reports-v1:8080",caddy)
         self.assertIn("reverse_proxy sbi-preview:8080",caddy)
         self.assertIn("/api/*",caddy)
