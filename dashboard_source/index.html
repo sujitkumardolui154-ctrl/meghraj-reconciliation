@@ -483,10 +483,12 @@ Reports include new invoices only after an import completes. Preview alone does 
       <input id="dil-payment-evidence-file" name="file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required aria-describedby="dil-payment-lock-note">
       <div class="dil-db-payment-actions">
         <button type="submit" id="dil-payment-preview">Upload &amp; Preview Payment Evidence</button>
-        <button type="button" id="dil-payment-reconcile" disabled>Run Payment Reconciliation — Not Enabled</button>
+        <button type="button" id="dil-payment-readiness" disabled>Check Reconciliation Readiness</button>
+        <button type="button" id="dil-payment-reconcile" disabled>Apply Reconciliation to Financial Database — Locked</button>
       </div>
     </form>
     <p id="dil-payment-lock-note" role="status" aria-live="polite" class="dil-db-lock-note">Upload and preview can stage evidence for review. They do not merge payments into invoices, allocate payments or modify financial records. The reconciliation engine remains blocked.</p>
+    <p id="dil-payment-readiness-result" role="status" aria-live="polite">Select a verified payment evidence receipt to check reconciliation prerequisites. The financial engine is not connected.</p>
     <p id="dil-payment-evidence-status" role="status" aria-live="polite">No evidence file uploaded in this session.</p>
     <div id="dil-payment-evidence-summary" class="dil-payment-summary" hidden></div>
     <div id="dil-payment-evidence-table" class="dil-payment-table-wrap" hidden>
@@ -515,6 +517,9 @@ Reports include new invoices only after an import completes. Preview alone does 
   const tbody = $("dil-payment-evidence-preview");
   const listing = $("dil-payment-receipt-list");
   const refresh = $("dil-payment-refresh");
+  const readiness = $("dil-payment-readiness");
+  const readinessResult = $("dil-payment-readiness-result");
+  let currentReceipt = "";
   let busy = false;
 
   const money = value => "₹" + Number(value || 0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -534,6 +539,9 @@ Reports include new invoices only after an import completes. Preview alone does 
     return result;
   }
   function show(result) {
+    currentReceipt = String(result.receipt_id || "");
+    readiness.disabled = !/^[a-f0-9]{32}$/.test(currentReceipt);
+    readinessResult.textContent = "Evidence receipt selected; check reconciliation readiness before any financial operation.";
     summary.hidden = false;
     table.hidden = false;
     const entries = [
@@ -622,6 +630,28 @@ Reports include new invoices only after an import completes. Preview alone does 
       await loadReceipts();
     } catch(e) { status.textContent=e.message; }
     finally {busy=false; submit.disabled=false;refresh.disabled=false;}
+  });
+  readiness.addEventListener("click",async()=>{
+    if (busy || !/^[a-f0-9]{32}$/.test(currentReceipt)) return;
+    busy=true; readiness.disabled=true;
+    readinessResult.textContent="Revalidating source receipt and engine prerequisites…";
+    try {
+      const csrf=await call("/auth/csrf");
+      if (!csrf.csrf_token) throw new Error("Could not verify your login session");
+      const response=await fetch("/api/payment-reconciliation/preflight",{
+        method:"POST",cache:"no-store",credentials:"same-origin",redirect:"error",
+        headers:{"Content-Type":"application/json","X-DIL-CSRF":csrf.csrf_token},
+        body:JSON.stringify({receipt_id:currentReceipt})
+      });
+      const result=await response.json();
+      if (result.financial_writes !== false || result.reconciliation_executed !== false) {
+        throw new Error("Unexpected reconciliation response; financial operation not verified");
+      }
+      readinessResult.textContent=(result.error || "Reconciliation is not available.")+
+        " Blockers: "+(result.blockers || []).join(", ")+
+        ". No invoice or payment database updates occurred.";
+    } catch(e) { readinessResult.textContent="Readiness check failed: "+e.message; }
+    finally {busy=false;readiness.disabled=!currentReceipt;}
   });
   refresh.addEventListener("click",loadReceipts);
   $("dil-db-payments-button").addEventListener("click",loadReceipts);
