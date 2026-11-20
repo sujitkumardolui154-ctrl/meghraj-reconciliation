@@ -50,21 +50,24 @@ class DatabaseUpdateNavigationTests(unittest.TestCase):
         self.css=(DASH/"dashboard_theme.css").read_text(encoding="utf-8")
         self.parser=ContainerParser()
         self.parser.feed(self.html)
-    def test_excel_upload_is_inside_database_invoice_view_only(self):
+    def test_bulk_report_is_in_reports_and_existing_invoice_preview_stays_in_database(self):
         nodes=self.parser.by_id
-        upload=nodes["excel-upload"]
-        self.assertEqual(upload["tag"],"section")
-        self.assertIn("dil-imports",upload["ancestor_ids"])
-        self.assertIn("dil-db-invoices",upload["ancestor_ids"])
-        self.assertNotIn("dil-home",upload["ancestor_ids"])
-        self.assertEqual(nodes["excel-upload-form"]["tag"],"form")
-        self.assertIn("dil-db-invoices",nodes["excel-upload-form"]["ancestor_ids"])
-        self.assertIn("disabled",nodes["excel-file"]["attributes"])
-        self.assertIn("disabled",nodes["excel-upload-button"]["attributes"])
+        bulk=nodes["bulk-report"]
+        self.assertEqual(bulk["tag"],"section")
+        self.assertIn("dil-reports",bulk["ancestor_ids"])
+        self.assertNotIn("dil-imports",bulk["ancestor_ids"])
+        self.assertIn("dil-reports",nodes["bulk-report-form"]["ancestor_ids"])
+        self.assertIn("dil-reports",nodes["bulk-report-button"]["ancestor_ids"])
+        self.assertNotIn("disabled",nodes["bulk-report-button"]["attributes"])
+        self.assertNotIn("disabled",nodes["bulk-report-file"]["attributes"])
+        self.assertEqual(nodes["dil-import-form"]["tag"],"form")
         self.assertIn("dil-db-invoices",nodes["dil-import-form"]["ancestor_ids"])
         self.assertIn("dil-db-invoices",nodes["dil-import-receipt"]["ancestor_ids"])
         self.assertIn("dil-db-invoices",nodes["dil-import-log"]["ancestor_ids"])
-        self.assertEqual(self.html.count("<!-- DIL Excel Upload v1.3.0 -->"),1)
+        self.assertNotIn("Excel Upload — Dashboard v1.3.0",self.html)
+        self.assertNotIn('fetch("/api/upload"',self.html)
+        self.assertEqual(self.html.count('id="bulk-report"'),1)
+
     def test_database_has_two_accessible_switchable_views(self):
         nodes=self.parser.by_id
         self.assertIn("dil-imports",nodes)
