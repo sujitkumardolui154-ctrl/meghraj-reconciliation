@@ -94,7 +94,7 @@ class DatabaseUpdateNavigationTests(unittest.TestCase):
         self.assertIn("PAYMNENT worksheet",self.html)
         self.assertIn("Column I (Credit)",self.html)
         self.assertIn("original PAYMNENT worksheet",self.html)
-        self.assertIn("no reconciliation has run",self.html)
+        self.assertIn("Run Payment Reconciliation — Not Enabled",self.html)
         self.assertNotIn('fetch("/api/reconcile"',self.html)
     def test_authenticated_dashboard_and_existing_financial_denials(self):
         self.assertEqual(self.client.get("/dashboard").status_code,401)
