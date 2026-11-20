@@ -42,7 +42,7 @@ for f in bulk_reports.py bulk_report_excel.py test_bulk_report_combined_excel.py
   if sudo docker exec "$C" test -f "/app/$f"; then
     sudo docker cp "$C:/app/$f" "$BACKUP/$f"
     sudo chown "$(id -u):$(id -g)" "$BACKUP/$f"
-    chmod 600 "$BACKUP/$f"
+    chmod 0644 "$BACKUP/$f"   # Docker cp can restore readable files even when stopped
   else
     : > "$BACKUP/$f.absent"
   fi
