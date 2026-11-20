@@ -12,7 +12,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd -P)"
 [[ "$(id -u)" == 0 ]] || { echo "BLOCKED_SUDO_REQUIRED"; exit 2; }
 [[ "$(git -C "$ROOT" rev-parse HEAD)" == "$SHA" ]] ||
   { echo "BLOCKED_SOURCE_SHA_CHANGED"; exit 2; }
-git -C "$ROOT" show "$SHA:staging/aws_login_v150/deploy_payment_evidence_v1.sh" |
+git -C "$ROOT" show "$SHA:staging/aws_login_v150/deploy_source_reports_v1.sh" |
   cmp -s - "$0" || { echo "BLOCKED_DEPLOY_SCRIPT_CHANGED"; exit 2; }
 exec 9>/run/lock/sbi-aws-reports-source-v1.lock
 flock -n 9 || { echo "BLOCKED_CONCURRENT_CONTROL_TOWER_DEPLOY"; exit 2; }
