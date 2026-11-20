@@ -1,0 +1,181 @@
+<!-- Read-only GitHub register: counts and task statuses originate only from source. -->
+<section class="section github-board" id="workstream-task-board" aria-labelledby="gb-title">
+  <div class="section-head github-board-heading">
+    <div>
+      <p class="workspace-eyebrow">GITHUB PROJECT REGISTER · READ-ONLY</p>
+      <h2 id="gb-title">Workstream progress &amp; pending tasks</h2>
+      <p class="sub">One detailed board for each engineering workstream, its completion progress, and its active tasks. Completed source tasks are separated from the active bucket.</p>
+    </div>
+    <div class="github-refresh-note" aria-live="polite">
+      <strong>GitHub refresh: every 10 minutes</strong>
+      <span id="gb-last-sync">Checking source evidence…</span>
+      <span>Source cache: 10 minutes · Manual refresh uses cache until expiry</span>
+    </div>
+  </div>
+  <div class="github-board-stats" aria-label="GitHub project task totals">
+    <div class="panel github-stat"><span>Tracked workstreams</span><strong id="gb-workstream-count">—</strong></div>
+    <div class="panel github-stat"><span>Active tasks</span><strong id="gb-active-count">—</strong><small>Pending, in progress or blocked</small></div>
+    <div class="panel github-stat"><span>Blocked tasks</span><strong id="gb-blocked-count">—</strong></div>
+    <div class="panel github-stat"><span>Source marked completed</span><strong id="gb-done-count">—</strong><small>Not a release approval</small></div>
+  </div>
+  <div class="panel github-board-surface">
+    <div class="github-board-toolbar">
+      <label>Search task ID or description
+        <input id="gb-search" type="search" maxlength="160" placeholder="Search GitHub tasks or workstreams" autocomplete="off">
+      </label>
+      <label>Workstream
+        <select id="gb-workstream"><option value="">All workstreams</option></select>
+      </label>
+      <label>Task bucket
+        <select id="gb-bucket">
+          <option value="active">Active work — incomplete only</option>
+          <option value="pending">Pending</option>
+          <option value="in_progress">In progress</option>
+          <option value="blocked">Blocked / obstructions</option>
+          <option value="completed">Completed archive (source-marked)</option>
+        </select>
+      </label>
+    </div>
+    <div class="github-board-legend">
+      <span><b class="gb-dot pending"></b> Pending: not started</span>
+      <span><b class="gb-dot in_progress"></b> In progress: underway</span>
+      <span><b class="gb-dot blocked"></b> Blocked: needs intervention</span>
+      <span><b class="gb-dot completed"></b> Done / approved: in separate archive</span>
+    </div>
+    <p class="sub" id="gb-summary" role="status" aria-live="polite">Loading source-backed workstream progress…</p>
+    <div class="github-workstreams" id="gb-groups">
+      <div class="empty">GitHub task source has not yet been verified.</div>
+    </div>
+    <p class="github-board-caution">GitHub register is read-only. Task execution, verification and approval are three separate fields. A task marked done in GitHub or in your personal planner does not authorize financial deployment, reconciliation, imports or release gates.</p>
+  </div>
+</section>
+<script>
+(() => {
+  "use strict";
+  const byId = id => document.getElementById(id);
+  const groups = byId("gb-groups");
+  const filters = ["gb-search", "gb-workstream", "gb-bucket"];
+  let snapshot = null;
+
+  function node(tag, value, className) {
+    const e = document.createElement(tag);
+    if (value !== undefined && value !== null) e.textContent = String(value);
+    if (className) e.className = className;
+    return e;
+  }
+  function completed(state) { return state === "done" || state === "approved"; }
+  function label(state) {
+    return String(state || "unverified").replaceAll("_", " ");
+  }
+  function bucketMatch(task, bucket) {
+    const state = task.execution;
+    return bucket === "completed" ? completed(state)
+      : bucket === "active" ? !completed(state)
+      : state === bucket;
+  }
+  function stamp(value) {
+    if (!value) return "No verified fetch time";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "Unverified fetch time"
+      : date.toLocaleString("en-IN", {timeZone:"Asia/Kolkata",dateStyle:"medium",timeStyle:"short"})+" IST";
+  }
+  function buildTask(task) {
+    const row = node("article", null, "github-task-row");
+    const title = node("div", null, "github-task-title");
+    title.appendChild(node("code", task.id || "NO ID"));
+    title.appendChild(node("strong", task.title || "Untitled task"));
+    const state = node("span", label(task.execution), "github-task-state");
+    state.dataset.execution = task.execution || "unverified";
+    title.appendChild(state);
+    row.appendChild(title);
+    const details = node("div", null, "github-task-details");
+    details.appendChild(node("span", "Execution: "+label(task.execution)));
+    details.appendChild(node("span", "Verification: "+label(task.verification)));
+    details.appendChild(node("span", "Approval gate: "+label(task.approval_gate)));
+    row.appendChild(details);
+    return row;
+  }
+  function render() {
+    if (!snapshot) return;
+    const register = snapshot.register;
+    if (!register || register.available !== true || !Array.isArray(register.tasks)) {
+      byId("gb-summary").textContent = "GitHub task register unavailable. Counts and task status cannot be verified.";
+      byId("gb-workstream-count").textContent = "—";
+      byId("gb-active-count").textContent = "—";
+      byId("gb-blocked-count").textContent = "—";
+      byId("gb-done-count").textContent = "—";
+      groups.replaceChildren(node("div", "No source-backed tasks shown while the register is unavailable.", "empty"));
+      return;
+    }
+    const tasks = register.tasks;
+    const active = tasks.filter(t => !completed(t.execution));
+    const done = tasks.filter(t => completed(t.execution));
+    const unique = Array.from(new Set(tasks.map(t => t.category || "Other"))).sort((a,b)=>a.localeCompare(b));
+    const select = byId("gb-workstream"), selected = select.value;
+    select.replaceChildren(new Option("All workstreams", ""), ...unique.map(c=>new Option(c,c)));
+    if (unique.includes(selected)) select.value = selected;
+    byId("gb-workstream-count").textContent = String(unique.length);
+    byId("gb-active-count").textContent = String(active.length);
+    byId("gb-blocked-count").textContent = String(tasks.filter(t=>t.execution==="blocked").length);
+    byId("gb-done-count").textContent = String(done.length);
+
+    const q = byId("gb-search").value.trim().toLowerCase();
+    const cat = select.value, bucket = byId("gb-bucket").value;
+    const matching = tasks.filter(t =>
+      (!cat || (t.category || "Other") === cat) && bucketMatch(t,bucket) &&
+      (!q || [t.id,t.title,t.category,t.verification,t.approval_gate]
+        .some(v=>String(v || "").toLowerCase().includes(q))));
+    byId("gb-summary").textContent = matching.length+" matching "+(bucket==="completed"?"archived":"active")+" source tasks across "+
+      new Set(matching.map(t=>t.category)).size+" workstreams · "+
+      "GitHub source evidence; financial release is independently gated.";
+    groups.replaceChildren();
+    if (!matching.length) {
+      groups.appendChild(node("div", "No matching tasks in this bucket. Choose another workstream or status.", "empty"));
+      return;
+    }
+    for (const name of unique) {
+      const visible = matching.filter(t => (t.category || "Other") === name);
+      if (!visible.length) continue;
+      const all = tasks.filter(t => (t.category || "Other") === name);
+      const totalDone = all.filter(t => completed(t.execution)).length;
+      const count = (state) => all.filter(t=>t.execution === state).length;
+      const box = node("section", null, "github-workstream");
+      box.setAttribute("aria-label", name+" workstream");
+      const head = node("div", null, "github-workstream-heading");
+      const title = node("div");
+      title.appendChild(node("h3",name));
+      title.appendChild(node("p",
+        count("pending")+" pending · "+count("in_progress")+" in progress · "+
+        count("blocked")+" blocked · "+totalDone+" source marked done",
+        "github-workstream-meta"));
+      head.appendChild(title);
+      head.appendChild(node("strong",totalDone+" / "+all.length+" complete", "github-workstream-total"));
+      box.appendChild(head);
+      const progress = node("div",null,"github-progress");
+      progress.setAttribute("role","progressbar");
+      progress.setAttribute("aria-label",name+" source marked completed");
+      progress.setAttribute("aria-valuemin","0");
+      progress.setAttribute("aria-valuemax","100");
+      progress.setAttribute("aria-valuenow",String(all.length?Math.round(100*totalDone/all.length):0));
+      const fill = node("div",null,"github-progress-fill");
+      fill.style.width = (all.length?100*totalDone/all.length:0)+"%";
+      progress.appendChild(fill);
+      box.appendChild(progress);
+      const list = node("div",null,"github-workstream-tasklist");
+      visible.forEach(t=>list.appendChild(buildTask(t)));
+      box.appendChild(list);
+      groups.appendChild(box);
+    }
+  }
+  filters.forEach(id=>byId(id).addEventListener(id==="gb-search"?"input":"change",render));
+  window.addEventListener("sbi-github-snapshot", event => {
+    snapshot = event.detail;
+    byId("gb-last-sync").textContent = "Last server fetch: "+stamp(snapshot.generated_at_utc);
+    render();
+  });
+  window.addEventListener("sbi-github-refresh-error", event => {
+    byId("gb-last-sync").textContent = "Refresh failed · "+String(event.detail || "source unavailable");
+    if (!snapshot) groups.replaceChildren(node("div","Could not verify GitHub status; no values inferred.","empty"));
+  });
+})();
+</script>
