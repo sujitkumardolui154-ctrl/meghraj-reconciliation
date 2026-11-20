@@ -59,6 +59,13 @@ def combined_excel_from_report_zip(payload: bytes) -> bytes:
             reader = csv.reader(io.StringIO(raw.decode("utf-8-sig"), newline=""))
             sheet = wb.create_sheet(title=sheet_name)
             expected = REVIEW_HEADERS if filename == "validation-review.csv" else HEADERS_53
+            # Write-only XLSX sheets serialize view/column metadata before rows.
+            sheet.freeze_panes = "A2"
+            sheet.sheet_view.showGridLines = False
+            for col in range(1, len(expected) + 1):
+                width = 27 if col in (1, 3, 8, 13, 21) else 20
+                sheet.column_dimensions[get_column_letter(col)].width = width
+            sheet.row_dimensions[1].height = 40
             count = 0
             for n, row in enumerate(reader):
                 if len(row) != len(expected):
@@ -81,12 +88,6 @@ def combined_excel_from_report_zip(payload: bytes) -> bytes:
                     count += 1
             if count != info["rows"]:
                 raise ValueError("Bulk Report CSV row count mismatch")
-            sheet.freeze_panes = "A2"
-            sheet.sheet_view.showGridLines = False
-            for col in range(1, len(expected) + 1):
-                width = 27 if col in (1, 3, 8, 13, 21) else 20
-                sheet.column_dimensions[get_column_letter(col)].width = width
-            sheet.row_dimensions[1].height = 40
 
     output = io.BytesIO()
     wb.save(output)
