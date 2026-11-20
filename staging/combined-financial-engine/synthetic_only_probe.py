@@ -16,6 +16,7 @@ for directory in (ROOT / "backend_source", ROOT / "staging" / "combined-financia
 from invoice_source_schema import HEADERS_53
 from reference_financial_math import combined_reference_review
 from logic_only_deploy_gate import REQUIRED, check_logic_only_manifest
+from synthetic_allocation_candidates import suggest_synthetic_matches
 
 
 def safe_manifest():
@@ -48,7 +49,31 @@ def synthetic_only_check():
             or result["financial_write_performed"] is not False
             or result["source_independent_parity"] != "NOT_VERIFIED"):
         raise RuntimeError("SYNTHETIC_LOGIC_ONLY_QA_FAILED")
+    candidate = suggest_synthetic_matches(
+        [{
+            "source_kind": "SYNTHETIC",
+            "invoice_no": "SYNTH-INV-SMOKE", "sol_id": "1505",
+            "invoice_date": "2026-07-11", "service_months": ["2026-05"],
+            "taxable": "100.00", "cgst": "9.00", "sgst": "9.00",
+            "gross": "118.00", "protected": False,
+            "credit_note": False, "sbisa": False,
+        }],
+        [{
+            "source_kind": "SYNTHETIC",
+            "payment_id": "SYNTH-PAY-SMOKE", "sol_id": "1505",
+            "payment_date": "2026-07-15", "credit": "117.00",
+            "invoice_ref": "SYNTH-INV-SMOKE",
+            "narration_months": ["2026-05"], "sbisa": False,
+        }],
+        synthetic_mode=True,
+    )
+    if (candidate["candidate_count"] != 1
+            or candidate["candidates"][0]["tds_rate_reference"] != 1
+            or candidate["payment_allocation"] != "NOT_EXECUTED"
+            or candidate["financial_write_performed"] is not False):
+        raise RuntimeError("SYNTHETIC_ALLOCATION_CANDIDATE_QA_FAILED")
     return {
+        "synthetic_allocation_candidate_test": "PASS",
         "synthetic_logic_test": "PASS",
         "source_policy": policy["status"],
         "payment_allocation": "NOT_EXECUTED",
