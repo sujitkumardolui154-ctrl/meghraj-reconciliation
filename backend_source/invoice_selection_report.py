@@ -74,9 +74,45 @@ def select_verified_invoices(requested, verified_rows):
             "review_count": len(review)}
 
 
+def _authorized_service_caller(request):
+    """Verify an allow-listed service account ID token (fail closed).
+
+    Cloud Run IAM should also restrict invokers; neither IAM alone nor a
+    caller-supplied header is a replacement for this check.
+    """
+    import os
+    audience = os.environ.get("INVOICE_LOOKUP_AUDIENCE", "")
+    allow = {part.strip().lower() for part in
+             os.environ.get("INVOICE_LOOKUP_ALLOWED_CALLERS", "").split(",")
+             if part.strip()}
+    raw = request.headers.get("Authorization", "")
+    if not audience.startswith("https://") or not allow:
+        return False
+    if not raw.startswith("Bearer ") or len(raw) > 8192:
+        return False
+    try:
+        from google.oauth2 import id_token
+        from google.auth.transport.requests import Request
+        identity = id_token.verify_oauth2_token(
+            raw[7:], Request(), audience=audience
+        )
+        email = identity.get("email", "").lower()
+        return (
+            email in allow
+            and identity.get("email_verified") is True
+            and identity.get("iss") in (
+                "https://accounts.google.com", "accounts.google.com"
+            )
+        )
+    except Exception:
+        return False
+
+
 def handle_invoice_selection(request):
-    """Private Cloud Run route; Firebase report authorization is at gateway."""
+    """Private read-only route; requires verified service-to-service caller."""
     from flask import jsonify
+    if not _authorized_service_caller(request):
+        return jsonify(error="Verified invoice lookup access denied"), 403
     if request.method != "POST":
         return jsonify(error="Method not allowed"), 405
     if request.content_length is None or request.content_length > 512 * 1024:
