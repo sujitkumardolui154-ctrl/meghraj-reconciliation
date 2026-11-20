@@ -16,6 +16,27 @@ fi
 if ! sudo grep -Fq "$HOST" "$FILE"; then
   echo 'STOP: Expected preview hostname not in Caddyfile; no restoration'; exit 1
 fi
+# Refuse to overwrite unrelated Caddy changes made after the preview was added.
+TMP=$(mktemp -d /tmp/sbi-pr129-cleanup.XXXXXXXX)
+chmod 700 "$TMP"
+trap 'rm -rf "$TMP"' EXIT
+sudo cp "$BACKUP" "$TMP/original"
+sudo cp "$FILE" "$TMP/current"
+sudo chown "$(id -u):$(id -g)" "$TMP/original" "$TMP/current"
+python3 - "$TMP/original" "$TMP/current" "$HOST" "$PREVIEW" <<'PY'
+from pathlib import Path
+import sys
+base = Path(sys.argv[1]).read_bytes()
+actual = Path(sys.argv[2]).read_bytes()
+host, preview = sys.argv[3:5]
+added = (f"\n\n# PR129 TEMPORARY HTTPS PREVIEW — remove after sign-off\n"
+         f"{host} {{\n    encode gzip\n"
+         f"    reverse_proxy {preview}:8080\n"
+         f"    header X-Content-Type-Options nosniff\n"
+         f"    header Referrer-Policy no-referrer\n}}\n").encode()
+if actual != base + added:
+    raise SystemExit("STOP: Caddyfile changed since preview addition; manual review required")
+PY
 sudo cp "$BACKUP" "$FILE"
 sudo docker exec "$CADDY" caddy reload --config /etc/caddy/Caddyfile >/dev/null
 sudo docker rm -f "$PREVIEW" >/dev/null 2>&1 || true
