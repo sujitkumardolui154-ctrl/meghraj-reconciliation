@@ -144,3 +144,14 @@ select:focus-visible,textarea:focus-visible{outline:2px solid #44dccb;outline-of
 @media(max-width:580px){.github-board-stats{gap:8px}.github-stat{padding:12px}
 .github-workstreams{grid-template-columns:1fr}.github-board-surface{padding:14px}
 .github-board-heading{flex-direction:column}}
+
+
+/* Owner-selectable priority lanes, ordered tasks, and completed archive */
+.workspace-priority-lanes{display:grid;gap:14px;max-height:none;overflow:visible}
+.workspace-lane{background:#0b1e31;border:1px solid #355771;border-radius:12px;padding:13px}
+.workspace-lane-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.workspace-lane-title{font-size:13px;font-weight:800;color:#f0f9ff;letter-spacing:-.015em;margin:0}
+.workspace-lane-items{display:grid;gap:9px}
+.workspace-lane .workspace-item{background:#132b43}
+.workspace-item-actions button:disabled{opacity:.4;cursor:not-allowed}
+#mw-bucket-help{font-size:11px;margin:9px 0 14px;line-height:1.5}

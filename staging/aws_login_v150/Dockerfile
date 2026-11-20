@@ -12,6 +12,7 @@ COPY staging/aws_login_v150/app.py /app/app.py
 COPY staging/aws_login_v150/tower_readonly.py /app/tower_readonly.py
 COPY staging/aws_login_v150/project_workspace.py /app/project_workspace.py
 COPY staging/aws_login_v150/workspace_ui.html /app/workspace_ui.html
+COPY staging/aws_login_v150/github_workstream_board.html /app/github_workstream_board.html
 COPY staging/aws_login_v150/tower_theme.css /app/tower_theme.css
 # Recover the original engineering Control Tower, not a modified placeholder.
 COPY staging/railway_public/pipeline.html /app/pipeline.html
