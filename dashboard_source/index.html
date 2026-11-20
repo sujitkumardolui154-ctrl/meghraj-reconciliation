@@ -158,11 +158,25 @@ async function refreshDashboard() {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 120000);
     try {
+      const csrfResponse = await fetch("/auth/csrf", {
+        credentials: "same-origin",
+        cache: "no-store",
+        redirect: "error",
+        signal: controller.signal
+      });
+      if (!csrfResponse.ok) {
+        throw new Error("Unable to establish upload security. Sign in and retry.");
+      }
+      const csrfData = await csrfResponse.json();
+      if (!/^[a-f0-9]{64}$/.test(csrfData.csrf_token || "")) {
+        throw new Error("Upload security token missing. Refresh and retry.");
+      }
       const response = await fetch("/api/bulk-report/generate", {
         method: "POST",
         credentials: "same-origin",
         cache: "no-store",
         redirect: "error",
+        headers: {"X-DIL-CSRF": csrfData.csrf_token},
         body,
         signal: controller.signal
       });
