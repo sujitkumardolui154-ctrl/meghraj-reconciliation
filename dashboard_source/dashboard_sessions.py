@@ -19,6 +19,7 @@ ORIGINS = {
     "https://sbi-dashboard-109590290120.asia-south1.run.app",
     "https://sbi-dashboard-ahz6wqeiaq-el.a.run.app",
     "https://imports-v140---sbi-dashboard-ahz6wqeiaq-el.a.run.app",
+    "https://sbi-preview.13-232-241-221.sslip.io",
 }
 
 PUBLIC_PATHS = {
