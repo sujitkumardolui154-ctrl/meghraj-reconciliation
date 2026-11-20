@@ -17,6 +17,8 @@ from invoice_source_schema import HEADERS_53
 from reference_financial_math import combined_reference_review
 from logic_only_deploy_gate import REQUIRED, check_logic_only_manifest
 from synthetic_allocation_candidates import suggest_synthetic_matches
+from synthetic_waterfall import simulate_synthetic_waterfall
+from synthetic_payment_evidence import preview_synthetic_new_evidence
 
 
 def safe_manifest():
@@ -72,7 +74,63 @@ def synthetic_only_check():
             or candidate["payment_allocation"] != "NOT_EXECUTED"
             or candidate["financial_write_performed"] is not False):
         raise RuntimeError("SYNTHETIC_ALLOCATION_CANDIDATE_QA_FAILED")
+    waterfall = simulate_synthetic_waterfall(
+        [{
+            "source_kind": "SYNTHETIC", "invoice_no": "SYNTH-INV-FLOW",
+            "sol_id": "1505", "approved_tds_rate": 1,
+            "simulation_priority": 1, "invoice_date": "2026-07-11",
+            "service_months": ["2026-05"],
+            "taxable": "100.00", "cgst": "9.00", "sgst": "9.00",
+            "gross": "118.00", "protected": False,
+            "credit_note": False, "sbisa": False,
+        }],
+        [{
+            "source_kind": "SYNTHETIC", "payment_id": "SYNTH-PAY-FLOW1",
+            "sol_id": "1505", "payment_date": "2026-07-15",
+            "credit": "50.00", "invoice_ref": "SYNTH-INV-FLOW",
+            "narration_months": ["2026-05"], "sbisa": False,
+            "allow_synthetic_fifo": False,
+        }, {
+            "source_kind": "SYNTHETIC", "payment_id": "SYNTH-PAY-FLOW2",
+            "sol_id": "1505", "payment_date": "2026-07-16",
+            "credit": "67.00", "invoice_ref": "SYNTH-INV-FLOW",
+            "narration_months": ["2026-05"], "sbisa": False,
+            "allow_synthetic_fifo": False,
+        }],
+        synthetic_mode=True,
+    )
+    if (waterfall["assignment_count"] != 2
+            or waterfall["simulated_remaining_net"]["SYNTH-INV-FLOW"] != "0.00"
+            or waterfall["historical_records_processed"] is not False
+            or waterfall["financial_write_performed"] is not False):
+        raise RuntimeError("SYNTHETIC_WATERFALL_QA_FAILED")
+    original_payment = [""] * 12
+    original_payment[8] = "117.00"
+    evidence = preview_synthetic_new_evidence(
+        [{
+            "source_kind": "SYNTHETIC", "payment_id": "SYNTH-PAY-EVIDENCE",
+            "original_A_to_L": original_payment,
+            "payment_date": "2026-12-02", "sol_id": "1505",
+            "sbisa": False, "utr": "SYNTH-UTR-EVIDENCE",
+            "narration": "Synthetic new payment after simulated activation",
+            "invoice_ref": "SYNTH-INV-FLOW",
+            "proof_name": None, "proof_sha256": None,
+        }],
+        activation_date="2026-12-01", submitted_date="2026-12-03",
+        actor_id="SYNTH-USER-UPLOADER",
+        mock_role="SYNTHETIC_PAYMENT_EVIDENCE_UPLOADER",
+        existing_synthetic_receipts=[],
+        synthetic_mode=True,
+    )
+    if (evidence["preview_ready_count"] != 1
+            or evidence["held_count"] != 0
+            or evidence["historical_records_accessed"] is not False
+            or evidence["persistent_receipts_created"] is not False
+            or evidence["live_financial_writes"] is not False):
+        raise RuntimeError("SYNTHETIC_EVIDENCE_INTAKE_QA_FAILED")
     return {
+        "synthetic_evidence_intake_test": "PASS",
+        "synthetic_waterfall_test": "PASS",
         "synthetic_allocation_candidate_test": "PASS",
         "synthetic_logic_test": "PASS",
         "source_policy": policy["status"],

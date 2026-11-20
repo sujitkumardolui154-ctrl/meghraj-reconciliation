@@ -27,17 +27,20 @@ ALLOWLIST = (
     "staging/combined-financial-engine/offline_review.py",
     "staging/combined-financial-engine/reference_financial_math.py",
     "staging/combined-financial-engine/synthetic_allocation_candidates.py",
+    "staging/combined-financial-engine/synthetic_waterfall.py",
+    "staging/combined-financial-engine/synthetic_payment_evidence.py",
     "staging/combined-financial-engine/readiness_gate.py",
     "staging/combined-financial-engine/logic_only_deploy_gate.py",
     "staging/combined-financial-engine/synthetic_only_probe.py",
     "staging/combined-financial-engine/OWNER_LOGIC_ONLY_DEPLOYMENT_RULE.md",
 )
 ALLOWED_IMPORT_ROOTS = frozenset((
-    "__future__", "argparse", "ast", "collections", "datetime", "decimal", "json", "pathlib", "re",
+    "__future__", "argparse", "ast", "collections", "datetime", "decimal", "hashlib", "json", "pathlib", "re",
     "sys", "typing", "invoice_source_schema", "payment_report_rules",
     "credit_note_53_adapter", "gst_batch_preview", "gst_preview",
     "matcher", "offline_review", "reference_financial_math",
     "logic_only_deploy_gate", "synthetic_allocation_candidates",
+    "synthetic_waterfall", "synthetic_payment_evidence",
 ))
 DISALLOWED_FUNCTIONS = frozenset((
     "eval", "exec", "compile", "__import__", "input",
