@@ -29,7 +29,7 @@ import sys
 base = Path(sys.argv[1]).read_bytes()
 actual = Path(sys.argv[2]).read_bytes()
 host, preview = sys.argv[3:5]
-added = (f"\n\n# PR129 TEMPORARY HTTPS PREVIEW — remove after sign-off\n"
+added = (f"\n# PR129 TEMPORARY HTTPS PREVIEW — remove after sign-off\n"
          f"{host} {{\n    encode gzip\n"
          f"    reverse_proxy {preview}:8080\n"
          f"    header X-Content-Type-Options nosniff\n"
