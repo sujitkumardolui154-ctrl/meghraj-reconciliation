@@ -111,7 +111,9 @@ def _build(data):
             raise ValueError("Provide exactly one approved Invoice Details. (34/35 columns) or 53-column source sheet")
         sheet, source_headers, layout = matched[0]
         width, invoice_col = layout
-        if sheet.max_row > MAX_ROWS+1 or sheet.max_column != width:
+        if (not isinstance(sheet.max_row, int) or
+            not isinstance(sheet.max_column, int) or
+            sheet.max_row > MAX_ROWS+1 or sheet.max_column != width):
             raise ValueError("Workbook exceeds 20,000 rows or approved source column width")
 
         accepted = []
