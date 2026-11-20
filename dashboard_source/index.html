@@ -86,91 +86,6 @@ small{color:#9fb1cc}
 <p><small>API monitoring refreshes every 30 seconds. Agent telemetry remains demonstration-only.</small></p>
 </section>
 
-<!-- DIL Excel Upload v1.3.0 -->
-<section class="card" id="excel-upload">
-  <h2>Excel Upload — Dashboard v1.3.0</h2>
-  <p>Select one Excel workbook (.xlsx or .xls), maximum 8 MiB.</p>
-  <form id="excel-upload-form">
-    <label for="excel-file">Browse Excel file</label>
-    <input id="excel-file" type="file" accept=".xlsx,.xls"
-           required style="display:block;margin:16px 0;max-width:100%">
-    <button id="excel-upload-button" type="submit">Upload Excel</button>
-  </form>
-  <p id="excel-upload-result" role="status" aria-live="polite">
-    No file uploaded.
-  </p>
-  <small>This upload stores the workbook for validation only. Use the Database Update tab to preview new monthly invoices. Payment reconciliation has not run.</small>
-</section>
-<script>
-(() => {
-  const form = document.getElementById("excel-upload-form");
-  const input = document.getElementById("excel-file");
-  const button = document.getElementById("excel-upload-button");
-  const status = document.getElementById("excel-upload-result");
-
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const file = input.files[0];
-
-    if (!file || !/\.(xlsx|xls)$/i.test(file.name)) {
-      status.textContent = "Choose an .xlsx or .xls Excel file.";
-      return;
-    }
-    if (!file.size || file.size > 8 * 1024 * 1024) {
-      status.textContent = "Choose a non-empty file up to 8 MiB.";
-      return;
-    }
-
-    button.disabled = true;
-    input.disabled = true;
-    status.textContent = "Uploading — please keep this page open.";
-
-    const body = new FormData();
-    body.append("file", file);
-
-    try {
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {"X-DIL-Upload": "1"},
-        body
-      });
-
-      let data;
-      try {
-        data = await response.json();
-      } catch {
-        throw new Error(
-          "Unexpected server response. Check upload status before retrying."
-        );
-      }
-
-      const receipt = data.receipt ? " Receipt: " + data.receipt : "";
-      if (!response.ok) {
-        throw new Error((data.error || "Upload failed.") + receipt);
-      }
-      if (!data.ok || !data.receipt) {
-        throw new Error(
-          "Upload receipt was not confirmed. Check status before retrying."
-        );
-      }
-
-      status.textContent =
-        "Workbook received." + receipt +
-        " Status: " + data.status +
-        ". Reconciliation has not run.";
-      form.reset();
-    } catch (error) {
-      status.textContent = error instanceof TypeError
-        ? "Connection interrupted. Upload outcome is unknown; check status before retrying."
-        : error.message;
-    } finally {
-      button.disabled = false;
-      input.disabled = false;
-    }
-  });
-})();
-</script>
 
 </main>
 <script>
@@ -204,6 +119,99 @@ async function refreshDashboard() {
 <script src="/dashboard.js" defer></script>
 
 <main id="dil-reports" hidden>
+<!-- Bulk Report: source-only reporting; no financial database updates. -->
+<section class="card" id="bulk-report" aria-labelledby="bulk-report-title">
+  <h2 id="bulk-report-title">Bulk Report</h2>
+  <p>Upload one approved Invoice Details. workbook (.xlsx, up to 8 MiB) to generate a source-only ZIP report. This does not reconcile payments or update the financial database.</p>
+  <form id="bulk-report-form">
+    <label for="bulk-report-file">Choose Excel workbook</label>
+    <input id="bulk-report-file" type="file" accept=".xlsx" required
+           style="display:block;margin:12px 0;max-width:100%">
+    <button id="bulk-report-generate" type="submit">Generate Bulk Report</button>
+  </form>
+  <p id="bulk-report-message" role="status" aria-live="polite">Ready to generate a source-only report.</p>
+</section>
+<script>
+(() => {
+  "use strict";
+  const form = document.getElementById("bulk-report-form");
+  const input = document.getElementById("bulk-report-file");
+  const button = document.getElementById("bulk-report-generate");
+  const message = document.getElementById("bulk-report-message");
+  let busy = false;
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (busy) return;
+    const file = input.files[0];
+    if (!file || !/\\.xlsx$/i.test(file.name) ||
+        !file.size || file.size > 8 * 1024 * 1024) {
+      message.textContent = "Select a non-empty .xlsx workbook up to 8 MiB.";
+      return;
+    }
+    busy = true;
+    button.disabled = true;
+    input.disabled = true;
+    message.textContent = "Generating source-only report...";
+    const body = new FormData();
+    body.append("file", file);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 120000);
+    try {
+      const response = await fetch("/api/bulk-report/generate", {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        redirect: "error",
+        body,
+        signal: controller.signal
+      });
+      if (!response.ok) {
+        if ([401, 403].includes(response.status)) {
+          throw new Error("Access denied. Sign in with an authorized account.");
+        }
+        const type = (response.headers.get("Content-Type") || "").toLowerCase();
+        let reason = "";
+        if (type.includes("application/json")) {
+          const data = await response.json();
+          reason = data.error || data.message || "";
+        }
+        throw new Error(reason || "Bulk Report generation failed (HTTP " + response.status + ").");
+      }
+      const contentType = (response.headers.get("Content-Type") || "").toLowerCase();
+      if (!contentType.includes("application/zip") &&
+          !contentType.includes("application/octet-stream")) {
+        throw new Error("Unexpected response type; ZIP download cancelled.");
+      }
+      const blob = await response.blob();
+      if (blob.size < 4) throw new Error("Empty or invalid report archive.");
+      const magic = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
+      if (magic[0] !== 0x50 || magic[1] !== 0x4b) {
+        throw new Error("Response is not a ZIP archive.");
+      }
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "sbi-bulk-report.zip";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      message.textContent = "Source-only Bulk Report generated. Check browser downloads. Reconciliation has not run.";
+    } catch (error) {
+      message.textContent = error.name === "AbortError"
+        ? "Report generation timed out. No download was confirmed."
+        : error.message || "Bulk Report unavailable.";
+    } finally {
+      clearTimeout(timer);
+      busy = false;
+      input.disabled = false;
+      button.disabled = false;
+    }
+  });
+})();
+</script>
+
 <section class="card" id="dil-reconciliation-changes" aria-labelledby="dil-change-title">
   <h2 id="dil-change-title">Reconciliation Changes — Upload Audit</h2>
   <p>Read-only comparison of each uploaded invoice with its previous Payment Received value. No settlement or database replacement.</p>
