@@ -282,3 +282,106 @@ def generate():
     response.headers["Cache-Control"]="private, no-store"
     response.headers["X-Content-Type-Options"]="nosniff"
     return response
+
+
+@bulk_report.post("/api/bulk-report/select-invoices-excel")
+def selected_invoice_excel():
+    """Produce a full selected-invoice XLSX only from verified database rows.
+
+    Critical: unlike /generate-excel this route MUST NOT treat the uploaded
+    spreadsheet as invoice data. It contains invoice numbers ONLY.
+    """
+    import os
+    from flask import g
+    from invoice_number_selection import parse_selection
+    from bulk_report_selection import build_selection_zip
+
+    request.max_content_length = MAX_UPLOAD + 262144
+    if not csrf_valid():
+        return jsonify(error="Session origin or CSRF verification failed",
+                       financial_writes=False), 403
+
+    # Separate explicit financial reporting claim is mandatory; a dashboard
+    # login alone does not grant permission to query saved invoice details.
+    try:
+        from sbi_report_access import can_view_report
+    except ImportError:
+        return jsonify(error="Report permission service unavailable",
+                       financial_writes=False), 503
+    if not can_view_report(getattr(g, "dil_user", None),
+                           getattr(g, "dil_identity", None)):
+        return jsonify(error="Invoice report viewer permission required",
+                       financial_writes=False), 403
+
+    if request.content_length is None or request.content_length > MAX_UPLOAD + 262144:
+        return jsonify(error="Invoice number workbook exceeds 8 MiB",
+                       financial_writes=False), 413
+    if set(request.files.keys()) != {"file"}:
+        return jsonify(error="Select exactly one invoice number workbook",
+                       financial_writes=False), 422
+    upload = request.files["file"]
+    if not upload.filename or not upload.filename.lower().endswith(".xlsx"):
+        return jsonify(error="Invoice numbers must be uploaded as .xlsx",
+                       financial_writes=False), 422
+    content = upload.stream.read(MAX_UPLOAD + 1)
+    try:
+        selection = parse_selection(content)
+    except (ValueError, InvalidFileException, zipfile.BadZipFile) as exc:
+        return jsonify(error=str(exc)[:240], financial_writes=False), 422
+
+    # No fallback to unverified upload content, no implicit Firestore access:
+    # the private read-only lookup backend and its identity must be configured.
+    target = os.environ.get("INVOICE_LOOKUP_BACKEND", "").rstrip("/")
+    if not target.startswith("https://"):
+        return jsonify(error="Verified invoice lookup backend is not connected",
+                       financial_writes=False), 503
+    try:
+        import requests
+        from cloud_auth import get_backend_token
+        token = get_backend_token(target)
+        upstream = requests.post(
+            target + "/reports/invoice-selection",
+            json={"invoice_numbers": list(selection.invoice_numbers)},
+            headers={"Authorization": "Bearer " + token},
+            timeout=(10, 180),
+            allow_redirects=False,
+        )
+        if upstream.status_code != 200:
+            return jsonify(
+                error="Verified invoice lookup unavailable; report was not generated",
+                backend_status=upstream.status_code,
+                financial_writes=False,
+            ), 503
+        if ("application/json" not in
+            upstream.headers.get("Content-Type", "").lower()
+            or len(upstream.content) > 32 * 1024 * 1024):
+            return jsonify(error="Invalid verified lookup response",
+                           financial_writes=False), 502
+        verified = upstream.json()
+        bundle, manifest = build_selection_zip(
+            selection, verified, hashlib.sha256(content).hexdigest()
+        )
+        payload = combined_excel_from_report_zip(bundle)
+    except ValueError:
+        return jsonify(error="Verified invoice lookup returned conflicting data",
+                       financial_writes=False), 503
+    except Exception:
+        # Do not return internal credentials, dataset details or source content.
+        return jsonify(error="Verified invoice lookup connection unavailable",
+                       financial_writes=False), 503
+
+    response = Response(
+        payload,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response.headers["Content-Disposition"] = (
+        'attachment; filename="SBI-Selected-Invoices-Combined-'
+        + manifest["uploaded_selection_sha256"][:12] + '.xlsx"'
+    )
+    response.headers["X-Bulk-Report-Mode"] = "VERIFIED_SELECTION_NOT_RECONCILED"
+    response.headers["X-Bulk-Report-Summary"] = json.dumps(
+        manifest["counts"], separators=(",", ":")
+    )
+    response.headers["Cache-Control"] = "private, no-store"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
