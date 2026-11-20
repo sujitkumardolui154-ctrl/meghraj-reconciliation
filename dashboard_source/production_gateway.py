@@ -393,6 +393,11 @@ install_login_pages(app)
 install_user_management(app)
 install_account_pages(app)
 
+# Source-only Bulk Report: authenticated by the existing global Firebase session
+# guard. No reconciliation or database mutation is performed by this module.
+from bulk_reports import bulk_report
+app.register_blueprint(bulk_report)
+
 # Read-only CREDIT NOTE reporting v1 — use the existing Firebase session guard.
 # install_sessions(app) runs before this blueprint and populates g.dil_user
 # only after revocation-checked Firebase cookie validation.
