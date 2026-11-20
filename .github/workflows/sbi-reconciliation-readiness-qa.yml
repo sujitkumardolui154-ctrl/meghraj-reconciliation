@@ -1,0 +1,53 @@
+name: SBI Payment Reconciliation Readiness Gate QA
+on:
+  push:
+    branches:
+      - feature/sbi-payment-reconciliation-readiness-gate-20261120
+  pull_request:
+    branches:
+      - feature/sbi-payment-evidence-fixed-xlsx-upload-20261120
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  readiness-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install isolated Firebase and Excel dependencies
+        run: python -m pip install -r staging/aws_login_v150/requirements.txt
+      - name: Verify source-integrity, readiness refusal and no financial writes
+        run: python -m unittest discover -s tests -p 'test_sbi_reconciliation_readiness.py' -v
+      - name: Retain existing evidence staging regression
+        run: python -m unittest discover -s tests -p 'test_sbi_payment_evidence_upload.py' -v
+      - name: Retain Login and Control Tower regression
+        run: python -m unittest discover -s tests -p 'test_sbi_aws_login_v150.py' -v
+      - name: Build non-root sandbox candidate
+        run: docker build -f staging/aws_login_v150/Dockerfile --build-arg SBI_SOURCE_SHA="$GITHUB_SHA" -t sbi-reconcile-readiness-qa:local .
+      - name: Test disconnected HTTP guards
+        run: |
+          docker run -d --name sbi-reconcile-readiness-qa --network none --read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges sbi-reconcile-readiness-qa:local
+          for i in $(seq 1 20); do
+            if docker exec sbi-reconcile-readiness-qa python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8080/healthz',timeout=2)" >/dev/null 2>&1;then break;fi
+            sleep 1
+          done
+          docker exec -i sbi-reconcile-readiness-qa python - <<'PY'
+          from urllib.request import urlopen, Request
+          from urllib.error import HTTPError
+          def status(path,method="GET"):
+              try: return urlopen(Request("http://127.0.0.1:8080"+path,method=method),timeout=5).status
+              except HTTPError as e: return e.code
+          assert status("/healthz")==200
+          assert status("/login")==200
+          assert status("/api/payment-reconciliation/status")==401
+          assert status("/api/payment-reconciliation/preflight","POST")==403
+          assert status("/api/payment-reconciliation/run","POST")==403
+          print("SBI_READINESS_DISCONNECTED_HTTP=PASS")
+          PY
+      - name: Remove isolated QA container
+        if: always()
+        run: docker rm -f sbi-reconcile-readiness-qa 2>/dev/null || true
