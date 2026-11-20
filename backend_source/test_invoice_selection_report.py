@@ -1,6 +1,7 @@
 """Offline synthetic QA: no Firestore, no finance writes."""
 import unittest
-from invoice_selection_report import select_verified_invoices
+from invoice_selection_report import select_verified_invoices, _authorized_service_caller
+from unittest.mock import patch
 
 
 def fixture(number, kind="unpaid", balance=True):
@@ -18,6 +19,15 @@ def fixture(number, kind="unpaid", balance=True):
 
 
 class InvoiceSelectionReportTests(unittest.TestCase):
+    def test_backend_denies_anonymous_and_unconfigured_callers(self):
+        class Request:
+            headers = {"Authorization": "Bearer caller-controlled-value"}
+        with patch.dict("os.environ", {
+            "INVOICE_LOOKUP_AUDIENCE": "",
+            "INVOICE_LOOKUP_ALLOWED_CALLERS": "",
+        }):
+            self.assertFalse(_authorized_service_caller(Request()))
+
     def test_random_order_and_full_53_columns(self):
         records = [fixture("MXP1001", "ok"), fixture("MXP1003", balance=False)]
         result = select_verified_invoices(
