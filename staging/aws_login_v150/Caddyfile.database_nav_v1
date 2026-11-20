@@ -1,0 +1,22 @@
+{$SITE_DOMAIN} {
+    encode gzip
+    route {
+        # Preserve independent original Basic Auth engineering preview.
+        @legacy path /pipeline /api/pipeline/* /api/priority-tasks /api/priority-tasks/* /ui-preview /ui-preview.css
+        handle @legacy {
+            reverse_proxy sbi-preview:8080
+        }
+        # Same Firebase login; original Control Tower now a protected section.
+        @login path / /dashboard /dashboard-theme.css /control-tower /control-tower/* /login /login.css /login.js /auth/* /dashboard.js /account.js /dil_floating_assistant.js /users /users.js /api/*
+        handle @login {
+            reverse_proxy sbi-database-update-nav:8080
+        }
+        handle {
+            reverse_proxy sbi-preview:8080
+        }
+    }
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+    }
+}

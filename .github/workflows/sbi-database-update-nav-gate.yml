@@ -1,0 +1,50 @@
+name: SBI Database Update UI Navigation QA
+on:
+  push:
+    branches: [feature/sbi-database-update-payment-nav-20261120]
+  pull_request:
+    branches: [feature/sbi-control-tower-custom-board-10min-20261120]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  database-ui-financial-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install login-only test dependencies
+        run: python -m pip install -r staging/aws_login_v150/requirements.txt
+      - name: Verify relocated Excel Upload and Payment UI financial lock
+        run: python -m unittest discover -s tests -p 'test_sbi_database_update_nav.py' -v
+      - name: Control Tower v2 and task persistence regression
+        run: python -m unittest discover -s tests -p 'test_sbi_control_tower_board_v2.py' -v
+      - name: Firebase Login v1.5 regression
+        run: python -m unittest discover -s tests -p 'test_sbi_aws_login_v150.py' -v
+      - name: Isolated non-root Docker build
+        run: docker build -f staging/aws_login_v150/Dockerfile --build-arg SBI_SOURCE_SHA="$GITHUB_SHA" -t sbi-database-ui-qa:local .
+      - name: Disconnected security smoke
+        run: |
+          docker run -d --name sbi-database-ui-qa --network none --read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges sbi-database-ui-qa:local
+          for i in $(seq 1 20); do
+            if docker exec sbi-database-ui-qa python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8080/healthz',timeout=2)" >/dev/null 2>&1;then break;fi
+            sleep 1
+          done
+          docker exec -i sbi-database-ui-qa python - <<'PY'
+          from urllib.request import urlopen
+          from urllib.error import HTTPError
+          def status(p):
+              try:return urlopen("http://127.0.0.1:8080"+p,timeout=5).status
+              except HTTPError as e:return e.code
+          assert status("/healthz")==200
+          assert status("/login")==200
+          for path in ("/dashboard","/api/upload","/api/payment-reconciliation/run",
+                       "/control-tower","/control-tower/api/workspace"):
+              assert status(path)==401 or (path.startswith("/api/") and status(path)==403),path
+          print("DATABASE_UI_DISCONNECTED_QA=PASS")
+          PY
+      - name: Remove QA container
+        if: always()
+        run: docker rm -f sbi-database-ui-qa 2>/dev/null || true

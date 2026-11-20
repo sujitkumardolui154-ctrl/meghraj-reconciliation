@@ -84,91 +84,6 @@ small{color:#9fb1cc}
 </div>
 </section>
 
-<!-- DIL Excel Upload v1.3.0 -->
-<section class="card" id="excel-upload">
-  <h2>Excel Upload — Dashboard v1.3.0</h2>
-  <p>Financial file intake is not enabled in this AWS stage. Source workbooks remain protected.</p>
-  <form id="excel-upload-form">
-    <label for="excel-file">Browse Excel file</label>
-    <input id="excel-file" type="file" accept=".xlsx,.xls"
-           required disabled style="display:block;margin:16px 0;max-width:100%">
-    <button id="excel-upload-button" type="submit" disabled>Upload unavailable in staging</button>
-  </form>
-  <p id="excel-upload-result" role="status" aria-live="polite">
-    File uploads are disabled in the current protected stage.
-  </p>
-  <small>Financial imports require separate verification and approval. Payment reconciliation has not run.</small>
-</section>
-<script>
-(() => {
-  const form = document.getElementById("excel-upload-form");
-  const input = document.getElementById("excel-file");
-  const button = document.getElementById("excel-upload-button");
-  const status = document.getElementById("excel-upload-result");
-
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const file = input.files[0];
-
-    if (!file || !/\.(xlsx|xls)$/i.test(file.name)) {
-      status.textContent = "Choose an .xlsx or .xls Excel file.";
-      return;
-    }
-    if (!file.size || file.size > 8 * 1024 * 1024) {
-      status.textContent = "Choose a non-empty file up to 8 MiB.";
-      return;
-    }
-
-    button.disabled = true;
-    input.disabled = true;
-    status.textContent = "Uploading — please keep this page open.";
-
-    const body = new FormData();
-    body.append("file", file);
-
-    try {
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {"X-DIL-Upload": "1"},
-        body
-      });
-
-      let data;
-      try {
-        data = await response.json();
-      } catch {
-        throw new Error(
-          "Unexpected server response. Check upload status before retrying."
-        );
-      }
-
-      const receipt = data.receipt ? " Receipt: " + data.receipt : "";
-      if (!response.ok) {
-        throw new Error((data.error || "Upload failed.") + receipt);
-      }
-      if (!data.ok || !data.receipt) {
-        throw new Error(
-          "Upload receipt was not confirmed. Check status before retrying."
-        );
-      }
-
-      status.textContent =
-        "Workbook received." + receipt +
-        " Status: " + data.status +
-        ". Reconciliation has not run.";
-      form.reset();
-    } catch (error) {
-      status.textContent = error instanceof TypeError
-        ? "Connection interrupted. Upload outcome is unknown; check status before retrying."
-        : error.message;
-    } finally {
-      button.disabled = false;
-      input.disabled = false;
-    }
-  });
-})();
-</script>
 
 </main>
 
@@ -406,7 +321,98 @@ numbers to preserve leading zeros.</small></p>
 <p>Add new monthly invoices from Excel. Existing invoices are preserved.
 Existing invoice numbers and every repeated invoice number within the upload
 are rejected. Use the "Invoice Details." worksheet with its 34 original columns in their original order. The approved 53-column format is also supported. The PAYMNENT worksheet is not imported.</p>
-<section class="card">
+<nav class="dil-db-switch" aria-label="Database Update operations" role="tablist">
+  <button type="button" id="dil-db-invoices-button" role="tab" aria-controls="dil-db-invoices" aria-selected="true">Invoice Data &amp; Excel Upload</button>
+  <button type="button" id="dil-db-payments-button" role="tab" aria-controls="dil-db-payments" aria-selected="false">Payment Reconciliation</button>
+</nav>
+<div id="dil-db-invoices" role="tabpanel" aria-labelledby="dil-db-invoices-button">
+  <p class="dil-db-context">Invoice source intake and validation. Existing financial database writes remain blocked.</p>
+  <!-- DIL Excel Upload v1.3.0 -->
+<section class="card" id="excel-upload">
+  <h2>Excel Upload — Dashboard v1.3.0</h2>
+  <p>Financial file intake is not enabled in this AWS stage. Source workbooks remain protected.</p>
+  <form id="excel-upload-form">
+    <label for="excel-file">Browse Excel file</label>
+    <input id="excel-file" type="file" accept=".xlsx,.xls"
+           required disabled style="display:block;margin:16px 0;max-width:100%">
+    <button id="excel-upload-button" type="submit" disabled>Upload unavailable in staging</button>
+  </form>
+  <p id="excel-upload-result" role="status" aria-live="polite">
+    File uploads are disabled in the current protected stage.
+  </p>
+  <small>Financial imports require separate verification and approval. Payment reconciliation has not run.</small>
+</section>
+<script>
+(() => {
+  const form = document.getElementById("excel-upload-form");
+  const input = document.getElementById("excel-file");
+  const button = document.getElementById("excel-upload-button");
+  const status = document.getElementById("excel-upload-result");
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const file = input.files[0];
+
+    if (!file || !/\.(xlsx|xls)$/i.test(file.name)) {
+      status.textContent = "Choose an .xlsx or .xls Excel file.";
+      return;
+    }
+    if (!file.size || file.size > 8 * 1024 * 1024) {
+      status.textContent = "Choose a non-empty file up to 8 MiB.";
+      return;
+    }
+
+    button.disabled = true;
+    input.disabled = true;
+    status.textContent = "Uploading — please keep this page open.";
+
+    const body = new FormData();
+    body.append("file", file);
+
+    try {
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {"X-DIL-Upload": "1"},
+        body
+      });
+
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error(
+          "Unexpected server response. Check upload status before retrying."
+        );
+      }
+
+      const receipt = data.receipt ? " Receipt: " + data.receipt : "";
+      if (!response.ok) {
+        throw new Error((data.error || "Upload failed.") + receipt);
+      }
+      if (!data.ok || !data.receipt) {
+        throw new Error(
+          "Upload receipt was not confirmed. Check status before retrying."
+        );
+      }
+
+      status.textContent =
+        "Workbook received." + receipt +
+        " Status: " + data.status +
+        ". Reconciliation has not run.";
+      form.reset();
+    } catch (error) {
+      status.textContent = error instanceof TypeError
+        ? "Connection interrupted. Upload outcome is unknown; check status before retrying."
+        : error.message;
+    } finally {
+      button.disabled = false;
+      input.disabled = false;
+    }
+  });
+})();
+</script>
+  <section class="card">
 <h2>1. Preview an Excel workbook</h2>
 <p>Preview stores the source workbook and validation log; it does not add invoices.</p>
 <form id="dil-import-form">
@@ -441,7 +447,57 @@ are rejected. Use the "Invoice Details." worksheet with its 34 original columns 
 </section>
 <p><small>Database import does not run payment reconciliation.
 Reports include new invoices only after an import completes. Preview alone does not update reports.</small></p>
+</div>
+<div id="dil-db-payments" role="tabpanel" aria-labelledby="dil-db-payments-button" hidden>
+  <section class="card dil-db-payment" aria-labelledby="dil-payment-heading">
+    <div class="dil-db-heading-row">
+      <div>
+        <p class="dash-overline">PAYMENT EVIDENCE WORKFLOW</p>
+        <h2 id="dil-payment-heading">Payment Reconciliation</h2>
+        <p>Dedicated space for importing SBI payment evidence and preparing payment-to-invoice reconciliation. No payment processing or financial updates are connected in this AWS stage.</p>
+      </div>
+      <span class="status bad">BACKEND NOT CONNECTED</span>
+    </div>
+    <div class="dil-db-stages" aria-label="Future payment reconciliation stages">
+      <div class="dil-db-stage"><strong>1. Payment evidence</strong><p>Source: PAYMNENT worksheet. Column I (Credit) provides payment amounts. Original payment source columns A–L must remain unchanged.</p></div>
+      <div class="dil-db-stage"><strong>2. Matching &amp; verification</strong><p>Verify SOL/branch mapping, narration service period, duplicate references, partial payments and applicable TDS rules before proposing allocations.</p></div>
+      <div class="dil-db-stage"><strong>3. Owner review &amp; approval</strong><p>Review reconciliation exceptions and suspense before any approved application. Production settlement and database writes remain blocked.</p></div>
+    </div>
+  </section>
+  <section class="card dil-db-payment" aria-labelledby="dil-payment-evidence-heading">
+    <h2 id="dil-payment-evidence-heading">Upload New Payment Evidence</h2>
+    <p>Payment evidence upload and reconciliation preview will be available only after the verified read-only payment API and independent financial QA are connected.</p>
+    <label for="dil-payment-evidence-file">Payment workbook (.xlsx or .xls)</label>
+    <input id="dil-payment-evidence-file" type="file" accept=".xlsx,.xls" disabled aria-describedby="dil-payment-lock-note">
+    <div class="dil-db-payment-actions">
+      <button type="button" id="dil-payment-preview" disabled>Upload &amp; Preview Payment Evidence</button>
+      <button type="button" id="dil-payment-reconcile" disabled>Run Payment Reconciliation</button>
+    </div>
+    <p id="dil-payment-lock-note" role="status" class="dil-db-lock-note">Unavailable in this AWS release. No payment evidence is uploaded, no reconciliation is executed, and no financial records are modified through this option.</p>
+  </section>
+</div>
+
 </main>
+<script>
+/* Database Update inner views. UI navigation only; no financial API action. */
+(() => {
+  "use strict";
+  const invoice = document.getElementById("dil-db-invoices");
+  const payment = document.getElementById("dil-db-payments");
+  const invoiceButton = document.getElementById("dil-db-invoices-button");
+  const paymentButton = document.getElementById("dil-db-payments-button");
+  function show(kind) {
+    const invoicesActive = kind === "invoices";
+    invoice.hidden = !invoicesActive;
+    payment.hidden = invoicesActive;
+    invoiceButton.setAttribute("aria-selected", String(invoicesActive));
+    paymentButton.setAttribute("aria-selected", String(!invoicesActive));
+  }
+  invoiceButton.addEventListener("click", () => show("invoices"));
+  paymentButton.addEventListener("click", () => show("payments"));
+})();
+</script>
+
 
 <script>
 
