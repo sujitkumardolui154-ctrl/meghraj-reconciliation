@@ -62,6 +62,9 @@ app.register_blueprint(reconciliation_readiness)
 # Certified, immutable, independent source-only report catalog.
 from readonly_reports_gateway import readonly_reports
 app.register_blueprint(readonly_reports)
+# Validated user-supplied invoice workbook -> source-only in-memory CSV ZIP.
+from bulk_reports import bulk_report
+app.register_blueprint(bulk_report)
 
 
 @app.after_request

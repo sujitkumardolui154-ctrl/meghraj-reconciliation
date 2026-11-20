@@ -88,6 +88,102 @@ small{color:#9fb1cc}
 </main>
 
 <main id="dil-reports" hidden>
+<section class="card bulk-report-card" id="bulk-report" aria-labelledby="bulk-report-heading">
+  <div class="bulk-report-head">
+    <div>
+      <p class="dash-overline">EXCEL SOURCE · BULK ANALYTICS</p>
+      <h2 id="bulk-report-heading">Bulk Report</h2>
+      <p>Upload an invoice Excel workbook to generate a downloadable ZIP of source-only reports. This does not add invoices to the database, allocate payments or run reconciliation.</p>
+    </div>
+    <span class="status good">READ-ONLY EXPORT</span>
+  </div>
+  <div class="bulk-report-flow" aria-label="Bulk report workflow">
+    <span><strong>01</strong> Select Excel source</span>
+    <span><strong>02</strong> Validate invoice headers</span>
+    <span><strong>03</strong> Download reports</span>
+  </div>
+  <form id="bulk-report-form" enctype="multipart/form-data">
+    <label for="bulk-report-file">Invoice workbook (.xlsx, up to 8 MiB)</label>
+    <div class="bulk-report-form-row">
+      <input id="bulk-report-file" name="file" type="file" accept=".xlsx" required aria-describedby="bulk-report-help">
+      <button id="bulk-report-button" type="submit">Generate Bulk Report</button>
+    </div>
+  </form>
+  <p id="bulk-report-help" class="bulk-report-note">Accepted: <strong>Invoice Details.</strong> with exact approved 34- or 35-column headers, or one approved 53-column invoice source sheet. Source payment values are classified without modification.</p>
+  <p id="bulk-report-result" role="status" aria-live="polite">Ready for a source-only Bulk Report. The generated ZIP includes All Invoices, Unpaid, OK Payment Value, Error Value, Balance Review and Validation Review CSVs, plus a source manifest.</p>
+  <div id="bulk-report-counts" class="bulk-report-counts" hidden></div>
+</section>
+<script>
+(() => {
+  "use strict";
+  const form=document.getElementById("bulk-report-form");
+  const input=document.getElementById("bulk-report-file");
+  const button=document.getElementById("bulk-report-button");
+  const message=document.getElementById("bulk-report-result");
+  const counts=document.getElementById("bulk-report-counts");
+  let busy=false;
+  form.addEventListener("submit",async(event)=>{
+    event.preventDefault();
+    if(busy)return;
+    const file=input.files[0];
+    if(!file || !/\.xlsx$/i.test(file.name) || file.size<1 || file.size>8*1024*1024){
+      message.textContent="Choose one .xlsx invoice workbook up to 8 MiB.";
+      return;
+    }
+    busy=true;button.disabled=true;input.disabled=true;
+    counts.hidden=true;counts.replaceChildren();
+    message.textContent="Validating workbook and creating your read-only Bulk Report…";
+    try{
+      const csrfResponse=await fetch("/auth/csrf",{credentials:"same-origin",cache:"no-store"});
+      if(!csrfResponse.ok)throw new Error("Login session expired. Sign in again.");
+      const csrf=await csrfResponse.json();
+      if(typeof csrf.csrf_token!=="string")throw new Error("CSRF token unavailable.");
+      const body=new FormData();
+      body.append("file",file,file.name);
+      const result=await fetch("/api/bulk-report/generate",{
+        method:"POST",credentials:"same-origin",cache:"no-store",redirect:"error",
+        headers:{"X-DIL-CSRF":csrf.csrf_token},
+        body
+      });
+      if(!result.ok){
+        const failure=await result.json().catch(()=>({error:"Unable to generate the report."}));
+        throw new Error(failure.error||"Report validation failed.");
+      }
+      if(!(result.headers.get("Content-Type")||"").includes("application/zip") ||
+         result.headers.get("X-Bulk-Report-Mode")!=="SOURCE_ONLY_NOT_RECONCILED")
+        throw new Error("Unexpected report response. No download started.");
+      const metadata=JSON.parse(result.headers.get("X-Bulk-Report-Summary")||"null");
+      if(!metadata || !Number.isSafeInteger(metadata.source_rows))
+        throw new Error("Report counts are not verified.");
+      const blob=await result.blob();
+      const href=URL.createObjectURL(blob);
+      const link=document.createElement("a");
+      link.href=href;
+      link.download="SBI-Bulk-Report.zip";
+      document.body.appendChild(link);
+      link.click();link.remove();
+      setTimeout(()=>URL.revokeObjectURL(href),60000);
+      const labels=[
+        ["source_rows","Source rows"],["accepted_unique_invoice_rows","Accepted"],
+        ["review_rows","Review"],["unpaid","Unpaid"],
+        ["ok","OK value"],["error-value","Error value"],
+        ["balance-review","Balance review"]
+      ];
+      labels.forEach(([key,label])=>{
+        const el=document.createElement("div");
+        const name=document.createElement("small");name.textContent=label;
+        const value=document.createElement("strong");
+        value.textContent=String(metadata[key]??"—");
+        el.append(name,value);counts.appendChild(el);
+      });
+      counts.hidden=false;
+      message.textContent="Bulk Report generated. Check browser downloads for SBI-Bulk-Report.zip. All classifications are source-only; no reconciliation or financial database update occurred.";
+    }catch(err){
+      message.textContent="Bulk Report not generated: "+(err?.message||"Unknown error");
+    }finally{busy=false;button.disabled=false;input.disabled=false;}
+  });
+})();
+</script>
 <section class="card" id="dil-reconciliation-changes" aria-labelledby="dil-change-title">
   <h2 id="dil-change-title">Reconciliation Changes — Upload Audit</h2>
   <p>Read-only comparison of each uploaded invoice with its previous Payment Received value. No settlement or database replacement.</p>
@@ -332,96 +428,11 @@ numbers to preserve leading zeros.</small></p>
 Existing invoice numbers and every repeated invoice number within the upload
 are rejected. Use the "Invoice Details." worksheet with its 34 original columns in their original order. The approved 53-column format is also supported. The PAYMNENT worksheet is not imported.</p>
 <nav class="dil-db-switch" aria-label="Database Update operations" role="tablist">
-  <button type="button" id="dil-db-invoices-button" role="tab" aria-controls="dil-db-invoices" aria-selected="true">Invoice Data &amp; Excel Upload</button>
+  <button type="button" id="dil-db-invoices-button" role="tab" aria-controls="dil-db-invoices" aria-selected="true">Invoice Data</button>
   <button type="button" id="dil-db-payments-button" role="tab" aria-controls="dil-db-payments" aria-selected="false">Payment Reconciliation</button>
 </nav>
 <div id="dil-db-invoices" role="tabpanel" aria-labelledby="dil-db-invoices-button">
   <p class="dil-db-context">Invoice source intake and validation. Existing financial database writes remain blocked.</p>
-  <!-- DIL Excel Upload v1.3.0 -->
-<section class="card" id="excel-upload">
-  <h2>Excel Upload — Dashboard v1.3.0</h2>
-  <p>Financial file intake is not enabled in this AWS stage. Source workbooks remain protected.</p>
-  <form id="excel-upload-form">
-    <label for="excel-file">Browse Excel file</label>
-    <input id="excel-file" type="file" accept=".xlsx,.xls"
-           required disabled style="display:block;margin:16px 0;max-width:100%">
-    <button id="excel-upload-button" type="submit" disabled>Upload unavailable in staging</button>
-  </form>
-  <p id="excel-upload-result" role="status" aria-live="polite">
-    File uploads are disabled in the current protected stage.
-  </p>
-  <small>Financial imports require separate verification and approval. Payment reconciliation has not run.</small>
-</section>
-<script>
-(() => {
-  const form = document.getElementById("excel-upload-form");
-  const input = document.getElementById("excel-file");
-  const button = document.getElementById("excel-upload-button");
-  const status = document.getElementById("excel-upload-result");
-
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const file = input.files[0];
-
-    if (!file || !/\.(xlsx|xls)$/i.test(file.name)) {
-      status.textContent = "Choose an .xlsx or .xls Excel file.";
-      return;
-    }
-    if (!file.size || file.size > 8 * 1024 * 1024) {
-      status.textContent = "Choose a non-empty file up to 8 MiB.";
-      return;
-    }
-
-    button.disabled = true;
-    input.disabled = true;
-    status.textContent = "Uploading — please keep this page open.";
-
-    const body = new FormData();
-    body.append("file", file);
-
-    try {
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {"X-DIL-Upload": "1"},
-        body
-      });
-
-      let data;
-      try {
-        data = await response.json();
-      } catch {
-        throw new Error(
-          "Unexpected server response. Check upload status before retrying."
-        );
-      }
-
-      const receipt = data.receipt ? " Receipt: " + data.receipt : "";
-      if (!response.ok) {
-        throw new Error((data.error || "Upload failed.") + receipt);
-      }
-      if (!data.ok || !data.receipt) {
-        throw new Error(
-          "Upload receipt was not confirmed. Check status before retrying."
-        );
-      }
-
-      status.textContent =
-        "Workbook received." + receipt +
-        " Status: " + data.status +
-        ". Reconciliation has not run.";
-      form.reset();
-    } catch (error) {
-      status.textContent = error instanceof TypeError
-        ? "Connection interrupted. Upload outcome is unknown; check status before retrying."
-        : error.message;
-    } finally {
-      button.disabled = false;
-      input.disabled = false;
-    }
-  });
-})();
-</script>
   <section class="card">
 <h2>1. Preview an Excel workbook</h2>
 <p>Preview stores the source workbook and validation log; it does not add invoices.</p>
