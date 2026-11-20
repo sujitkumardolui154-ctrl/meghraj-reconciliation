@@ -73,7 +73,8 @@ class BulkReportTests(unittest.TestCase):
             headers=self.headers() if headers is None else headers,
             content_type="multipart/form-data")
     def assert_zip(self,resp):
-        self.assertEqual(resp.status_code,200,resp.get_data(as_text=True)[:1000])
+        self.assertEqual(resp.status_code,200,
+                         resp.json if resp.is_json else resp.status)
         self.assertEqual(resp.headers["X-Bulk-Report-Mode"],"SOURCE_ONLY_NOT_RECONCILED")
         self.assertIn("application/zip",resp.headers["Content-Type"])
         with zipfile.ZipFile(io.BytesIO(resp.data)) as archive:
