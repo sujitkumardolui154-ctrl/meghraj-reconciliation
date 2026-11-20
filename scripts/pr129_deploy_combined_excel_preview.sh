@@ -80,6 +80,25 @@ print("PREVIEW_FILES_READABLE=PASS")
 '
 echo '=== ONE SYNTHETIC SIX-SHEET TEST ==='
 sudo docker exec -w /app -e PYTHONPATH=/app "$C" python -m unittest -v test_bulk_report_combined_excel
+echo '=== VERIFY COMBINED EXCEL ROUTE AND UI ON RUNNING PREVIEW ==='
+sudo docker exec -i -w /app "$C" python - <<'PY'
+from pathlib import Path
+from app import app
+ui = Path("/app/index.html").read_text(encoding="utf-8")
+paths = {str(route): set(route.methods) for route in app.url_map.iter_rules()}
+route = "/api/bulk-report/generate-excel"
+if route not in paths or "POST" not in paths[route]:
+    raise SystemExit("COMBINED_EXCEL_BACKEND=FAIL")
+if ui.count('fetch("' + route + '"') != 1:
+    raise SystemExit("COMBINED_EXCEL_FRONTEND=FAIL")
+if "Generate Combined Excel Report" not in ui:
+    raise SystemExit("COMBINED_EXCEL_BUTTON=FAIL")
+if "SBI Reconciliation <span>Workspace</span>" not in ui:
+    raise SystemExit("MODERN_WORKSPACE_UI=FAIL")
+print("COMBINED_EXCEL_BACKEND=PASS")
+print("COMBINED_EXCEL_FRONTEND=PASS")
+print("MODERN_WORKSPACE_UI=PASS")
+PY
 HTTP='000'
 for i in 1 2 3 4 5 6 7 8; do
   HTTP="$(curl --noproxy '*' --resolve "$HOST:443:127.0.0.1" -sS --max-time 10 -o /dev/null -w '%{http_code}' "https://$HOST/login" 2>/dev/null || true)"
