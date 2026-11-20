@@ -1,0 +1,54 @@
+name: SBI Control Tower Custom Board 10min QA
+on:
+  push:
+    branches: [feature/sbi-control-tower-custom-board-10min-20261120]
+  pull_request:
+    branches: [fix/sbi-aws-control-tower-in-app-tab-20261119]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  board-and-private-tasks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install isolated login dependencies
+        run: python -m pip install -r staging/aws_login_v150/requirements.txt
+      - name: New combined board and private task migration tests
+        run: python -m unittest discover -s tests -p 'test_sbi_control_tower_board_v2.py' -v
+      - name: Existing private workspace regression
+        run: python -m unittest discover -s tests -p 'test_sbi_aws_workspace_ui.py' -v
+      - name: Original Control Tower regression
+        run: python -m unittest discover -s tests -p 'test_sbi_aws_control_tower.py' -v
+      - name: In-page Control Tower tab regression
+        run: python -m unittest discover -s tests -p 'test_sbi_aws_control_tower_tab.py' -v
+      - name: Firebase Login v1.5 regression
+        run: python -m unittest discover -s tests -p 'test_sbi_aws_login_v150.py' -v
+      - name: Build sealed, read-only Docker candidate
+        run: docker build -f staging/aws_login_v150/Dockerfile --build-arg SBI_SOURCE_SHA="$GITHUB_SHA" -t sbi-board-v2-qa:local .
+      - name: Disconnected HTTP authorization smoke
+        run: |
+          docker run -d --name sbi-board-v2-qa --network none --read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges sbi-board-v2-qa:local
+          for i in $(seq 1 20); do
+            if docker exec sbi-board-v2-qa python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8080/healthz',timeout=2)" >/dev/null 2>&1;then break;fi
+            sleep 1
+          done
+          docker exec -i sbi-board-v2-qa python - <<'PY'
+          from urllib.request import urlopen
+          from urllib.error import HTTPError
+          def code(path):
+              try:return urlopen('http://127.0.0.1:8080'+path,timeout=5).status
+              except HTTPError as e:return e.code
+          assert code('/healthz')==200
+          assert code('/login')==200
+          for p in ('/control-tower','/control-tower?embedded=1','/control-tower/api/workspace',
+                    '/control-tower/api/pipeline/status','/api/reports'):
+              assert code(p)==401,(p,code(p))
+          print('BOARD_V2_DISCONNECTED_HTTP=PASS')
+          PY
+      - name: Clean up sealed Docker candidate
+        if: always()
+        run: docker rm -f sbi-board-v2-qa 2>/dev/null || true
