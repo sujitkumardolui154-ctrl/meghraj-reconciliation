@@ -59,16 +59,21 @@ class CombinedExcelTest(unittest.TestCase):
             "Validation Review": 0,
         }
         self.assertEqual(report.sheetnames, list(expected))
+        # openpyxl's write-only serializer does not always emit worksheet
+        # dimension metadata; read-only .max_row/.max_column may be None.
+        # Validate actual streamed contents rather than guessed dimensions.
         for name, count in expected.items():
-            self.assertEqual(report[name].max_row, count + 1, name)
+            values = list(report[name].values)
+            self.assertEqual(len(values), count + 1, name)
+            self.assertEqual(len(values[0]), 3 if name == "Validation Review" else 53, name)
         first = report["All Invoices"]
         self.assertEqual(first.cell(2, 13).value, "00000001")
         self.assertEqual(first.cell(2, 13).data_type, "s")
         self.assertEqual(first.cell(2, 7).value, "00001")
         self.assertEqual(first.cell(2, 30).data_type, "s")
         self.assertTrue(first.cell(2, 30).value.startswith("=HYPERLINK"))
-        self.assertEqual(first.max_column, 53)
-        self.assertEqual(report["Validation Review"].max_column, 3)
+        self.assertEqual(len(next(iter(first.values))), 53)
+        self.assertEqual(len(next(iter(report["Validation Review"].values))), 3)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
