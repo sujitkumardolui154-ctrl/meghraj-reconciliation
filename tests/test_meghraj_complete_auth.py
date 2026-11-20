@@ -68,10 +68,11 @@ class MeghrajCompleteAuthTests(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn(
-            "Meghraj _ SBI Reconciliation Control Center",
-            html
-        )
+        # The original title was replaced by the approved professional
+        # login UI; retain explicit Meghraj/SBI identity, not stale wording.
+        self.assertIn("Meghraj Express", html)
+        self.assertIn("SBI RECONCILIATION CONTROL CENTER", html)
+        self.assertIn("SBI Reconciliation Workspace", html)
 
     def test_02_login_structure(self):
         html = (DASH / "login.html").read_text(
