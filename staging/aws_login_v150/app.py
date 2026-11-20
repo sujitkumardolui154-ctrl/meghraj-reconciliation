@@ -58,6 +58,9 @@ app.register_blueprint(payment_evidence)
 # Strict nonfinancial receipt-to-engine readiness gate; no allocation runner.
 from reconciliation_readiness import reconciliation_readiness
 app.register_blueprint(reconciliation_readiness)
+# Certified, immutable, independent source-only report catalog.
+from readonly_reports_gateway import readonly_reports
+app.register_blueprint(readonly_reports)
 
 
 @app.after_request

@@ -17,7 +17,7 @@ import re
 import stat
 
 KINDS = frozenset((
-    "unpaid", "ok", "balance-review", "suspense",
+    "unpaid", "ok", "balance-review", "error-value", "suspense",
     "credit-note", "reconciliation-changes",
 ))
 CORE = frozenset(("unpaid", "ok", "balance-review"))
@@ -123,7 +123,7 @@ def _validated_csv(root, kind, entry, *, include_bytes):
         raise NotCertified("SNAPSHOT_ROW_COUNT_INVALID")
     if type(columns) is not int or not (1 <= columns <= 100):
         raise NotCertified("SNAPSHOT_COLUMN_COUNT_INVALID")
-    if kind in CORE | {"suspense"} and columns != 53:
+    if kind in CORE | {"suspense", "error-value"} and columns != 53:
         raise NotCertified("SNAPSHOT_53_COLUMN_PARITY_REQUIRED")
     if kind == "credit-note" and columns != 18:
         raise NotCertified("SNAPSHOT_18_COLUMN_PARITY_REQUIRED")
@@ -138,7 +138,7 @@ def _validated_csv(root, kind, entry, *, include_bytes):
     # Match a separately operator-pinned approved source-header digest.
     header_pin_env = (
         "SBI_AWS_APPROVED_53_HEADERS_SHA256"
-        if kind in CORE | {"suspense"} else
+        if kind in CORE | {"suspense", "error-value"} else
         "SBI_AWS_APPROVED_18_HEADERS_SHA256"
         if kind == "credit-note" else
         "SBI_AWS_APPROVED_" + kind.replace("-", "_").upper() + "_HEADERS_SHA256"
