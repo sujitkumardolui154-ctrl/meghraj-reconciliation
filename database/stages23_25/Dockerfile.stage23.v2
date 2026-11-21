@@ -1,0 +1,11 @@
+ARG STAGE17_IMAGE
+FROM ${STAGE17_IMAGE}
+USER root
+WORKDIR /app
+COPY stage23_auth_bridge_v2.py /app/stage23_auth_bridge.py
+COPY patch_stage23_candidate.py test_stage23_auth_bridge_v2.py /app/
+RUN chmod 0644 /app/stage23_auth_bridge.py /app/patch_stage23_candidate.py /app/test_stage23_auth_bridge_v2.py \
+  && python3 -B patch_stage23_candidate.py \
+  && python3 -B -m py_compile stage23_auth_bridge.py test_stage23_auth_bridge_v2.py \
+  && echo 'STAGE23_AUTH_V2_CANDIDATE_BUILD=PASS'
+# No service is published or deployed; the existing PR129 container is unchanged.
