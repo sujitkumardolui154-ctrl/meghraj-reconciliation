@@ -21,7 +21,7 @@ export SBI_REVIEWED_SOURCE_SHA
 if docker info >/dev/null 2>&1; then
   DC=(docker)
 elif sudo -n docker info >/dev/null 2>&1; then
-  # Preserve the pinned SHA even with sudo's default env_reset.
+  # Docker Compose must receive the pinned SHA even under sudo env_reset.
   DC=(sudo env "SBI_REVIEWED_SOURCE_SHA=$SBI_REVIEWED_SOURCE_SHA" docker)
 else
   echo "STAGING_ERROR=DOCKER_ACCESS_REQUIRED" >&2; exit 2
@@ -52,6 +52,16 @@ assert j["proposal_count"]==1
 assert j["actual_financial_status"]=="NOT_ASSIGNED"
 assert j["financial_writes"] is False
 print("SBI_SYNTHETIC_DEMO=PASS")'
+curl --fail --silent --show-error "$BASE/api/stage3/synthetic-bridge" | python3 -c '
+import json,sys
+j=json.load(sys.stdin)
+assert j["stage3_probe"]=="PASS"
+assert j["mock_receipt_registered"] is True
+assert j["mock_review_completed"] is True
+assert j["mock_candidate_ledger_edges"]==1
+assert j["mock_ledger_persistent"] is False
+assert j["financial_writes"] is False
+print("SBI_STAGE3_MOCK_BRIDGE=PASS")'
 code="$(curl --silent --output /dev/null --write-out '%{http_code}' -X POST "$BASE/api/payment-reconciliation/apply")"
 if [ "$code" != "403" ]; then
   echo "STAGING_ERROR=FINANCIAL_APPLY_NOT_LOCKED" >&2
