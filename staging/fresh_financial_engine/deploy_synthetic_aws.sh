@@ -21,7 +21,8 @@ export SBI_REVIEWED_SOURCE_SHA
 if docker info >/dev/null 2>&1; then
   DC=(docker)
 elif sudo -n docker info >/dev/null 2>&1; then
-  DC=(sudo docker)
+  # Preserve the pinned SHA even with sudo's default env_reset.
+  DC=(sudo env "SBI_REVIEWED_SOURCE_SHA=$SBI_REVIEWED_SOURCE_SHA" docker)
 else
   echo "STAGING_ERROR=DOCKER_ACCESS_REQUIRED" >&2; exit 2
 fi
