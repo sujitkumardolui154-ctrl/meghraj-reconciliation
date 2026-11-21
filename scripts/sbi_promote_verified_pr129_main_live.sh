@@ -75,13 +75,16 @@ fi
 if sudo docker image inspect "$IMAGE" >/dev/null 2>&1; then
   echo 'STOP_RELEASE_IMAGE_TAG_ALREADY_EXISTS'; exit 1
 fi
+# Volumes/binds are not included by Docker commit. Mirror only approved
+# destinations read-only so the source credentials are available without writes.
 mount_count="$(sudo docker inspect "$PREVIEW" --format '{{len .Mounts}}')"
 mount_args=()
 if [ "$mount_count" -gt 0 ]; then
   while IFS='|' read -r kind dest mode; do
     [ -n "$dest" ] || continue
-    case "$kind" in bind|volume) ;; *)
-      echo "STOP_UNSUPPORTED_PREVIEW_MOUNT_TYPE=$kind"; exit 1 ;;
+    case "$kind" in
+      bind|volume) ;;
+      *) echo "STOP_UNSUPPORTED_PREVIEW_MOUNT_TYPE=$kind"; exit 1 ;;
     esac
     case "$dest" in
       /app|/app/*|/tmp|/tmp/*|/var/run|/var/run/*|/run/docker.sock|/proc|/proc/*|/sys|/sys/*|/dev|/dev/*|/var/lib/postgresql|/var/lib/postgresql/*)
@@ -146,7 +149,16 @@ candidate_mount_count="$(sudo docker inspect "$CANDIDATE" --format '{{len .Mount
 if [ "$candidate_mount_count" != "$mount_count" ]; then
   echo 'STOP_CANDIDATE_MOUNT_COUNT_MISMATCH'; exit 1
 fi
-if sudo docker inspect "$CANDIDATE" --format '{{range .Mounts}}{{printf "%s|%t\n" .Destination .RW}}{{end}}' | grep -q '|true
+if sudo docker inspect "$CANDIDATE" --format '{{range .Mounts}}{{printf "%s|%t\n" .Destination .RW}}{{end}}' | grep -q '|true$'; then
+  echo 'STOP_CANDIDATE_HAS_WRITABLE_MOUNT'; exit 1
+fi
+preview_mount_targets="$(sudo docker inspect "$PREVIEW" --format '{{range .Mounts}}{{println .Destination}}{{end}}' | sort)"
+candidate_mount_targets="$(sudo docker inspect "$CANDIDATE" --format '{{range .Mounts}}{{println .Destination}}{{end}}' | sort)"
+if [ "$preview_mount_targets" != "$candidate_mount_targets" ]; then
+  echo 'STOP_CANDIDATE_MOUNT_DESTINATION_MISMATCH'; exit 1
+fi
+echo 'CANDIDATE_MOUNT_DESTINATIONS_MATCH=PASS'
+echo 'CANDIDATE_MOUNTS_READ_ONLY=PASS'
 
 # Compare the candidate's route/format contract before public traffic cutover.
 sudo docker exec -i -w /app "$CANDIDATE" python -B - <<'PY'
@@ -176,148 +188,6 @@ for attempt in range(12):
     time.sleep(2)
 else:
     raise RuntimeError("Candidate login did not become ready")
-resp=requests.get("http://127.0.0.1:8080/api/bulk-report/status",
-                  timeout=15,allow_redirects=False)
-assert resp.status_code in (401,403),resp.status_code
-print("PROMOTION_CANDIDATE_FIRESTORE_METADATA=PASS")
-print("PROMOTION_CANDIDATE_LOGIN_HTTP=200")
-print("PROMOTION_CANDIDATE_ANON_REPORT_DENIED=PASS")
-print("INVOICE_ROWS_QUERIED=NONE")
-PY
-
-# Parse and edit ONLY the main Caddy site. Fail closed if the observed
-# Caddy matcher layout has changed. Keep @legacy's old sbi-preview upstream.
-sudo cp "$BACKUP/Caddyfile" "$WORK/proposed.Caddyfile"
-sudo chown "$(id -u):$(id -g)" "$WORK/proposed.Caddyfile"
-python3 - "$WORK/proposed.Caddyfile" "$CANDIDATE" "$HOST" <<'PY'
-from pathlib import Path
-import sys,re
-p=Path(sys.argv[1]); target=sys.argv[2]; host=sys.argv[3]
-original=p.read_text()
-lines=original.splitlines(keepends=True)
-headers=[i for i,line in enumerate(lines) if re.match(
-    r'^[ \t]*'+re.escape(host)+r'[ \t]*\{[ \t]*(?:#.*)?$',line.strip('\n'))]
-if len(headers)!=1:
-    raise SystemExit('STOP_MAIN_VHOST_HEADER_NOT_UNIQUE')
-start=headers[0]
-depth=0
-end=None
-for i in range(start,len(lines)):
-    stripped=lines[i].split('#',1)[0]
-    depth+=stripped.count('{')-stripped.count('}')
-    if depth==0:
-        end=i+1
-        break
-if end is None or end<=start+1:
-    raise SystemExit('STOP_MAIN_VHOST_BOUNDARY_UNREADABLE')
-site=''.join(lines[start:end])
-# Require the exact known mixed legacy/default/login architecture:
-if not re.search(r'handle[ \t]+@legacy[ \t]*\{',site):
-    raise SystemExit('STOP_NO_LEGACY_ROUTE_TO_PRESERVE')
-if not re.search(r'handle[ \t]+@login[ \t]*\{',site):
-    raise SystemExit('STOP_NO_LOGIN_ROUTE_TO_FIX')
-if re.search(r'handle_path\s+/api/bulk-report',site):
-    raise SystemExit('STOP_REPORT_PATH_STRIPPING_UNSUPPORTED')
-login_pattern=(r'(?m)(^[ \t]*handle[ \t]+@login[ \t]*\{[ \t]*\n'
-               r'[ \t]*reverse_proxy[ \t]+)sbi-source-reports-v1:8080')
-site,login_count=re.subn(login_pattern,lambda m:m.group(1)+target+":8080",site)
-default_pattern=(r'(?m)(^[ \t]*handle[ \t]*\{[ \t]*\n'
-                 r'[ \t]*reverse_proxy[ \t]+)sbi-preview:8080')
-site,default_count=re.subn(default_pattern,lambda m:m.group(1)+target+":8080",site)
-if login_count!=1 or default_count!=1:
-    raise SystemExit('STOP_MAIN_LOGIN_OR_DEFAULT_ROUTE_UNEXPECTED')
-# Named @legacy's old application remains byte-identical.
-if not re.search(r'handle[ \t]+@legacy[ \t]*\{[ \t]*\n[ \t]*reverse_proxy[ \t]+sbi-preview:8080',site):
-    raise SystemExit('STOP_LEGACY_APPLICATION_ROUTE_CHANGED')
-# Explicitly prioritize reporting API above any broad @legacy matcher.
-rt=re.search(r'(?m)^([ \t]*)route[ \t]*\{[ \t]*$',site)
-if rt is None or len(re.findall(r'(?m)^[ \t]*route[ \t]*\{[ \t]*$',site))!=1:
-    raise SystemExit('STOP_ROUTE_CONTAINER_MISMATCH')
-indent=rt.group(1)+'    '
-insert=('\n'+indent+'handle /api/bulk-report/* {\n'
-        +indent+'    reverse_proxy '+target+':8080\n'
-        +indent+'}\n')
-site=site[:rt.end()]+insert+site[rt.end():]
-updated=''.join(lines[:start])+site+''.join(lines[end:])
-if original.count('sbi-bulk-report-pr129-https-preview:8080') != updated.count('sbi-bulk-report-pr129-https-preview:8080'):
-    raise SystemExit('STOP_PR129_PREVIEW_ROUTE_MODIFIED')
-p.write_text(updated)
-print("MAIN_LOGIN_PROXY=REPAIRED")
-print("MAIN_DEFAULT_DASHBOARD_PROXY=PROMOTED")
-print("MAIN_EXPLICIT_REPORT_API_PROXY=ADDED")
-print("MAIN_LEGACY_API_UPSTREAM=PRESERVED")
-print("ALL_OTHER_VHOSTS=UNCHANGED")
-PY
-sudo docker cp "$WORK/proposed.Caddyfile" "$CADDY:/tmp/sbi-main-report-promotion.Caddyfile"
-sudo docker exec "$CADDY" caddy validate \
-  --config /tmp/sbi-main-report-promotion.Caddyfile >/dev/null
-echo 'CADDY_PROMOTION_CONFIG_VALIDATION=PASS'
-
-# Owner requested main AWS live deployment. Make a reversible Caddy-only swap.
-CUTOVER=1
-sudo cp "$WORK/proposed.Caddyfile" "$CADDY_SOURCE"
-sudo docker exec "$CADDY" caddy reload --config /etc/caddy/Caddyfile >/dev/null
-code=000
-for i in 1 2 3 4 5 6; do
-  code="$(curl --noproxy '*' --resolve "$HOST:443:127.0.0.1" \
-    -sS --max-time 10 -o /dev/null -w '%{http_code}' \
-    "https://$HOST/login" 2>/dev/null || true)"
-  [ "$code" = 200 ] && break
-  sleep 2
-done
-[ "$code" = 200 ] || { echo "STOP_MAIN_LOGIN_HTTP=$code"; exit 1; }
-for route in /auth/me /api/bulk-report/status /api/bulk-report/select-invoices-excel; do
-  status="$(curl --noproxy '*' --resolve "$HOST:443:127.0.0.1" \
-    -sS --max-time 10 -o /dev/null -w '%{http_code}' \
-    "https://$HOST$route" 2>/dev/null || true)"
-  case "$status" in 401|403) echo "MAIN_ANONYMOUS_DENIED=$route HTTP=$status" ;;
-  *) echo "STOP_MAIN_ANONYMOUS_ACCESS=$route HTTP=$status"; exit 1 ;;
-  esac
-done
-sudo cp "$CADDY_SOURCE" "$BACKUP/Caddyfile.deployed"
-sudo chmod 0600 "$BACKUP/Caddyfile.deployed"
-DONE=1
-echo 'SBI_MAIN_LIVE_REPORT_PROMOTION=PASS'
-echo "LIVE_MAIN_REPORT_CONTAINER=$CANDIDATE"
-echo "LIVE_MAIN_REPORT_IMAGE=$IMAGE"
-echo "ROLLBACK_DIRECTORY=$BACKUP"
-echo 'ORIGINAL_MAIN_CONTAINER=UNCHANGED'
-echo 'PR129_PREVIEW_CONTAINER=UNCHANGED'
-echo 'PR129_PREVIEW_ROUTE=UNCHANGED'
-echo 'POSTGRESQL_DEPLOYMENT=NOT_PERFORMED'
-echo 'FINANCIAL_ENGINE_DEPLOYMENT=NOT_PERFORMED'
-echo 'FINANCIAL_DATABASE_WRITES=NONE'
-echo 'OWNER_LIVE_AUTHENTICATED_DOWNLOAD=NEXT_VERIFICATION'
-; then
-  echo 'STOP_CANDIDATE_HAS_WRITABLE_MOUNT'; exit 1
-fi
-preview_mount_targets="$(sudo docker inspect "$PREVIEW" --format '{{range .Mounts}}{{println .Destination}}{{end}}' | sort)"
-candidate_mount_targets="$(sudo docker inspect "$CANDIDATE" --format '{{range .Mounts}}{{println .Destination}}{{end}}' | sort)"
-if [ "$preview_mount_targets" != "$candidate_mount_targets" ]; then
-  echo 'STOP_CANDIDATE_MOUNT_DESTINATION_MISMATCH'; exit 1
-fi
-echo 'CANDIDATE_MOUNT_DESTINATIONS_MATCH=PASS'
-echo 'CANDIDATE_MOUNTS_READ_ONLY=PASS'
-
-# Compare the candidate's route/format contract before public traffic cutover.
-sudo docker exec -i -w /app "$CANDIDATE" python -B - <<'PY'
-import requests
-from app import app
-from pathlib import Path
-from aws_verified_invoice_lookup import _metadata, PROJECT
-from google.auth.transport.requests import AuthorizedSession
-import google.auth
-routes={str(x):set(x.methods) for x in app.url_map.iter_rules()}
-assert "POST" in routes.get("/api/bulk-report/select-invoices-excel",set())
-assert "POST" in routes.get("/api/bulk-report/generate-excel",set())
-assert Path("/app/pr129_aws_invoice_lookup.enabled").is_file()
-cred,proj=google.auth.default(scopes=["https://www.googleapis.com/auth/datastore"])
-assert proj in (None,PROJECT)
-with AuthorizedSession(cred) as session:
-    meta=_metadata(session)
-assert meta.get("rows")==14374
-resp=requests.get("http://127.0.0.1:8080/login",timeout=15,allow_redirects=False)
-assert resp.status_code==200,resp.status_code
 resp=requests.get("http://127.0.0.1:8080/api/bulk-report/status",
                   timeout=15,allow_redirects=False)
 assert resp.status_code in (401,403),resp.status_code
