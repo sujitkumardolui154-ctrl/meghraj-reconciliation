@@ -17,7 +17,7 @@ WEB_ENV="$SECRET_DIR/staging_web_auth.env"
 PGPASS="$SECRET_DIR/pgpass"
 WORK=/home/ubuntu/sbi-stage-origin-fix
 BASE=https://raw.githubusercontent.com/sujitkumardolui154-ctrl/meghraj-reconciliation
-PIN=PIN_TO_REPLACE
+PIN=826283f3aa923e48f9e3805cf844b960a99cad5c
 NEW_CREATED=NO
 cleanup() {
   rc=$?
