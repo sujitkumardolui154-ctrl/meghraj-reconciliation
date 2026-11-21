@@ -77,8 +77,10 @@ def patch(original: str, target: str, host: str) -> str:
         stop("INVALID_CANDIDATE_NAME")
     if not re.fullmatch(r"[a-z0-9.-]+", host):
         stop("INVALID_MAIN_HOST")
-    if host not in original:
-        stop("MAIN_PUBLIC_HOST_NOT_IN_CADDY")
+    # A Caddy site may be configured by a catch-all address (:443),
+    # wildcard, or an imported site block. Its literal Host need not occur
+    # in the Caddyfile. The uniquely matching @legacy / @login / default
+    # trio below is the actual fail-closed target identification.
     if "sbi-bulk-report-pr129-https-preview:8080" not in original:
         stop("WORKING_PR129_PREVIEW_ROUTE_MISSING")
 
@@ -152,7 +154,12 @@ def selftest() -> None:
         "}\n"
     )
     host = "sbi-preview.13-232-241-221.sslip.io"
-    for header in (host + " {\n", host + ", example.internal {\n"):
+    for header in (
+        host + " {\n",
+        host + ", example.internal {\n",
+        ":443 {\n",  # catch-all main Caddy vhost with no hostname text
+        "*.sslip.io {\n",  # wildcard hostname
+    ):
         sample = header + main_route + "}\n" + other
         result = patch(sample, "sbi-reports-main-test123", host)
         assert "handle /api/bulk-report/* {" in result
