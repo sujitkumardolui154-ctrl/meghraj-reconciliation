@@ -34,11 +34,25 @@ if not authorized:
 print("MASTER_REPORT_VIEWER_PERMISSION=VERIFIED")
 
 try:
-    import readonly_reports_gateway as reports
-    reader = getattr(reports, "_read", None)
-    kinds = getattr(reports, "KINDS", None)
-    if not callable(reader) or not isinstance(kinds, (tuple, list, dict, set, frozenset)):
-        raise RuntimeError("EXPECTED_CERTIFIED_REPORT_INTERFACE_NOT_FOUND")
+    from app import app
+    # Resolve the reader from the LIVE registered handler to avoid relying on
+    # a guessed private helper name. Historical source uses _ready(kind).
+    route = next((r for r in app.url_map.iter_rules()
+                  if str(r) == "/api/reporting/v2/<kind>.csv"), None)
+    if route is None:
+        raise RuntimeError("CERTIFIED_REPORT_ROUTE_NOT_REGISTERED")
+    handler = app.view_functions[route.endpoint]
+    scope = handler.__globals__
+    reader = scope.get("_ready")
+    kinds = scope.get("KINDS")
+    if not callable(reader):
+        print("READER_READY_PRESENT=" + str(callable(scope.get("_ready"))).upper())
+        print("READER_READ_PRESENT=" + str(callable(scope.get("_read"))).upper())
+        raise RuntimeError("CERTIFIED_SOURCE_READER_NOT_IDENTIFIED")
+    if not isinstance(kinds, (tuple, list, dict, set, frozenset)):
+        raise RuntimeError("CERTIFIED_KINDS_NOT_IDENTIFIED")
+    print("CERTIFIED_REPORT_INTERFACE=READY")
+    print("REPORT_CATEGORIES=" + ",".join(sorted(str(k) for k in kinds)))
 except Exception as exc:
     print("CERTIFIED_REPORT_INTERFACE=UNAVAILABLE")
     print("INTERFACE_ERROR_TYPE=" + type(exc).__name__)
