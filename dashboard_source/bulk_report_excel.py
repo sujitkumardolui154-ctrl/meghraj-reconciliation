@@ -52,6 +52,13 @@ def combined_excel_from_report_zip(payload: bytes) -> bytes:
             raise ValueError("Bulk Report financial safety manifest mismatch")
         entries = {item["name"]: item for item in manifest["files"]}
         selected_source = manifest.get("schema") == "sbi-database-selected-bulk-report/v1"
+        if selected_source:
+            wb.properties.subject = "Verified saved invoices selected by uploaded invoice numbers"
+            wb.properties.description = (
+                "VERIFIED READ-ONLY SAVED INVOICE SOURCE — NOT RECONCILED. "
+                "Uploaded workbook supplies only invoice numbers. "
+                "No financial records updated; OK does not mean fully paid."
+            )
         if selected_source and manifest.get("source_kind") != "VERIFIED_READ_ONLY_REPORT_SOURCE":
             raise ValueError("Selected report source was not verified")
         required_sheets = REPORT_SHEETS + ((LOOKUP_REVIEW,) if selected_source else ())
