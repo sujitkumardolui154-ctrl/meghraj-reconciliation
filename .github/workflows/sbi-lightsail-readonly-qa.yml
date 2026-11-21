@@ -1,0 +1,62 @@
+name: SBI Lightsail read-only QA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sbi-lightsail-readonly-qa
+  cancel-in-progress: false
+
+jobs:
+  verify-central-database:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Establish restricted QA SSH identity
+        shell: bash
+        env:
+          QA_HOST: ${{ secrets.SBI_LIGHTSAIL_HOST }}
+          QA_PRIVATE_KEY: ${{ secrets.SBI_LIGHTSAIL_QA_SSH_KEY }}
+          QA_KNOWN_HOSTS: ${{ secrets.SBI_LIGHTSAIL_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          test -n "$QA_HOST"
+          test -n "$QA_PRIVATE_KEY"
+          test -n "$QA_KNOWN_HOSTS"
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$QA_PRIVATE_KEY" > "$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$QA_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+          ssh-keygen -lf "$HOME/.ssh/id_ed25519" >/dev/null
+          ssh-keygen -lf "$HOME/.ssh/known_hosts" >/dev/null
+
+      - name: Execute fixed read-only Lightsail QA
+        shell: bash
+        env:
+          QA_HOST: ${{ secrets.SBI_LIGHTSAIL_HOST }}
+        run: |
+          set -euo pipefail
+          : > sbi-lightsail-qa.log
+          timeout 180 ssh -T \
+            -o BatchMode=yes \
+            -o ConnectTimeout=15 \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ClearAllForwardings=yes \
+            -i "$HOME/.ssh/id_ed25519" \
+            "sbi-qa-agent@$QA_HOST" check \
+            | tee sbi-lightsail-qa.log
+
+      - name: Upload QA log (no database rows or secrets)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbi-lightsail-readonly-qa
+          path: sbi-lightsail-qa.log
+          if-no-files-found: ignore
+          retention-days: 7
