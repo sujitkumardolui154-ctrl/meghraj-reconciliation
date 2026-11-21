@@ -1,0 +1,65 @@
+name: SBI Fresh v2.51 Synthetic Engine QA
+on:
+  pull_request:
+    paths:
+      - "staging/fresh_financial_engine/**"
+      - ".github/workflows/sbi-fresh-v251-engine.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-finance-core:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify synthetic engine code syntax
+        run: python -m py_compile staging/fresh_financial_engine/sbi_engine/engine.py staging/fresh_financial_engine/demo.py staging/fresh_financial_engine/staging_server.py
+      - name: Fresh v2.51 rules synthetic regression
+        run: |
+          PYTHONPATH=staging/fresh_financial_engine python -m unittest discover -s staging/fresh_financial_engine/tests -p 'test_*.py' -v
+      - name: Isolated AWS staging Compose and deploy-script safety contract
+        run: |
+          bash -n staging/fresh_financial_engine/deploy_synthetic_aws.sh
+          export SBI_REVIEWED_SOURCE_SHA="$(git rev-parse HEAD)"
+          docker compose -f staging/fresh_financial_engine/compose.synthetic.yaml config --format json > /tmp/sbi-synthetic-compose.json
+          python - <<'PY'
+          import json
+          x=json.load(open('/tmp/sbi-synthetic-compose.json'))
+          s=x['services']['engine-synthetic']
+          assert s['read_only'] is True
+          assert s['user'] == '10001:10001'
+          assert 'ALL' in s['cap_drop']
+          assert not s.get('volumes')
+          assert len(s['ports']) == 1
+          p=s['ports'][0]
+          assert p['host_ip'] == '127.0.0.1'
+          assert str(p['published']) == '18087'
+          print('AWS_SYNTHETIC_ISOLATED_COMPOSE=PASS')
+          PY
+      - name: End-to-end fabricated proposal demo
+        run: |
+          cd staging/fresh_financial_engine
+          python demo.py > /tmp/sbi-synthetic-demo.json
+          python - <<'PY'
+          import json
+          x=json.load(open('/tmp/sbi-synthetic-demo.json'))
+          assert x['proposal_count'] == 3
+          assert x['financial_writes'] is False
+          assert x['production_approved'] is False
+          assert x['historical_records_accessed'] is False
+          assert x['actual_financial_status']=='NOT_ASSIGNED'
+          print('FRESH_ENGINE_DEMO=PASS')
+          PY
+      - name: Verify production finance remains locked
+        run: |
+          echo "FRESH_V251_SYNTHETIC_QA=PASS"
+          echo "HISTORICAL_DATA=NOT_ACCESSED"
+          echo "PERSISTENT_LEDGER=NOT_CONNECTED"
+          echo "AWS_DEPLOYMENT=NOT_PERFORMED"
+          echo "FINANCIAL_APPLY=LOCKED"

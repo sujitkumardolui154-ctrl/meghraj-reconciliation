@@ -1,0 +1,13 @@
+# NEW engine 21 11 2026 — isolated SYNTHETIC-ONLY AWS stage.
+# Never add bank XLSX, payments, ledger, credentials or source archive mounts.
+FROM python:3.12-slim-bookworm
+WORKDIR /app
+COPY staging/fresh_financial_engine/sbi_engine/ /app/sbi_engine/
+COPY staging/fresh_financial_engine/staging_server.py /app/staging_server.py
+ARG SBI_SOURCE_SHA=UNVERIFIED
+LABEL org.opencontainers.image.revision="${SBI_SOURCE_SHA}"
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 SBI_SYNTHETIC_STAGE_PORT=8080
+RUN chmod -R a+rX /app && chmod a-w /app/staging_server.py /app/sbi_engine/*.py
+USER 10001:10001
+EXPOSE 8080
+CMD ["python", "-u", "staging_server.py"]
