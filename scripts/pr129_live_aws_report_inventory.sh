@@ -76,6 +76,44 @@ while IFS= read -r name; do
   fi
 done <<< "$names"
 
+echo '=== KNOWN MAIN SBI LIVE UPSTREAM — REGISTERED FLASK ROUTES ==='
+PUBLIC=sbi-source-reports-v1
+if sudo docker inspect "$PUBLIC" >/dev/null 2>&1; then
+  if [ "$(sudo docker inspect "$PUBLIC" --format '{{.State.Running}}')" = true ]; then
+    sudo docker exec -i -w /app "$PUBLIC" python -B - <<'PY' || echo 'LIVE_APP_ROUTE_INSPECTION=UNAVAILABLE'
+from pathlib import Path
+from importlib.util import find_spec
+from app import app
+
+routes={str(r):set(r.methods) for r in app.url_map.iter_rules()}
+for label, path in (
+    ("LIVE_SELECTED_INVOICE_POST","/api/bulk-report/select-invoices-excel"),
+    ("LIVE_COMBINED_EXCEL_POST","/api/bulk-report/generate-excel"),
+    ("LIVE_BULK_STATUS_GET","/api/bulk-report/status"),
+):
+    allowed="GET" if label.endswith("_GET") else "POST"
+    print(label+"="+("REGISTERED" if allowed in routes.get(path,set()) else "MISSING"))
+
+p=Path("/app/index.html")
+if p.is_file():
+    html=p.read_text(encoding="utf-8", errors="replace")
+    print("LIVE_SELECTED_INVOICE_UI="+("PRESENT" if 'id="bulk-selected-form"' in html else "MISSING"))
+    print("LIVE_BULK_REPORT_UI="+("PRESENT" if 'id="bulk-report-form"' in html else "MISSING"))
+
+excel=Path("/app/bulk_report_excel.py")
+print("LIVE_EXCEL_EXPORTER="+("PRESENT" if excel.is_file() else "MISSING"))
+if excel.is_file():
+    txt=excel.read_text(encoding="utf-8",errors="replace")
+    print("LIVE_EXCEL_DATE_FORMAT_FIX="+("PRESENT" if "DATE_COLUMN_FORMATS" in txt else "MISSING"))
+    print("LIVE_EXCEL_MONEY_FORMAT_FIX="+("PRESENT" if "AMOUNT_COLUMN_INDEXES" in txt else "MISSING"))
+PY
+  else
+    echo 'LIVE_PUBLIC_UPSTREAM=NOT_RUNNING'
+  fi
+else
+  echo 'LIVE_PUBLIC_UPSTREAM=NOT_FOUND'
+fi
+
 echo "NONPREVIEW_NONSTAGING_CONTAINERS_CHECKED=$found_main"
 echo "NONPREVIEW_CONTAINERS_WITH_BULK_REPORT_SOURCE=$found_live"
 echo 'AUTHENTICATED_LIVE_BROWSER_WORKFLOW=NOT_TESTED'
