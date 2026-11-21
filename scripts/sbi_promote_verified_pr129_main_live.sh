@@ -131,6 +131,20 @@ test -f "$CADDY_SOURCE" || { echo 'STOP_CADDY_BIND_CONFIG_MISSING'; exit 1; }
 sudo cp "$CADDY_SOURCE" "$BACKUP/Caddyfile"
 sudo chmod 0600 "$BACKUP/Caddyfile"
 
+# Verify exact main-route targeting and Caddy syntax BEFORE making a release
+# image. This is a dry run on a temporary copy, not a gateway update.
+echo '=== PUBLIC MAIN ROUTE PRE-CUTOVER PREFLIGHT ==='
+sudo cp "$BACKUP/Caddyfile" "$WORK/preflight.Caddyfile"
+sudo chown "$(id -u):$(id -g)" "$WORK/preflight.Caddyfile"
+python3 scripts/sbi_main_caddy_route_patch.py --self-test
+python3 scripts/sbi_main_caddy_route_patch.py \
+  "$WORK/preflight.Caddyfile" "$CANDIDATE" "$HOST"
+sudo docker cp "$WORK/preflight.Caddyfile" "$CADDY:/tmp/sbi-main-route-preflight.Caddyfile"
+sudo docker exec "$CADDY" caddy validate \
+  --config /tmp/sbi-main-route-preflight.Caddyfile >/dev/null
+echo 'CADDY_PRE_CUTOVER_DRY_RUN=PASS'
+
+
 # Snapshot the WHOLE tested preview including the hotfixed exporter, login,
 # dashboard, and source modules; do not derive from /app/app.py legacy stub.
 # Image is local to this private host; do not push/share it.
@@ -197,15 +211,15 @@ print("PROMOTION_CANDIDATE_ANON_REPORT_DENIED=PASS")
 print("INVOICE_ROWS_QUERIED=NONE")
 PY
 
-# Parse and edit ONLY the main Caddy site. Fail closed if the observed
-# Caddy matcher layout has changed. Keep @legacy's old sbi-preview upstream.
-sudo cp "$BACKUP/Caddyfile" "$WORK/proposed.Caddyfile"
-sudo chown "$(id -u):$(id -g)" "$WORK/proposed.Caddyfile"
-echo '=== MAIN CADDY ROUTE SELECTION QA ==='
-python3 scripts/sbi_main_caddy_route_patch.py --self-test
-python3 scripts/sbi_main_caddy_route_patch.py \
-  "$WORK/proposed.Caddyfile" "$CANDIDATE" "$HOST"
-echo 'MAIN_CADDY_ROUTE_SELECTOR=PASS'
+# Adopt the already validated proposed gateway configuration, not a new
+# interpretation. Reject a concurrent change to the active Caddyfile.
+before_hash="$(sudo sha256sum "$BACKUP/Caddyfile" | awk '{print $1}')"
+current_hash="$(sudo sha256sum "$CADDY_SOURCE" | awk '{print $1}')"
+if [ "$before_hash" != "$current_hash" ]; then
+  echo 'STOP_CADDY_CHANGED_DURING_DEPLOYMENT'; exit 1
+fi
+sudo cp "$WORK/preflight.Caddyfile" "$WORK/proposed.Caddyfile"
+echo 'CADDY_LIVE_SOURCE_UNCHANGED_SINCE_PREFLIGHT=PASS'
 sudo docker cp "$WORK/proposed.Caddyfile" "$CADDY:/tmp/sbi-main-report-promotion.Caddyfile"
 sudo docker exec "$CADDY" caddy validate \
   --config /tmp/sbi-main-report-promotion.Caddyfile >/dev/null
