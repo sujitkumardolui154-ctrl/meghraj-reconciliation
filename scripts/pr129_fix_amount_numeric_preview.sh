@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PR129: fix XLSX-only amount number types in existing isolated AWS preview.
+# PR129: fix XLSX monetary types AND calendar dates in isolated AWS preview.
 # No invoice-source, Firestore, auth, Caddy or production changes.
 set -Eeuo pipefail
 REPO=/home/ubuntu/sbi-bulk-report-integration/repo
@@ -10,7 +10,7 @@ HOST=pr129.13-232-241-221.sslip.io
 FILES="bulk_report_excel.py test_bulk_report_combined_excel.py test_aws_verified_invoice_lookup.py"
 cd "$REPO"
 
-echo '=== PR129 NUMERIC MONEY XLSX EXPORT FIX — PREVIEW ONLY ==='
+echo '=== PR129 NUMERIC MONEY + DATE XLSX EXPORT FIX — PREVIEW ONLY ==='
 test "$(git branch --show-current)" = ui/bulk-report-reports-tab-20261121
 test -z "$(git status --porcelain --untracked-files=no)"
 test "$(sudo docker inspect "$C" --format '{{.State.Running}}')" = true
@@ -64,9 +64,16 @@ CHANGING=1
 for f in $FILES; do
   install -m 0644 "dashboard_source/$f" "$STAGE/$f"
   sudo docker cp "$STAGE/$f" "$C:/app/$f"
+  expected="$(sha256sum "$STAGE/$f" | awk '{print $1}')"
+  actual="$(sudo docker exec "$C" sha256sum "/app/$f" | awk '{print $1}')"
+  if [ "$expected" != "$actual" ]; then
+    echo "FILE_HASH_MISMATCH=$f"
+    false
+  fi
+  echo "INSTALLED_FILE_HASH_VERIFIED=$f"
 done
 
-# Offline synthetic QA checks XLSX money numbers, source-only and selected
+# Offline synthetic QA checks XLSX money and date cells, source-only and selected
 # invoice workflows, source-matched 53-column IDs, formula-injection safety,
 # and previously working status/category sheets. NO live invoice rows queried.
 sudo docker exec -i -w /app "$C" python -B -m unittest -v \
@@ -77,6 +84,7 @@ sudo docker exec -i -w /app "$C" python -B - <<'PY'
 from pathlib import Path
 import bulk_report_excel as mod
 from app import app
+from datetime import datetime
 assert 13 in mod.AMOUNT_COLUMN_INDEXES
 assert 14 in mod.AMOUNT_COLUMN_INDEXES
 assert 20 in mod.AMOUNT_COLUMN_INDEXES
@@ -87,8 +95,17 @@ assert mod._excel_money("43.739999999999995") == 43.74
 assert mod._excel_money("CANCLED") is None
 assert mod._excel_money("CREDIT NOTE") is None
 assert mod._excel_money("1.005") == 1.005
+assert mod.DATE_COLUMN_FORMATS == {
+    4: "mmmm yyyy", 5: "dd/mm/yyyy", 21: "dd/mm/yyyy",
+    23: "dd/mm/yyyy", 36: "dd/mm/yyyy",
+}
+assert mod._excel_date("2023-10-17T00:00:00") == datetime(2023,10,17)
+assert mod._excel_date("2023-09-01") == datetime(2023,9,1)
+assert mod._excel_date("CANCLED") is None
+assert mod._excel_date("Mar-May 2026") is None
 assert Path("/app/pr129_aws_invoice_lookup.enabled").read_text() == "AWS_FIRESTORE_READONLY_PR129\n"
 print("NUMERIC_AMOUNT_FORMAT=PASS")
+print("DATE_AND_MONTH_FORMAT=PASS")
 print("INVOICE_IDENTIFIERS_PRESERVED=PASS")
 print("STATUS_TEXT_PRESERVED=PASS")
 print("FIRESTORE_LOOKUP_GATE_PRESERVED=PASS")
@@ -111,8 +128,8 @@ case "$ANON" in 401|403) ;; *) echo "STOP: ANONYMOUS_HTTP=$ANON"; false ;; esac
 
 CHANGING=0
 trap - ERR
-echo 'PR129_NUMERIC_AMOUNT_EXPORT_QA=PASS'
-echo 'AWS_PREVIEW_MONEY_FORMAT_FIX=DEPLOYED'
+echo 'PR129_NUMERIC_DATE_EXPORT_QA=PASS'
+echo 'AWS_PREVIEW_MONEY_DATE_FORMAT_FIX=DEPLOYED'
 echo "PREVIEW_LOGIN_HTTP=$HTTP"
 echo "ANONYMOUS_SELECTED_ROUTE_HTTP=$ANON"
 echo "ROLLBACK_BACKUP=$BACKUP"
