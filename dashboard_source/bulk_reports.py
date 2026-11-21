@@ -1,9 +1,10 @@
 """SBI Bulk Report: authenticated in-memory, read-only invoice Excel to ZIP.
 
-SOURCE_ONLY: never accesses financial database, creates receipts, allocates
+SOURCE_ONLY workbook mode never accesses financial database, creates receipts, allocates
 payments, changes invoice fields or claims actual settlement. A bulk report
 from a user-supplied workbook is NOT a certified financial database report.
 Exact approved 34 / 35 / 53 original source headers are required.
+The separately authorized selected-invoice mode can read verified stored rows.
 """
 import hashlib
 import io
@@ -329,35 +330,48 @@ def selected_invoice_excel():
     except (ValueError, InvalidFileException, zipfile.BadZipFile) as exc:
         return jsonify(error=str(exc)[:240], financial_writes=False), 422
 
-    # No fallback to unverified upload content, no implicit Firestore access:
-    # the private read-only lookup backend and its identity must be configured.
+    # Two independently gated, verified read-only sources:
+    # (a) existing private authenticated HTTPS backend, or
+    # (b) AWS-only Firestore reader, explicitly enabled by a root-owned
+    # preview-only marker after offline QA. Never use uploaded workbook as data.
+    from pathlib import Path
     target = os.environ.get("INVOICE_LOOKUP_BACKEND", "").rstrip("/")
-    if not target.startswith("https://"):
+    marker = Path("/app/pr129_aws_invoice_lookup.enabled")
+    direct_aws = (
+        not target
+        and marker.is_file()
+        and marker.read_text(encoding="utf-8") == "AWS_FIRESTORE_READONLY_PR129\n"
+    )
+    if not target.startswith("https://") and not direct_aws:
         return jsonify(error="Verified invoice lookup backend is not connected",
                        financial_writes=False), 503
     try:
-        import requests
-        from cloud_auth import get_backend_token
-        token = get_backend_token(target)
-        upstream = requests.post(
-            target + "/reports/invoice-selection",
-            json={"invoice_numbers": list(selection.invoice_numbers)},
-            headers={"Authorization": "Bearer " + token},
-            timeout=(10, 180),
-            allow_redirects=False,
-        )
-        if upstream.status_code != 200:
-            return jsonify(
-                error="Verified invoice lookup unavailable; report was not generated",
-                backend_status=upstream.status_code,
-                financial_writes=False,
-            ), 503
-        if ("application/json" not in
-            upstream.headers.get("Content-Type", "").lower()
-            or len(upstream.content) > 32 * 1024 * 1024):
-            return jsonify(error="Invalid verified lookup response",
-                           financial_writes=False), 502
-        verified = upstream.json()
+        if direct_aws:
+            from aws_verified_invoice_lookup import lookup_verified_invoices
+            verified = lookup_verified_invoices(list(selection.invoice_numbers))
+        else:
+            import requests
+            from cloud_auth import get_backend_token
+            token = get_backend_token(target)
+            upstream = requests.post(
+                target + "/reports/invoice-selection",
+                json={"invoice_numbers": list(selection.invoice_numbers)},
+                headers={"Authorization": "Bearer " + token},
+                timeout=(10, 180),
+                allow_redirects=False,
+            )
+            if upstream.status_code != 200:
+                return jsonify(
+                    error="Verified invoice lookup unavailable; report was not generated",
+                    backend_status=upstream.status_code,
+                    financial_writes=False,
+                ), 503
+            if ("application/json" not in
+                upstream.headers.get("Content-Type", "").lower()
+                or len(upstream.content) > 32 * 1024 * 1024):
+                return jsonify(error="Invalid verified lookup response",
+                               financial_writes=False), 502
+            verified = upstream.json()
         bundle, manifest = build_selection_zip(
             selection, verified, hashlib.sha256(content).hexdigest()
         )
