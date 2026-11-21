@@ -118,6 +118,11 @@ class AWSReadOnlyInvoiceLookupTests(unittest.TestCase):
         b["original_values"][13] = "27"
         b["original_values"][14] = "2.4299999999999997"
         b["original_values"][15] = "43.739999999999995"
+        b["original_values"][4] = "2023-09-01T00:00:00"
+        b["original_values"][5] = "2023-10-10T00:00:00"
+        b["original_values"][21] = "2023-10-17T00:00:00"
+        b["original_values"][23] = "2023-12-06T00:00:00"
+        b["original_values"][36] = "2024-01-09T00:00:00"
         s = FakeReadSession([
             snapshot("TEST-A", "0"),
             b,
@@ -149,6 +154,15 @@ class AWSReadOnlyInvoiceLookupTests(unittest.TestCase):
             self.assertEqual(all_rows.cell(2,16).data_type,"n")
             self.assertAlmostEqual(all_rows.cell(2,16).value,43.74)
             self.assertEqual(all_rows.cell(2,21).data_type,"n")
+            self.assertEqual(all_rows.cell(2,5).data_type,"d")
+            self.assertEqual(all_rows.cell(2,5).number_format,"mmmm yyyy")
+            self.assertEqual(all_rows.cell(2,6).data_type,"d")
+            self.assertEqual(all_rows.cell(2,6).number_format,"dd/mm/yyyy")
+            self.assertEqual(all_rows.cell(2,22).data_type,"d")
+            self.assertEqual(all_rows.cell(2,22).value.strftime("%d/%m/%Y"),"17/10/2023")
+            self.assertEqual(all_rows.cell(2,24).data_type,"d")
+            self.assertEqual(all_rows.cell(2,24).value.strftime("%d/%m/%Y"),"06/12/2023")
+            self.assertEqual(all_rows.cell(2,37).data_type,"d")
             self.assertEqual(all_rows.cell(2,21).value,118)
             self.assertEqual(workbook["All Invoices"].cell(2,13).value,"TEST-B")
             self.assertEqual(workbook["All Invoices"].cell(3,13).value,"TEST-A")
