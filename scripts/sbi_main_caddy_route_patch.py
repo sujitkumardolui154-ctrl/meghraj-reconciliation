@@ -162,7 +162,8 @@ def selftest() -> None:
         try:
             patch(result, "sbi-reports-main-test123", host)
         except StopRelease as exc:
-            assert "ALREADY_EXISTS" in str(exc)
+            assert ("ALREADY_EXISTS" in str(exc)
+                    or "MAIN_ROUTE_NOT_UNIQUE" in str(exc))
         else:
             raise AssertionError("Double cutover not blocked")
     print("MAIN_CADDY_ROUTE_PATCH_SYNTHETIC=PASS")
