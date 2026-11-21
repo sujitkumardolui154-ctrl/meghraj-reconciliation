@@ -32,7 +32,9 @@ class CombinedExcelTest(unittest.TestCase):
             values[26] = "=HYPERLINK(\"https://invalid.example\",\"click\")"
             return values
 
-        sheet.append(row("00000001", "", 118))
+        first_row = row("00000001", "", 118)
+        first_row[10:14] = [27, 2.4299999999999997, 2.4299999999999997, 31.86]
+        sheet.append(first_row)
         sheet.append(row("TEST-0002", 118, 0))
         sheet.append(row("TEST-0003", "INVALID", 118))
         sheet.append(row("TEST-0004", 50, ""))
@@ -70,6 +72,22 @@ class CombinedExcelTest(unittest.TestCase):
         self.assertEqual(first.cell(2, 13).value, "00000001")
         self.assertEqual(first.cell(2, 13).data_type, "s")
         self.assertEqual(first.cell(2, 7).value, "00001")
+        # Amounts must be native numeric cells, not Excel text. Tiny
+        # source float artifacts normalize to cents for an accurate display.
+        self.assertEqual(first.cell(2, 14).data_type, "n")  # Taxable
+        self.assertEqual(first.cell(2, 14).value, 27)
+        self.assertEqual(first.cell(2, 15).data_type, "n")  # CGST
+        self.assertAlmostEqual(first.cell(2, 15).value, 2.43)
+        self.assertEqual(first.cell(2, 16).data_type, "n")  # SGST
+        self.assertAlmostEqual(first.cell(2, 16).value, 2.43)
+        self.assertEqual(first.cell(2, 15).number_format,
+                         '#,##0.00;[Red](#,##0.00);0.00')
+        self.assertEqual(first.cell(3, 21).data_type, "n")  # Payment
+        self.assertEqual(first.cell(3, 21).value, 118)
+        self.assertEqual(first.cell(4, 21).data_type, "s")  # INVALID
+        self.assertEqual(first.cell(4, 21).value, "INVALID")
+        self.assertEqual(first.cell(2, 7).data_type, "s")  # SOL ID
+        self.assertEqual(first.cell(2, 6).data_type, "s")  # Invoice date
         self.assertEqual(first.cell(2, 30).data_type, "s")
         # The upstream csv_bytes() intentionally prefixes an apostrophe to
         # any Excel-like formula. The combined exporter must retain that
