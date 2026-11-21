@@ -73,7 +73,7 @@ echo "PRIVATE_ORIGIN_DERIVED_IMAGE=BUILT"
 
 echo "=== D. FLASK ORIGIN ALLOWLIST POSITIVE + NEGATIVE QA ==="
 STEP=ORIGIN_TEST
-sudo -n docker run --rm --network none --read-only \
+sudo -n docker run --rm -i --network none --read-only \
   --tmpfs /tmp:rw,nosuid,nodev,size=16m \
   --cap-drop ALL --security-opt no-new-privileges:true \
   --user "$(id -u):$(id -g)" -e PYTHONDONTWRITEBYTECODE=1 \
