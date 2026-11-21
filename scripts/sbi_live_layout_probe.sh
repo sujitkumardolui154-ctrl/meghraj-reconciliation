@@ -56,18 +56,15 @@ print("LIVE_LAYOUT_DISCOVERY=COMPLETE")
 PY
 
 echo '=== CADDY REPORT UPSTREAM TOKENS (NO SECRETS OR CONTENT) ==='
-sudo docker exec "$CADDY" python3 -B - <<'PY' || echo 'CADDY_PYTHON_UNAVAILABLE_SKIPPED'
-from pathlib import Path
-p=Path("/etc/caddy/Caddyfile")
-if not p.is_file(): raise SystemExit("STOP_CADDYFILE_MISSING")
-lines=p.read_text().splitlines()
-for i,line in enumerate(lines,1):
-    t=line.strip()
-    if t.startswith(("#","header","env","basicauth")): continue
-    if any(token in t for token in ("reverse_proxy","handle","route","sbi-preview","bulk-report")):
-        if any(x in t.lower() for x in ("password","secret","bearer","token","authorization")):continue
-        print("ROUTE_LINE_"+str(i)+"="+t[:180])
-PY
+sudo docker exec "$CADDY" awk '
+  /reverse_proxy|handle|route|bulk-report|sbi-preview|sbi-source-reports/ {
+    if ($0 ~ /Bearer|Authorization|secret|password|token|apikey|api_key/) next
+    line=$0
+    sub(/#.*/, "", line)
+    if (length(line) > 180) line=substr(line,1,180)
+    printf("ROUTE_LINE_%d=%s\n", NR, line)
+  }
+' /etc/caddy/Caddyfile
 echo 'EXISTING_GATEWAY=UNCHANGED'
 echo 'RUNNING_CONTAINERS=UNCHANGED'
 echo 'INVOICE_ROWS_READ=NONE'
