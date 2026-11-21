@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DIL SBI Reconciliation Dashboard</title>
+<title>SBI Reconciliation | Meghraj Express Workspace</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#0b1220;color:#eaf1ff}
@@ -27,8 +27,9 @@ small{color:#9fb1cc}
 </head>
 <body>
 <header>
-<h1>Meghraj _ SBI Reconciliation Control Center</h1>
-<p>Google Cloud Project: meghraj-reconciliation</p>
+<p class="dash-overline">MEGHRAJ EXPRESS <span class="dash-divider">/</span> SBI OPERATIONS</p>
+<h1>SBI Reconciliation <span>Workspace</span></h1>
+<p>Engineering oversight, project priorities and controlled reporting in one secure application.</p>
 </header>
 
 <!-- DIL Reports Tab v1.4.2 -->
@@ -36,35 +37,45 @@ small{color:#9fb1cc}
 [hidden]{display:none!important}
 .dil-nav{max-width:1200px;margin:auto;padding:20px 24px 0;display:flex;gap:12px}
 .dil-nav button[aria-pressed="true"]{outline:2px solid #a9d5ff}
+#dil-tower-button[aria-pressed="true"]{outline:2px solid #a9d5ff}
+#dil-tower-panel{padding:12px 0}
+#dil-tower-frame{width:100%;height:1600px;display:block;border:1px solid #344c6d;border-radius:12px;background:#080f1d}
+@media(max-width:640px){#dil-tower-frame{height:1600px;border-radius:8px}}
 #dil-reports button:disabled{opacity:.5;cursor:not-allowed}
 #dil-report-message{white-space:pre-wrap}
 </style>
 <nav class="dil-nav" aria-label="Dashboard sections">
 <button type="button" id="dil-home-button"
  aria-controls="dil-home" aria-pressed="true">Dashboard</button>
+<button type="button" id="dil-tower-button" aria-controls="dil-tower" aria-pressed="false">Control Tower</button>
 <button type="button" id="dil-reports-button"
  aria-controls="dil-reports" aria-pressed="false">Reports</button>
 
 <button type="button" id="dil-imports-button"
  aria-controls="dil-imports" aria-pressed="false">Database Update</button>
 </nav>
+<main id="dil-tower" hidden>
+  <section id="dil-tower-panel" aria-label="SBI Engineering Control Tower">
+    <iframe id="dil-tower-frame" title="SBI engineering Control Tower" data-src="/control-tower?embedded=1" referrerpolicy="no-referrer" loading="lazy"></iframe>
+  </section>
+</main>
 <main id="dil-home">
-
+<section class="dash-hero" aria-labelledby="dash-hero-title"><div><p class="dash-overline">PROJECT COMMAND CENTER</p><h2 id="dash-hero-title">Plan, monitor and deliver with confidence.</h2><p>Follow source-backed release progress and manage your personal work inside Control Tower. Financial processing remains securely restricted.</p></div><button type="button" id="open-control-tower" onclick="document.getElementById('dil-tower-button').click()">Open Control Tower</button></section>
 <section class="grid">
 <div class="card">
-<h2>Supervisor</h2>
-<span class="status warn">STATIC BASELINE</span>
-<p>Monitoring API connected; live agent telemetry not connected.</p>
+<h2>Project oversight</h2>
+<span class="status warn">SOURCE-BACKED</span>
+<p>Review priority gates and engineering evidence in Control Tower. Live agent telemetry is not connected.</p>
 </div>
 <div class="card">
 <h2>Independent QA</h2>
-<span class="status warn">PENDING</span>
+<span class="status warn">REVIEW REQUIRED</span>
 <p>Q218-D01 and SBISA_NEGATIVE require verification</p>
 </div>
 <div class="card">
-<h2>Builder Agent</h2>
-<span class="status">NOT CONNECTED</span>
-<p>Agent integration pending</p>
+<h2>Engineering pipeline</h2>
+<span class="status">SOURCE TRACKING</span>
+<p>Development, testing and stage history are available in Control Tower.</p>
 </div>
 <div class="card">
 <h2>Financial Engine</h2>
@@ -73,61 +84,120 @@ small{color:#9fb1cc}
 </div>
 </section>
 
-<section class="card">
-<h2>Backend API Reports</h2>
-<p><small>Protected monitoring reports — accessible through Google IAP authentication.</small></p>
-<div id="links"></div>
-</section>
-
-<section class="card">
-<h2>Dashboard Controls</h2>
-<button onclick="refreshDashboard()">Refresh Dashboard</button>
-<p id="updated">Awaiting refresh</p>
-<p><small>API monitoring refreshes every 30 seconds. Agent telemetry remains demonstration-only.</small></p>
-</section>
-
 
 </main>
-<script>
-const paths = ["health", "qa", "supervisor", "agents"];
-const links = document.getElementById("links");
-
-for (const path of paths) {
-  const row = document.createElement("p");
-  const link = document.createElement("a");
-  link.href = "/api/" + path;
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
-  link.textContent = "/api/" + path;
-  row.appendChild(link);
-  links.appendChild(row);
-}
-
-async function refreshDashboard() {
-  const indicator = document.getElementById("updated");
-  indicator.textContent = "Requesting monitoring data...";
-  try {
-    await refreshMonitoring();
-    indicator.textContent =
-      "API requests finished: " + new Date().toLocaleString() +
-      " — check panels for endpoint errors";
-  } catch (error) {
-    indicator.textContent = "Refresh error: " + error.message;
-  }
-}
-</script>
-<script src="/dashboard.js" defer></script>
 
 <main id="dil-reports" hidden>
+<!-- Selected-Invoice Bulk Report: read-only database lookup; no financial writes. -->
+<section class="card" id="bulk-selected-report" aria-labelledby="bulk-selected-title">
+  <h2 id="bulk-selected-title">Bulk Report — Selected Invoice Numbers</h2>
+  <p>Upload an Excel file containing only one column, <strong>Invoice No</strong>.
+  Invoice numbers may be in any order. The system looks up exact matches from
+  verified saved invoice records and generates a combined Excel report with
+  full available 53-column details, plus a review tab for missing or conflicting numbers.
+  No reconciliation is performed and no financial records are changed.</p>
+  <form id="bulk-selected-form">
+    <label for="bulk-selected-file">Choose invoice number list (.xlsx, maximum 8 MiB)</label>
+    <input id="bulk-selected-file" type="file" accept=".xlsx" required
+           style="display:block;margin:12px 0;max-width:100%">
+    <button type="submit" id="bulk-selected-button">Generate Selected Invoice Report</button>
+  </form>
+  <p id="bulk-selected-message" role="status" aria-live="polite">
+    Requires an authorized report viewer and a verified invoice database connection.
+  </p>
+</section>
+<script>
+(() => {
+  "use strict";
+  const form = document.getElementById("bulk-selected-form");
+  const input = document.getElementById("bulk-selected-file");
+  const button = document.getElementById("bulk-selected-button");
+  const message = document.getElementById("bulk-selected-message");
+  let busy = false;
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (busy) return;
+    const file = input.files[0];
+    if (!file || !/\.xlsx$/i.test(file.name) ||
+        !file.size || file.size > 8 * 1024 * 1024) {
+      message.textContent = "Select an invoice number XLSX up to 8 MiB.";
+      return;
+    }
+    busy = true;
+    button.disabled = true;
+    input.disabled = true;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 180000);
+    message.textContent = "Checking selected invoice numbers against verified records...";
+    try {
+      const csrf = await fetch("/auth/csrf", {
+        credentials: "same-origin", cache: "no-store",
+        redirect: "error", signal: controller.signal
+      });
+      if (!csrf.ok) throw new Error("Sign in again to authorize this report.");
+      const token = (await csrf.json()).csrf_token || "";
+      if (!/^[a-f0-9]{64}$/.test(token))
+        throw new Error("Invalid report security token; refresh and retry.");
+      const body = new FormData();
+      body.append("file", file);
+      const response = await fetch("/api/bulk-report/select-invoices-excel", {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        redirect: "error",
+        headers: {"X-DIL-CSRF": token},
+        body,
+        signal: controller.signal
+      });
+      if (!response.ok) {
+        let reason = "Selected invoice report unavailable (HTTP " + response.status + ").";
+        if ((response.headers.get("Content-Type") || "").includes("application/json")) {
+          const errorData = await response.json();
+          reason = errorData.error || reason;
+        }
+        throw new Error(reason);
+      }
+      const contentType = (response.headers.get("Content-Type") || "").toLowerCase();
+      if (!contentType.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+        throw new Error("Expected Excel file, but server returned another format.");
+      const blob = await response.blob();
+      if (blob.size < 4) throw new Error("Excel report is empty.");
+      const signature = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
+      if (signature[0] !== 0x50 || signature[1] !== 0x4b)
+        throw new Error("Invalid Excel report signature.");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "SBI-Selected-Invoices-Combined.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      message.textContent =
+        "Selected invoice report downloaded. Check Lookup Review for missing or conflicting numbers. Not reconciled.";
+    } catch (error) {
+      message.textContent = error.name === "AbortError"
+        ? "Invoice lookup timed out; no download confirmed."
+        : error.message || "Invoice selection report unavailable.";
+    } finally {
+      clearTimeout(timer);
+      busy = false;
+      button.disabled = false;
+      input.disabled = false;
+    }
+  });
+})();
+</script>
+
 <!-- Bulk Report: source-only reporting; no financial database updates. -->
 <section class="card" id="bulk-report" aria-labelledby="bulk-report-title">
   <h2 id="bulk-report-title">Bulk Report</h2>
-  <p>Upload one approved Invoice Details. workbook (.xlsx, up to 8 MiB) to generate a source-only ZIP report. This does not reconcile payments or update the financial database.</p>
+  <p>Upload one approved Invoice Details. workbook (.xlsx, up to 8 MiB) to generate one source-only Excel workbook with six report worksheets. This does not reconcile payments or update the financial database.</p>
   <form id="bulk-report-form">
     <label for="bulk-report-file">Choose Excel workbook</label>
     <input id="bulk-report-file" type="file" accept=".xlsx" required
            style="display:block;margin:12px 0;max-width:100%">
-    <button id="bulk-report-generate" type="submit">Generate Bulk Report</button>
+    <button id="bulk-report-generate" type="submit">Generate Combined Excel Report</button>
   </form>
   <p id="bulk-report-message" role="status" aria-live="polite">Ready to generate a source-only report.</p>
 </section>
@@ -144,7 +214,7 @@ async function refreshDashboard() {
     event.preventDefault();
     if (busy) return;
     const file = input.files[0];
-    if (!file || !/\\.xlsx$/i.test(file.name) ||
+    if (!file || !/\.xlsx$/i.test(file.name) ||
         !file.size || file.size > 8 * 1024 * 1024) {
       message.textContent = "Select a non-empty .xlsx workbook up to 8 MiB.";
       return;
@@ -152,17 +222,31 @@ async function refreshDashboard() {
     busy = true;
     button.disabled = true;
     input.disabled = true;
-    message.textContent = "Generating source-only report...";
+    message.textContent = "Generating combined source-only Excel report...";
     const body = new FormData();
     body.append("file", file);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 120000);
     try {
-      const response = await fetch("/api/bulk-report/generate", {
+      const csrfResponse = await fetch("/auth/csrf", {
+        credentials: "same-origin",
+        cache: "no-store",
+        redirect: "error",
+        signal: controller.signal
+      });
+      if (!csrfResponse.ok) {
+        throw new Error("Unable to establish upload security. Sign in and retry.");
+      }
+      const csrfData = await csrfResponse.json();
+      if (!/^[a-f0-9]{64}$/.test(csrfData.csrf_token || "")) {
+        throw new Error("Upload security token missing. Refresh and retry.");
+      }
+      const response = await fetch("/api/bulk-report/generate-excel", {
         method: "POST",
         credentials: "same-origin",
         cache: "no-store",
         redirect: "error",
+        headers: {"X-DIL-CSRF": csrfData.csrf_token},
         body,
         signal: controller.signal
       });
@@ -179,25 +263,24 @@ async function refreshDashboard() {
         throw new Error(reason || "Bulk Report generation failed (HTTP " + response.status + ").");
       }
       const contentType = (response.headers.get("Content-Type") || "").toLowerCase();
-      if (!contentType.includes("application/zip") &&
-          !contentType.includes("application/octet-stream")) {
-        throw new Error("Unexpected response type; ZIP download cancelled.");
+      if (!contentType.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) {
+        throw new Error("Unexpected response type; Excel download cancelled.");
       }
       const blob = await response.blob();
-      if (blob.size < 4) throw new Error("Empty or invalid report archive.");
+      if (blob.size < 4) throw new Error("Empty or invalid Excel report.");
       const magic = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
       if (magic[0] !== 0x50 || magic[1] !== 0x4b) {
-        throw new Error("Response is not a ZIP archive.");
+        throw new Error("Response is not a valid XLSX archive.");
       }
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "sbi-bulk-report.zip";
+      link.download = "SBI-Bulk-Report-Combined.xlsx";
       document.body.appendChild(link);
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 60000);
-      message.textContent = "Source-only Bulk Report generated. Check browser downloads. Reconciliation has not run.";
+      message.textContent = "Combined Excel Report generated (6 worksheets). Check browser downloads. Reconciliation has not run.";
     } catch (error) {
       message.textContent = error.name === "AbortError"
         ? "Report generation timed out. No download was confirmed."
@@ -245,9 +328,9 @@ async function refreshDashboard() {
 })();
 </script>
 
-<h2>Reports <small>— Dashboard v1.4.2</small></h2>
-<p>Reports include the original database snapshot plus new invoices from completed imports. Preview uploads and unfinished imports are excluded. All 53 report headers remain in their original order; model fields absent from the source remain blank.</p>
-<p>Payment reports use the saved Payment Received value: blank or zero goes to Unpaid, non-zero numbers to OK, and invalid values to Error Value. OK does not confirm full payment. Reconciliation has not run.</p>
+<h2>Reports <small>— Verified Read-only Sources</small></h2>
+<p>Invoice CSV reports are available only from an independently certified private 53-column source snapshot. The AWS financial database is not connected; unverified source rows and incomplete imports are excluded. No totals are displayed until the underlying report data is verified.</p>
+<p>Report labels reflect source classification, not approved settlement: Unpaid, OK Payment Value, Error Value and Balance Review. These are not proof that an invoice is fully paid. Reconciliation has not run.</p>
 <button type="button" id="dil-report-refresh">Refresh report availability</button>
 <p id="dil-report-message" role="status" aria-live="polite">
 Open Reports to check availability.</p>
@@ -324,7 +407,10 @@ numbers to preserve leading zeros.</small></p>
         signal: controller.signal
       });
       if (!response.ok) {
-        throw new Error("Report unavailable (HTTP " + response.status + ").");
+        let detail = "";
+        try { const body=await response.json(); detail=body.reason || body.error || ""; } catch {}
+        throw new Error("Report source unavailable (HTTP " + response.status + ")" +
+          (detail ? ": " + detail : "") + ".");
       }
       const type = response.headers.get("Content-Type") || "";
       if (!type.toLowerCase().includes(format)) {
@@ -349,26 +435,33 @@ numbers to preserve leading zeros.</small></p>
         .textContent = "Checking...";
     });
     try {
-      const data = await requestReport("/api/reports", "application/json");
-      if (!data || !data.reports || data.version !== "1.4.2" ||
-          !Number.isSafeInteger(data.completed_import_rows) ||
-          data.completed_import_rows < 0 ||
+      const data = await requestReport("/api/reporting/v2", "application/json");
+      if (!data || !data.reports || data.version !== "aws-source-snapshot-v1" ||
+          data.financial_writes !== false ||
           data.reconciliation_executed !== false) {
-        throw new Error("Unexpected report metadata.");
+        throw new Error("Unexpected read-only report metadata.");
       }
       buttons.forEach(button => {
         const kind = button.dataset.dilReport;
         const item = data.reports[kind];
         const label = document.getElementById("dil-count-" + kind);
-        if (item && Number.isSafeInteger(item.rows) && item.rows >= 0) {
+        if (item && item.status === "AVAILABLE" &&
+            Number.isSafeInteger(item.rows) && item.rows >= 0 &&
+            item.classification === "SOURCE_REFERENCE_ONLY" &&
+            typeof item.source_sha256 === "string" &&
+            /^[a-f0-9]{64}$/.test(item.source_sha256)) {
           ready.add(kind);
-          label.textContent = item.rows.toLocaleString() + " rows";
+          label.textContent = item.rows.toLocaleString() + " verified source rows";
         } else {
-          label.textContent = "Unavailable";
+          label.textContent = item?.reason || "Not connected";
         }
       });
       message.textContent =
-        "Reports v1.4.2 available. Completed imported invoices: " + data.completed_import_rows.toLocaleString() + ". Reconciliation has not run.";
+        ready.size ? "Verified read-only source reports available: " +
+          ready.size + " of " + buttons.length +
+          ". Not a live financial database. Reconciliation has not run."
+        : "Reports not connected: " + (data.status_reason || "No independently approved source snapshot") +
+          ". Invoice CSV downloads remain disabled. Payment evidence uploads do not create invoice reports.";
     } catch (error) {
       buttons.forEach(button => {
         document.getElementById("dil-count-" + button.dataset.dilReport)
@@ -407,11 +500,11 @@ numbers to preserve leading zeros.</small></p>
     updateButtons();
     message.textContent = "Preparing " + kind + " CSV from the database...";
     try {
-      const blob = await requestReport("/api/reports/" + kind + ".csv", "text/csv");
+      const blob = await requestReport("/api/reporting/v2/" + kind + ".csv", "text/csv");
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "sbi-" + kind + "-v1.4.2.csv";
+      link.download = "sbi-" + kind + "-approved-source.csv";
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -445,7 +538,14 @@ numbers to preserve leading zeros.</small></p>
 <p>Add new monthly invoices from Excel. Existing invoices are preserved.
 Existing invoice numbers and every repeated invoice number within the upload
 are rejected. Use the "Invoice Details." worksheet with its 34 original columns in their original order. The approved 53-column format is also supported. The PAYMNENT worksheet is not imported.</p>
-<section class="card">
+<nav class="dil-db-switch" aria-label="Database Update operations" role="tablist">
+  <button type="button" id="dil-db-invoices-button" role="tab" aria-controls="dil-db-invoices" aria-selected="true">Invoice Data &amp; Excel Upload</button>
+  <button type="button" id="dil-db-payments-button" role="tab" aria-controls="dil-db-payments" aria-selected="false">Payment Reconciliation</button>
+</nav>
+<div id="dil-db-invoices" role="tabpanel" aria-labelledby="dil-db-invoices-button">
+  <p class="dil-db-context">Invoice source intake and validation. Existing financial database writes remain blocked.</p>
+
+  <section class="card">
 <h2>1. Preview an Excel workbook</h2>
 <p>Preview stores the source workbook and validation log; it does not add invoices.</p>
 <form id="dil-import-form">
@@ -480,7 +580,238 @@ are rejected. Use the "Invoice Details." worksheet with its 34 original columns 
 </section>
 <p><small>Database import does not run payment reconciliation.
 Reports include new invoices only after an import completes. Preview alone does not update reports.</small></p>
+</div>
+<div id="dil-db-payments" role="tabpanel" aria-labelledby="dil-db-payments-button" hidden>
+  <section class="card dil-db-payment" aria-labelledby="dil-payment-heading">
+    <div class="dil-db-heading-row">
+      <div>
+        <p class="dash-overline">PAYMENT EVIDENCE WORKFLOW</p>
+        <h2 id="dil-payment-heading">Payment Reconciliation</h2>
+        <p>Fixed-header Excel payment-evidence upload and review. Financial matching, allocations and settlement remain disabled.</p>
+      </div>
+      <span class="status warn">RECONCILIATION ENGINE NOT CONNECTED</span>
+    </div>
+    <div class="dil-db-stages" aria-label="Future payment reconciliation stages">
+      <div class="dil-db-stage"><strong>1. Payment evidence</strong><p>Source: PAYMNENT worksheet. Column I (Credit) provides payment amounts. Original payment source columns A–L must remain unchanged.</p></div>
+      <div class="dil-db-stage"><strong>2. Matching &amp; verification</strong><p>Verify SOL/branch mapping, narration service period, duplicate references, partial payments and applicable TDS rules before proposing allocations.</p></div>
+      <div class="dil-db-stage"><strong>3. Owner review &amp; approval</strong><p>Review reconciliation exceptions and suspense before any approved application. Production settlement and database writes remain blocked.</p></div>
+    </div>
+  </section>
+  <section class="card dil-db-payment" aria-labelledby="dil-payment-evidence-heading">
+    <div class="dil-db-heading-row">
+      <div><p class="dash-overline">FIXED-HEADER EXCEL UPLOAD</p>
+      <h2 id="dil-payment-evidence-heading">Upload New Payment Evidence</h2>
+      <p>Upload and preview payment source evidence securely. Each workbook is stored as an immutable staging receipt, separate from invoice and financial databases.</p></div>
+      <span class="status good">EVIDENCE INTAKE ONLY</span>
+    </div>
+    <p><a id="dil-payment-template" href="/api/payment-evidence/template" download="SBI_Payment_Evidence_Fixed_Header_Template.xlsx">Download Fixed Excel Template (.xlsx)</a></p>
+    <div class="dil-payment-fixed-columns" aria-label="Required Excel columns">
+      <div><small>Excel Column A</small><strong>Description</strong><span>Payment narration</span></div>
+      <div><small>Excel Column B</small><strong>SOL ID</strong><span>Text; preserve leading zeros</span></div>
+      <div><small>Excel Column C</small><strong>Credit Amount</strong><span>Number, 2 decimals (INR)</span></div>
+    </div>
+    <p class="dil-db-context">Headers must be exactly <strong>Description | SOL ID | Credit Amount</strong> in row 1. Copy source values into the template; do not edit the original PAYMNENT worksheet (including its A–L columns). Upload .xlsx only, maximum 8 MiB.</p>
+    <form id="dil-payment-upload-form" enctype="multipart/form-data">
+      <label for="dil-payment-evidence-file">Choose completed payment evidence workbook (.xlsx)</label>
+      <input id="dil-payment-evidence-file" name="file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required aria-describedby="dil-payment-lock-note">
+      <div class="dil-db-payment-actions">
+        <button type="submit" id="dil-payment-preview">Upload &amp; Preview Payment Evidence</button>
+        <button type="button" id="dil-payment-readiness" disabled>Check Reconciliation Readiness</button>
+        <button type="button" id="dil-payment-reconcile" disabled>Apply Reconciliation to Financial Database — Locked</button>
+      </div>
+    </form>
+    <p id="dil-payment-lock-note" role="status" aria-live="polite" class="dil-db-lock-note">Upload and preview can stage evidence for review. They do not merge payments into invoices, allocate payments or modify financial records. The reconciliation engine remains blocked.</p>
+    <p id="dil-payment-readiness-result" role="status" aria-live="polite">Select a verified payment evidence receipt to check reconciliation prerequisites. The financial engine is not connected.</p>
+    <p id="dil-payment-evidence-status" role="status" aria-live="polite">No evidence file uploaded in this session.</p>
+    <div id="dil-payment-evidence-summary" class="dil-payment-summary" hidden></div>
+    <div id="dil-payment-evidence-table" class="dil-payment-table-wrap" hidden>
+      <table><thead><tr><th>Excel Row</th><th>Description</th><th>SOL ID</th><th>Credit Amount</th><th>Verification Flags</th></tr></thead>
+      <tbody id="dil-payment-evidence-preview"></tbody></table>
+    </div>
+    <section class="dil-payment-receipts" aria-labelledby="dil-payment-receipts-title">
+      <h3 id="dil-payment-receipts-title">Previously Staged Payment Evidence</h3>
+      <button type="button" id="dil-payment-refresh">Refresh Receipts</button>
+      <div id="dil-payment-receipt-list"><p>No payment receipts loaded.</p></div>
+    </section>
+  </section>
+</div>
+
+<script>
+/* Fixed-header payment evidence intake. No financial/reconciliation writes. */
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const form = $("dil-payment-upload-form");
+  const file = $("dil-payment-evidence-file");
+  const submit = $("dil-payment-preview");
+  const status = $("dil-payment-evidence-status");
+  const summary = $("dil-payment-evidence-summary");
+  const table = $("dil-payment-evidence-table");
+  const tbody = $("dil-payment-evidence-preview");
+  const listing = $("dil-payment-receipt-list");
+  const refresh = $("dil-payment-refresh");
+  const readiness = $("dil-payment-readiness");
+  const readinessResult = $("dil-payment-readiness-result");
+  let currentReceipt = "";
+  let busy = false;
+
+  const money = value => "₹" + Number(value || 0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const cell = (tr, text) => {
+    const td = document.createElement("td");
+    td.textContent = String(text ?? "");
+    tr.appendChild(td);
+  };
+  async function call(path, options = {}) {
+    const response = await fetch(path, {
+      cache:"no-store",credentials:"same-origin",redirect:"error",...options
+    });
+    let result = {};
+    try { result = await response.json(); }
+    catch { throw new Error("Unexpected server response. Please sign in again."); }
+    if (!response.ok) throw new Error(result.error || "Payment evidence request unavailable (HTTP "+response.status+")");
+    return result;
+  }
+  function show(result) {
+    currentReceipt = String(result.receipt_id || "");
+    readiness.disabled = !/^[a-f0-9]{32}$/.test(currentReceipt);
+    readinessResult.textContent = "Evidence receipt selected; check reconciliation readiness before any financial operation.";
+    summary.hidden = false;
+    table.hidden = false;
+    const entries = [
+      ["Evidence receipt", result.receipt_id],
+      ["Source rows", result.source_rows],
+      ["Valid rows", result.valid_rows],
+      ["Rows requiring review", result.review_rows],
+      ["Valid credit sum (NOT reconciled)",money(result.valid_credit_total)],
+      ["Staging status",result.staging_status || result.status]
+    ];
+    summary.replaceChildren();
+    for (const [label, value] of entries) {
+      const block=document.createElement("div");
+      const key=document.createElement("small");
+      key.textContent=label;
+      const strong=document.createElement("strong");
+      strong.textContent=String(value ?? "—");
+      block.append(key,strong);
+      summary.appendChild(block);
+    }
+    tbody.replaceChildren();
+    for (const row of result.preview || []) {
+      const tr=document.createElement("tr");
+      cell(tr,row.excel_row);
+      cell(tr,row.description);
+      cell(tr,row.sol_id);
+      cell(tr,row.credit_amount);
+      cell(tr,(row.review_flags || []).join(", ") || "VALID");
+      tbody.appendChild(tr);
+    }
+    status.textContent="Evidence staged safely. Showing first "+(result.preview || []).length+
+       " rows of "+result.source_rows+". No financial allocation or reconciliation has run.";
+  }
+  async function loadReceipts() {
+    try {
+      const data=await call("/api/payment-evidence/uploads");
+      const results=data.evidence || [];
+      listing.replaceChildren();
+      if (!results.length) {
+        const p=document.createElement("p");
+        p.textContent="No staged payment evidence yet.";
+        listing.appendChild(p); return;
+      }
+      for (const item of results) {
+        const line=document.createElement("div");
+        line.className="dil-payment-receipt";
+        const label=document.createElement("div");
+        const name=document.createElement("strong");
+        name.textContent=item.source_name;
+        const info=document.createElement("small");
+        info.textContent=item.created_utc+" · "+item.source_rows+" rows · "+item.review_rows+" flagged · "+item.status;
+        label.append(name,info);
+        const view=document.createElement("button");
+        view.type="button";
+        view.textContent="View preview";
+        view.addEventListener("click",async()=>{
+          status.textContent="Loading verified evidence receipt…";
+          try { show(await call("/api/payment-evidence/uploads/"+encodeURIComponent(item.receipt_id))); }
+          catch(e) { status.textContent=e.message; }
+        });
+        line.append(label,view);
+        listing.appendChild(line);
+      }
+    } catch(e) { listing.textContent="Evidence receipts unavailable: "+e.message; }
+  }
+  form.addEventListener("submit",async event=>{
+    event.preventDefault();
+    if (busy || !form.reportValidity()) return;
+    const workbook=file.files?.[0];
+    if (!workbook) { status.textContent="Choose the fixed-header .xlsx file first.";return; }
+    if (!workbook.name.toLowerCase().endsWith(".xlsx") || workbook.size>8*1024*1024) {
+      status.textContent="Only .xlsx files up to 8 MiB are accepted.";return;
+    }
+    busy=true; submit.disabled=true; refresh.disabled=true;
+    status.textContent="Checking fixed headers and staging payment evidence…";
+    try {
+      const csrf=await call("/auth/csrf");
+      if (!csrf.csrf_token) throw new Error("Could not verify your login session");
+      const body=new FormData();
+      body.append("file",workbook,workbook.name);
+      const result=await call("/api/payment-evidence/upload",{
+        method:"POST",headers:{"X-DIL-CSRF":csrf.csrf_token},body
+      });
+      show(result);
+      form.reset();
+      await loadReceipts();
+    } catch(e) { status.textContent=e.message; }
+    finally {busy=false; submit.disabled=false;refresh.disabled=false;}
+  });
+  readiness.addEventListener("click",async()=>{
+    if (busy || !/^[a-f0-9]{32}$/.test(currentReceipt)) return;
+    busy=true; readiness.disabled=true;
+    readinessResult.textContent="Revalidating source receipt and engine prerequisites…";
+    try {
+      const csrf=await call("/auth/csrf");
+      if (!csrf.csrf_token) throw new Error("Could not verify your login session");
+      const response=await fetch("/api/payment-reconciliation/preflight",{
+        method:"POST",cache:"no-store",credentials:"same-origin",redirect:"error",
+        headers:{"Content-Type":"application/json","X-DIL-CSRF":csrf.csrf_token},
+        body:JSON.stringify({receipt_id:currentReceipt})
+      });
+      const result=await response.json();
+      if (result.financial_writes !== false || result.reconciliation_executed !== false) {
+        throw new Error("Unexpected reconciliation response; financial operation not verified");
+      }
+      readinessResult.textContent=(result.error || "Reconciliation is not available.")+
+        " Blockers: "+(result.blockers || []).join(", ")+
+        ". No invoice or payment database updates occurred.";
+    } catch(e) { readinessResult.textContent="Readiness check failed: "+e.message; }
+    finally {busy=false;readiness.disabled=!currentReceipt;}
+  });
+  refresh.addEventListener("click",loadReceipts);
+  $("dil-db-payments-button").addEventListener("click",loadReceipts);
+})();
+</script>
+
 </main>
+<script>
+/* Database Update inner views. UI navigation only; no financial API action. */
+(() => {
+  "use strict";
+  const invoice = document.getElementById("dil-db-invoices");
+  const payment = document.getElementById("dil-db-payments");
+  const invoiceButton = document.getElementById("dil-db-invoices-button");
+  const paymentButton = document.getElementById("dil-db-payments-button");
+  function show(kind) {
+    const invoicesActive = kind === "invoices";
+    invoice.hidden = !invoicesActive;
+    payment.hidden = invoicesActive;
+    invoiceButton.setAttribute("aria-selected", String(invoicesActive));
+    paymentButton.setAttribute("aria-selected", String(!invoicesActive));
+  }
+  invoiceButton.addEventListener("click", () => show("invoices"));
+  paymentButton.addEventListener("click", () => show("payments"));
+})();
+</script>
+
 
 <script>
 
@@ -705,8 +1036,52 @@ Reports include new invoices only after an import completes. Preview alone does 
 })();
 
 </script>
+<script>
+/* Control Tower is an in-place tab, not a separate-page navigation. */
+(() => {
+  "use strict";
+  const tower = document.getElementById("dil-tower");
+  const button = document.getElementById("dil-tower-button");
+  const frame = document.getElementById("dil-tower-frame");
+  const siblingNames = ["home", "reports", "imports"];
+  let resized = false;
+  button.addEventListener("click", () => {
+    siblingNames.forEach(name => {
+      document.getElementById("dil-" + name).hidden = true;
+      document.getElementById("dil-" + name + "-button").setAttribute("aria-pressed", "false");
+    });
+    tower.hidden = false;
+    button.setAttribute("aria-pressed", "true");
+    if (!frame.getAttribute("src")) frame.setAttribute("src", frame.dataset.src);
+  });
+  siblingNames.forEach(name => {
+    document.getElementById("dil-" + name + "-button").addEventListener("click", () => {
+      tower.hidden = true;
+      button.setAttribute("aria-pressed", "false");
+    });
+  });
+  frame.addEventListener("load", () => {
+    if (resized) return;
+    try {
+      const doc = frame.contentDocument;
+      if (!doc || !doc.body) return;
+      const resize = () => {
+        const height = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight);
+        if (height > 0) frame.style.height = Math.max(700, Math.min(9000, height + 28)) + "px";
+      };
+      resize();
+      if (typeof ResizeObserver === "function") {
+        const observer = new ResizeObserver(resize);
+        observer.observe(doc.body);
+        resized = true;
+      }
+    } catch { /* Keep a usable fixed-height fallback. */ }
+  });
+})();
+</script>
 <script src="/account.js" defer></script>
 <!-- F01: single floating overlay across existing dashboard views; inert until authorized API is reviewed. -->
 <script src="/dil_floating_assistant.js" defer></script>
+<link rel="stylesheet" href="/dashboard-theme.css">
 </body>
 </html>

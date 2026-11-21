@@ -23,6 +23,10 @@ def supervisor_api(request):
     if request.path.startswith("/imports/"):
         from invoice_import_api import handle_imports
         return handle_imports(request)
+    # Read-only invoice-number selection (private backend; role checked at gateway).
+    if request.path.rstrip("/") == "/reports/invoice-selection":
+        from invoice_selection_report import handle_invoice_selection
+        return handle_invoice_selection(request)
     # DIL v1.3.0 database reports
     if request.path.startswith("/reports/reconciliation-changes/"):
         from change_report_api import handle_change_report
