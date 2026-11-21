@@ -13,17 +13,23 @@ import os
 from pathlib import Path
 from app import app
 
+def module_present(name):
+    try:
+        return importlib.util.find_spec(name) is not None
+    except (ImportError, ModuleNotFoundError, AttributeError):
+        return False
+
 routes={str(r):set(r.methods) for r in app.url_map.iter_rules()}
 checks={
   "SELECTED_UPLOAD_POST_REGISTERED":
      "POST" in routes.get("/api/bulk-report/select-invoices-excel",set()),
   "INVOICE_PARSER_PRESENT":Path("/app/invoice_number_selection.py").is_file(),
   "REPORT_VIEWER_ACCESS_HELPER_PRESENT":
-     importlib.util.find_spec("sbi_report_access") is not None,
+     module_present("sbi_report_access"),
   "GCP_IDENTITY_TOKEN_HELPER_PRESENT":
-     importlib.util.find_spec("cloud_auth") is not None,
+     module_present("cloud_auth"),
   "GCP_AUTH_LIBRARY_PRESENT":
-     importlib.util.find_spec("google.auth") is not None,
+     module_present("google.auth"),
   "LOOKUP_BACKEND_CONFIGURED":
      os.getenv("INVOICE_LOOKUP_BACKEND","").startswith("https://"),
   "ADC_CONFIG_REFERENCE_PRESENT":
