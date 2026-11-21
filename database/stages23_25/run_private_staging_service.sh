@@ -88,13 +88,14 @@ set -- sudo -n docker run -d \
   -e PGUSER=sbi_pr129_report_login \
   -e PGPASSFILE=/run/secrets/sbi_pgpass \
   -e PYTHONDONTWRITEBYTECODE=1
+# Never import an unreviewed environment file; DATABASE_URL or PG*
+# overrides could bypass the established read-only PostgreSQL identity.
 if [[ -f "$BASE/staging.env" ]]; then
-  [[ "$(stat -c '%a' "$BASE/staging.env")" == 600 ]] || { echo "STAGING_ENV_FILE_REQUIRES_CHMOD_600"; exit 13; }
-  set -- "$@" --env-file "$BASE/staging.env"
-  echo "STAGING_ONLY_ENV_FILE=USED"
-else
-  echo "STAGING_ONLY_ENV_FILE=NOT_CONFIGURED"
+  echo "STAGING_ENV_FILE_PRESENT=REQUIRES_REVIEW"
+  echo "No environment file was loaded; review variable names and least privilege first."
+  exit 13
 fi
+echo "STAGING_ENV=RESTRICTED_REPORTING_ONLY"
 "$@" "$IMAGE" >/dev/null
 CREATED=YES
 echo "PRIVATE_STAGE_CONTAINER_CREATED=PASS"
