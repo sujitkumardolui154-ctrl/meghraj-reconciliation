@@ -1,4 +1,7 @@
-# SBI Financial Reconciliation — Fresh Engine v0.1 (synthetic-only)
+# NEW engine 21 11 2026
+
+**Project:** SBI Financial Reconciliation  
+**Build revision:** v0.1 — synthetic-only
 
 **Build date:** 21 November 2026  
 **Specification basis:** Master Rulebook v2.51 / DIL Matrix Agent v2.39, OUT-SCHEMA-V218-001.  
