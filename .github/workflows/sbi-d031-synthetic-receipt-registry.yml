@@ -35,13 +35,13 @@ jobs:
           python -m unittest discover -s tests -p 'test_sbi_payment_evidence_upload.py' -v
           python -m unittest discover -s tests -p 'test_sbi_reconciliation_readiness.py' -v
           python -m unittest discover -s tests -p 'test_d029_finance_unlock_requirements.py' -v
-      - name: Single read-only canonical source inventory (no private data)
+      - name: Single read-only archival ZIP filename inventory (no private data)
         run: |
           bash -n staging/aws_login_v150/fasttrack_source_recovery.sh
           bash staging/aws_login_v150/fasttrack_source_recovery.sh . |
             tee /tmp/sbi-fasttrack-source-status.txt
-          grep -Fq 'FINANCIAL_PRODUCTION_APPLY=LOCKED' /tmp/sbi-fasttrack-source-status.txt
-          grep -Fq 'HISTORICAL_FINANCIAL_RECORDS=NOT_ACCESSED' /tmp/sbi-fasttrack-source-status.txt
+          grep -Fq 'FINANCIAL_APPLY=LOCKED' /tmp/sbi-fasttrack-source-status.txt
+          grep -Fq 'HISTORICAL_FINANCIAL_DATA_ACCESSED=NO' /tmp/sbi-fasttrack-source-status.txt
       - name: Block finance release and historical financial access
         run: |
           echo "D031_MOCK_REGISTRY=MEMORY_ONLY"
