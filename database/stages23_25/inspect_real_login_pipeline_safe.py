@@ -95,4 +95,23 @@ try:
 except Exception as exc:
     print("AUTH_ROUTE_INSPECTION=ERROR_"+type(exc).__name__)
 
+for name in ("login.js","templates/login.html","login.html"):
+    file=ROOT/name
+    if not file.is_file():continue
+    try:
+        src=file.read_text(encoding="utf-8",errors="replace").lower()
+    except OSError:
+        continue
+    print("CLIENT_LOGIN_FILE="+name+" PRESENT=True")
+    for feature,phrase in (
+        ("FIREBASE_WEB_KEY","firebase_web_api_key"),
+        ("FIREBASE_JS_SDK","firebase.auth"),
+        ("EMAIL_PASSWORD_API","signInWithEmailAndPassword"),
+        ("IDENTITY_TOOLKIT","identitytoolkit"),
+        ("AUTH_SESSION_ROUTE","/auth/session"),
+        ("UNAVAILABLE_MESSAGE","authentication service unavailable"),
+        ("FETCH_CALL","fetch("),
+    ):
+        print("CLIENT_LOGIN_FEATURE="+name+":"+feature+" PRESENT="+str(phrase.lower() in src))
+
 print("AUTH_LOGIN_PIPELINE_INSPECTION=COMPLETE")
