@@ -1,0 +1,51 @@
+# SBI Reconciliation — One-Gate Fast-Track Production Recovery
+2026-11-21 | Owner-directed minimum testing, strictly **new-only** financial processing
+
+## Status verified
+- AWS runtime code identity last verified by owner: `ce3100b176151b6d5446a88be3241971b5ef51f7`. `sbi-source-reports-v1-stage` is running, Payment Evidence upload blueprint/UI registered, and Caddy proxies `/dashboard` and `/api/*` to Source Reports v1.
+- Existing fixed payment upload headers **must stay** `Description | SOL ID | Credit Amount`.
+- Existing `/api/payment-reconciliation/status` and `/preflight` check evidence/receipt integrity only; clean receipts fail closed with engine `NOT_CONNECTED` and no financial writer. Real Apply button disabled. No production finance action can be claimed.
+- The archive `01-Engine-Source/FINANCIAL_ENGINE_FIX_PLAN_2026-10-28.md` describes Master v2.51 / Matrix v2.39, incomplete full-engine integration, archived Builder package fingerprint `189cd6e9cff399412a50520afd0d7520752a3682c707751ec1f853c57c7ad256` and writer candidate `85606f226ebb7b6555a648386021b3df2765d29c9f37312d499029b335b0719b`. They are historical **SHA-256 source-code fingerprints, not Git commit IDs**, not approval evidence or permission to run archived financial data. The source ZIP files have NOT been located or independently attested as a complete deployable allocator. Earlier use of git cat-file against these 64-character hashes was an invalid Git-object check.
+- D-025/026 allocation candidate/waterfall and D-029/030/031 synthetic provenance work are deterministic synthetic proof-of-concept modules, not complete certified production engine or live writer. D-029 through D-031 are consolidated for review into PR #131.
+
+## Fastest viable recovery — no artificial stage numbering
+**Recover first.** Use `bash staging/aws_login_v150/fasttrack_source_recovery.sh`. It checks only the two exact original ZIP filenames in the archived Builder inbox paths, does not open or hash their content. Source fingerprints must not be passed to `git cat-file`. If canonical source is absent from the current repository, recover from the authoritative ORIGINAL code repository or source archive; do not invent a settlement module or copy unverified synthetic code into production finance routes.
+
+**One minimal integration patch.** Once independently verified, source-pin the approved canonical logic, server-controlled new-only payment authentication / bank date / UTR provenance and separate post-activation invoice + allocation ledger in the existing authenticated Flask workspace. Do not change Caddy `/api/*`, add duplicate upload tabs, alter three-column XLSX, or include historical data mounts. Keep `PAYMNENT` A:L and old allocations unreachable. Do not treat fresh upload timestamp as proof that the bank payment was newly received.
+
+**One consolidated mandatory QA and isolated AWS stage** — re-use previously passing exact-hash tests wherever still applicable. Only the following new/changed risks require fresh verification:
+1. New-only source provenance (server cutoff, UTR, Column I, invoice eligibility / SOL / branch / period) and historical-data isolation.
+2. Approved reconciliation rule precedence including 0/1/2/3% TDS Decimal HALF_UP, SBISA SOL 1, full/partial waterfall, DNM-01 negative cases, protected/credit-note holds and duplicate/over-allocation conservation. No real financial fixture.
+3. Authenticated upload/approval, idempotent transactional writer **in a completely isolated new-only test ledger**, negative permission tests and read-only report parity.
+4. Pinned AWS staging image, health/auth route smoke test and tested rollback preserving existing Caddy/reporting.
+Any failure blocks financial release; "previous tests passed" is acceptable only when exact source/behavior is covered and no failure was left unresolved.
+
+**Release only with explicit owner approval.** Source-only GitHub CI and an AWS-running UI are not finance release authorization. Do not flip the disabled Apply control, enable production database credentials, run a live finance write, scan historical books, backfill, re-evaluate existing suspense or change old payment statuses. Production financial button stays locked until owner approves the exact new-only writer and required QA evidence.
+
+## Required output from the engineer
+One actionable PASS/BLOCKED report containing: canonical source ID and provenance; approved rulebook version; exact new-only cutoff/auth evidence; immutable image ID; CI pass evidence; one isolated new-ledger source-to-output test; role/idempotency denial; rollback pass; owner's explicit finance-write approval. Avoid multiple QA cycles or unnecessary speculative feature development.
+
+**FAST_TRACK=SOURCE_RECOVERY_FIRST; NUM_QA_GATES=ONE_CONSOLIDATED; HISTORICAL_DATA=FORBIDDEN; FINANCIAL_APPLY=LOCKED_UNTIL_AUTHORIZED.**
+
+## Corrective source identification (2026-11-21)
+The previously cited 64-character `189cd6e9...` and `85606f22...` values are **SHA-256 code fingerprints**, not Git commit objects. The original records were `ENGINE_BUILDER_SB18_PRE_BC_CHAIN_REMEDIATION_20261028_1939IST_REPORT_PACKET.json` and `REPORT_ARCHIVIST_Q218_SB18_INTAKE_20261028_200750IST_INDEPENDENT_STATIC_VERIFICATION.json`. They identify two source packages:
+- `ENGINE_BUILDER_SB18_PRE_BC_CHAIN_REMEDIATION_20261028_1939IST.zip`, archive SHA-256 `27149c9ab65065db51c14748708d0ee6775176d66d49a555711eb889b22c1e5f`, code SHA-256 `189cd6e9cff399412a50520afd0d7520752a3682c707751ec1f853c57c7ad256` (39 entries, not a certified full allocation engine).
+- `OUT_SCHEMA_V218_STAGING_BUILDER_20261028_1932IST.zip`, archive SHA-256 `b85bf68b2e241a71da4daccc3ff666f9576eb1c5a7ac7d46239d7003c9670c81`, code SHA-256 `85606f226ebb7b6555a648386021b3df2765d29c9f37312d499029b335b0719b` (17 entries, staging writer candidate).
+The proposed source-package location from handoff records is `/DIL_PRIMARY_AGENT_HUB/My_sec_Payment_Reconciliation/INBOX/ENGINE_BUILDER`. Current Google Drive search and Library title search did not locate these ZIP bytes. The original packages must be located and their manifests/content verified before treating them as recoverable source. No historical financial workbook may be opened, read or used for recovery. Known Builder/Primary tests are not production financial approval.
+
+
+## 2026-11-21 update — owner uploaded v2.51 archive; source and QA classification
+
+**This section supersedes earlier notes claiming the two October 28 ZIPs were not found.** Owner subsequently supplied both original source ZIPs, and archive/main-code SHA-256 checks matched original verification records. The ZIPs are real and recovered, but their integrity does **not** certify them for production.
+
+Owner also uploaded `SBI-Reconciliation-v2.51-20261121T135552Z-1-001.zip` and `DIL Financial Engine — Step-by-Step Repair Blueprint (v2.51, staging).docx`. Source-only ZIP directory inventory shows **17 entries: 7 DOCX, 4 XLSX, 3 TXT, 1 MD, 2 empty directory entries; 0 Python files and 0 runtime build scripts**. The 4 historical Excel files were **not opened or processed**. This is a documentation/financial backup archive, **not an application deployment package**; its deployment folder is empty.
+
+The ZIP's `04-QA-Evidence/Effective Controls-Only Release Manifest.txt` dated 2026-10-28 explicitly reports:
+- `CTRL_ONLY_20261028_01` applies to **control-plane administrative labels only**, not finance runtime; freeze active.
+- `Q218_D01_OUTPUT_WRITER` code SHA-256 `85606f226ebb7b6555a648386021b3df2765d29c9f37312d499029b335b0719b`: **QA_FAIL_BUGS_QUARANTINED** after **16/20 independent checks** and four numeric/text-identity defects. The recovered hash must **not** be deployed unchanged even though byte integrity passes.
+- `SB18_NEW` code SHA-256 `189cd6e9cff399412a50520afd0d7520752a3682c707751ec1f853c57c7ad256`: **QA_PENDING_STAGING**, not an approved allocator.
+- Complete `FIN_ENGINE` was **BLOCKED_NOT_BUILT** as of that manifest.
+
+From the user's original ChatGPT Library Builder inbox, `ENGINE_BUILDER_GLOBAL01_W13_20261031_101756IST.zip` was recovered. SHA-256 `ddc95b3ebb8fe86beef7f46455d79a14089e4922ffeac6238a201298094090d1` matches the Builder packet. It contains **synthetic-only** source modules for period/TDS/master/paid-marker/DNM-01/global conflict review and synthetic v2.18 writer. Its included results **report** 375/375 Builder-local tests passing (not independently rerun here). `IMPLEMENTATION_COVERAGE.json` says full automatic allocator, live source authority/ledger, waterfall-LAST integration, independent QA and Finance approval are **absent**.
+
+**Updated fast-track result:** historical reference specifications and parts of the prototype code are recovered. No evidence in these reviewed sources establishes a verified complete canonical v2.51 production allocator. Next work must obtain or complete the actual new-only transactional runner without reusing quarantined writer and complete one essential **synthetic** end-to-end release gate. No history access, no AWS mutation and no financial Apply activation were performed during this archive audit.
