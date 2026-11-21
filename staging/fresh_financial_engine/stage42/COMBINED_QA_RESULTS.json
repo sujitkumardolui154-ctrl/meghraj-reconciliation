@@ -1,0 +1,37 @@
+{
+  "project": "NEW engine 21 11 2026",
+  "stage": "Combined Stage 4.2\u20134.5",
+  "result": {
+    "engine": "NEW engine 21 11 2026",
+    "combined_stage": "STAGE_4_2_TO_4_5_SOURCE_REVIEW_ONLY",
+    "status": "SYNTHETIC_COMBINED_QA_PASS_NOT_FINANCE_CERTIFICATION",
+    "source_layout": "PINNED_LEGACY_V218_ONLY",
+    "payment_model_status": "SUSPENSE",
+    "bank_origin_independently_authenticated": false,
+    "firebase_roles_authenticated": false,
+    "financial_allocations": 0,
+    "candidate_reservations": 0,
+    "original_source_cells_preserved": true,
+    "ledger_persisted_after_run": false,
+    "financial_writes": false,
+    "historical_records_processed": false,
+    "production_apply_enabled": false,
+    "output_path": "/mnt/data/sbi_combined_42/SYNTHETIC_STAGE42_REVIEW_OUTPUT.xlsx"
+  },
+  "local_tests": {
+    "stage4": 41,
+    "stage41": 24,
+    "stage42": 20,
+    "total": 85,
+    "status": "PASS"
+  },
+  "limitations": [
+    "synthetic only",
+    "legacy v2.18 source schema only",
+    "unverified bank origin",
+    "not actual v2.51 allocator",
+    "candidate reservations and financial writes = 0",
+    "no AWS changes"
+  ],
+  "production_financial_apply": "LOCKED"
+}
