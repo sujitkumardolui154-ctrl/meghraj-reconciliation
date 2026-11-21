@@ -8,7 +8,7 @@ BASE=/home/ubuntu/sbi-bulk-report-integration
 C=sbi-bulk-report-pr129-https-preview
 NET=sbi_pr129_preview_net
 HOST=pr129.13-232-241-221.sslip.io
-FILES="bulk_reports.py aws_verified_invoice_lookup.py test_aws_verified_invoice_lookup.py"
+FILES="bulk_reports.py bulk_report_excel.py aws_verified_invoice_lookup.py test_aws_verified_invoice_lookup.py"
 MARKER=/app/pr129_aws_invoice_lookup.enabled
 cd "$REPO"
 
@@ -33,6 +33,7 @@ for f in $FILES; do test -s "dashboard_source/$f"; done
 python3 -m py_compile \
   dashboard_source/aws_verified_invoice_lookup.py \
   dashboard_source/test_aws_verified_invoice_lookup.py \
+  dashboard_source/bulk_report_excel.py \
   dashboard_source/bulk_reports.py
 
 BACKUP="$(mktemp -d "$BASE/pr129-aws-lookup-backup.XXXXXXXX")"
