@@ -1,0 +1,50 @@
+name: SBI NEW engine Stage 4.3 combined new-source gate
+on:
+  pull_request:
+    paths:
+      - "staging/fresh_financial_engine/stage43/**"
+      - ".github/workflows/sbi-stage43-new-source-combined.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  stage43-combined-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile Stage 4.3 adapter and verify runner shell syntax
+        run: |
+          python -m py_compile staging/fresh_financial_engine/stage43/new_only_adapter.py
+          bash -n staging/fresh_financial_engine/stage43/run_combined_source_qa.sh
+      - name: Run one consolidated new-only source/ledger contract suite
+        run: |
+          export PYTHONPATH="$GITHUB_WORKSPACE/staging/fresh_financial_engine/stage43:$GITHUB_WORKSPACE/staging/fresh_financial_engine/stage4:$GITHUB_WORKSPACE/staging/fresh_financial_engine/stage41:$GITHUB_WORKSPACE/staging/fresh_financial_engine/stage42:$GITHUB_WORKSPACE/staging/fresh_financial_engine"
+          python -m unittest discover -s staging/fresh_financial_engine/stage4/tests -p 'test_*.py' -q
+          python -m unittest discover -s staging/fresh_financial_engine/stage41/tests -p 'test_manifest_contract_ci.py' -q
+          python -m unittest discover -s staging/fresh_financial_engine/stage42/tests -p 'test_source_contract_ci.py' -q
+          python -m unittest discover -s staging/fresh_financial_engine/stage43/tests -p 'test_source_contract.py' -q
+          echo "STAGE43_COMBINED_STDLIB_QA=PASS"
+      - name: Test synthetic workbook paths only if artifact_tool is installed
+        run: |
+          if python -c 'import artifact_tool' >/dev/null 2>&1; then
+            export PYTHONPATH="$GITHUB_WORKSPACE/staging/fresh_financial_engine/stage43:$GITHUB_WORKSPACE/staging/fresh_financial_engine/stage4:$GITHUB_WORKSPACE/staging/fresh_financial_engine/stage41:$GITHUB_WORKSPACE/staging/fresh_financial_engine/stage42:$GITHUB_WORKSPACE/staging/fresh_financial_engine"
+            python -m unittest discover -s staging/fresh_financial_engine/stage41/tests -p 'test_v218_writer.py' -q
+            python -m unittest discover -s staging/fresh_financial_engine/stage42/tests -p 'test_combined_review.py' -q
+            python -m unittest discover -s staging/fresh_financial_engine/stage43/tests -p 'test_workbook_e2e.py' -q
+            echo "STAGE43_COMBINED_WORKBOOK_QA=PASS"
+          else
+            echo "::warning::artifact_tool unavailable; workbook tests are NOT RUN on GitHub. Independent workbook release gate is pending."
+            echo "STAGE43_COMBINED_WORKBOOK_QA=NOT_RUN_RUNTIME_UNAVAILABLE"
+          fi
+      - name: Confirm locked finance deployment boundary
+        run: |
+          echo "AWS_STAGE43_DEPLOYMENT=NOT_PERFORMED"
+          echo "ACTUAL_BANK_PROVENANCE=NOT_AUTHENTICATED"
+          echo "FINANCIAL_POSTING=LOCKED"
+          echo "NEW_TO_V218_WRITER_MAPPING=NOT_APPROVED"
