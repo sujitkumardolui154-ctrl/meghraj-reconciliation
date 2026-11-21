@@ -114,9 +114,13 @@ class FakeReadSession:
 
 class AWSReadOnlyInvoiceLookupTests(unittest.TestCase):
     def test_exact_random_order_complete_53_columns(self):
+        b = snapshot("TEST-B", "118", False)
+        b["original_values"][13] = "27"
+        b["original_values"][14] = "2.4299999999999997"
+        b["original_values"][15] = "43.739999999999995"
         s = FakeReadSession([
             snapshot("TEST-A", "0"),
-            snapshot("TEST-B", "118", False),
+            b,
         ])
         result = lookup_verified_invoices(["TEST-B", "TEST-C", "TEST-A"], session=s)
         self.assertEqual([r["invoice_no"] for r in result["matches"]],
@@ -136,6 +140,16 @@ class AWSReadOnlyInvoiceLookupTests(unittest.TestCase):
         workbook=load_workbook(io.BytesIO(combined_excel_from_report_zip(zipdata)),
                                read_only=True, data_only=False)
         try:
+            all_rows=workbook["All Invoices"]
+            self.assertEqual(all_rows.cell(2,13).data_type,"s")
+            self.assertEqual(all_rows.cell(2,14).data_type,"n")
+            self.assertEqual(all_rows.cell(2,14).value,27)
+            self.assertEqual(all_rows.cell(2,15).data_type,"n")
+            self.assertAlmostEqual(all_rows.cell(2,15).value,2.43)
+            self.assertEqual(all_rows.cell(2,16).data_type,"n")
+            self.assertAlmostEqual(all_rows.cell(2,16).value,43.74)
+            self.assertEqual(all_rows.cell(2,21).data_type,"n")
+            self.assertEqual(all_rows.cell(2,21).value,118)
             self.assertEqual(workbook["All Invoices"].cell(2,13).value,"TEST-B")
             self.assertEqual(workbook["All Invoices"].cell(3,13).value,"TEST-A")
             self.assertEqual(workbook["Lookup Review"].cell(2,1).value,"TEST-C")
