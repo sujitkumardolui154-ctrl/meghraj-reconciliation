@@ -6,7 +6,7 @@ from http.server import HTTPServer
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from staging_server import SyntheticHandler, synthetic_smoke
+from staging_server import SyntheticHandler, synthetic_smoke, stage3_mock_smoke
 
 
 class SyntheticHTTPTests(unittest.TestCase):
@@ -72,6 +72,22 @@ class SyntheticHTTPTests(unittest.TestCase):
                 status, doc = self.call(path)
                 self.assertEqual(status, 404)
                 self.assertEqual(doc['error'], 'ROUTE_NOT_AVAILABLE')
+
+
+    def test_stage3_mock_bridge_is_read_only_and_dual_reviewed(self):
+        status, doc = self.call('/api/stage3/synthetic-bridge')
+        self.assertEqual(status, 200)
+        self.assertEqual(doc['stage3_probe'], 'PASS')
+        self.assertTrue(doc['mock_review_completed'])
+        self.assertEqual(doc['mock_candidate_ledger_edges'], 1)
+        self.assertFalse(doc['mock_ledger_persistent'])
+        self.assertFalse(doc['financial_writes'])
+        self.assertEqual(stage3_mock_smoke()['actual_financial_status'], 'NOT_ASSIGNED')
+
+    def test_stage3_endpoint_never_accepts_payments(self):
+        status, doc = self.call('/api/stage3/synthetic-bridge','POST',b'{"credit":"117.00"}')
+        self.assertEqual(status, 403)
+        self.assertFalse(doc['apply_enabled'])
 
     def test_other_mutation_methods_denied(self):
         for method in ('PUT', 'PATCH', 'DELETE'):

@@ -4,10 +4,13 @@ FROM python:3.12-slim-bookworm
 WORKDIR /app
 COPY staging/fresh_financial_engine/sbi_engine/ /app/sbi_engine/
 COPY staging/fresh_financial_engine/staging_server.py /app/staging_server.py
+COPY staging/fresh_financial_engine/stage3_mock_bridge.py /app/stage3_mock_bridge.py
+COPY staging/aws_login_v150/d030_future_payment_provenance.py /app/d030_future_payment_provenance.py
+COPY staging/aws_login_v150/d031_synthetic_receipt_register.py /app/d031_synthetic_receipt_register.py
 ARG SBI_SOURCE_SHA=UNVERIFIED
 LABEL org.opencontainers.image.revision="${SBI_SOURCE_SHA}"
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 SBI_SYNTHETIC_STAGE_PORT=8080
-RUN chmod -R a+rX /app && chmod a-w /app/staging_server.py /app/sbi_engine/*.py
+RUN chmod -R a+rX /app && chmod a-w /app/staging_server.py /app/stage3_mock_bridge.py /app/d030_future_payment_provenance.py /app/d031_synthetic_receipt_register.py /app/sbi_engine/*.py
 USER 10001:10001
 EXPOSE 8080
 CMD ["python", "-u", "staging_server.py"]

@@ -60,6 +60,62 @@ def synthetic_smoke() -> dict:
     }
 
 
+
+
+def stage3_mock_smoke() -> dict:
+    """Fabricated intake -> dual review -> mock ledger, never real finance."""
+    from d030_future_payment_provenance import evidence_row_sha256
+    from d031_synthetic_receipt_register import MockPrincipal, MockServerPolicy, UPLOADER, REVIEWER
+    from stage3_mock_bridge import Stage3MockBridge
+
+    row = {"Description": "SYNTH-STAGE3 POSTAGE NOVEMBER 2026",
+           "SOL ID": "1505", "Credit Amount": "117.00"}
+    meta = {"source_kind": "SYNTHETIC", "excel_row": 2,
+            "bank_date": "2026-11-23", "bank_reference": "SYNTH-UTR-STAGE3",
+            "source_credit_column": "PAYMNENT!I", "source_credit_I": "117.00",
+            "evidence_row_sha256": evidence_row_sha256(row)}
+    context = {"source_kind": "SYNTHETIC", "bank_reference": "SYNTH-UTR-STAGE3",
+               "client_name": "SYNTH BRANCH",
+               "invoice_refs": ["SYNTH-INV-STAGE3"], "sbisa": False,
+               "source_verified": True, "bank_reference_verified": True}
+    invoice = {"source_kind": "SYNTHETIC", "invoice_no": "SYNTH-INV-STAGE3",
+               "sol_id": "1505", "client_name": "SYNTH BRANCH", "sbisa": False,
+               "invoice_date": "2026-11-21", "service_months": ["2026-11"],
+               "taxable": "100.00", "cgst": "9.00", "sgst": "9.00",
+               "gross": "118.00", "approved_tds_rate": 1,
+               "original_paid_marker": None, "source_verified": True,
+               "master_verified": True, "protected_prior": False, "credit_note": False}
+    policy = MockServerPolicy(
+        activation_date="2026-11-21", submission_date="2026-11-24",
+        uploader_uid="SYNTH-USER-STAGE3-UP",
+        reviewer_uid="SYNTH-USER-STAGE3-REVIEW")
+    uploader = MockPrincipal(uid=policy.uploader_uid, role=UPLOADER)
+    reviewer = MockPrincipal(uid=policy.reviewer_uid, role=REVIEWER)
+    bridge = Stage3MockBridge(server_policy=policy)
+    try:
+        staged = bridge.stage([row], [meta], principal=uploader)
+        if staged.get("mock_receipt_created") is not True:
+            raise RuntimeError("SYNTH_STAGE3_MOCK_INTAKE_DENIED")
+        reviewed = bridge.review(staged["receipt_id"], principal=reviewer)
+        if reviewed.get("mock_review_completed") is not True:
+            raise RuntimeError("SYNTH_STAGE3_REVIEW_DENIED")
+        proposed = bridge.propose(staged["receipt_id"], [invoice],
+                                  [context], principal=reviewer)
+        counted = bridge.counts(principal=reviewer)
+        if (proposed["status"] != "SYNTHETIC_PROPOSALS_RESERVED_FOR_REVIEW"
+                or proposed["proposal_count"] != 1
+                or counted["mock_candidate_edges"] != 1
+                or proposed["financial_writes"] is not False
+                or proposed["production_approved"] is not False):
+            raise RuntimeError("SYNTH_STAGE3_CANDIDATE_INVARIANT_FAILURE")
+        return {**NO_FINANCE, "stage3_probe": "PASS",
+                "mock_receipt_registered": True, "mock_review_completed": True,
+                "mock_candidate_ledger_edges": counted["mock_candidate_edges"],
+                "mock_ledger_persistent": False,
+                "actual_financial_status": "NOT_ASSIGNED"}
+    finally:
+        bridge.close()
+
 class SyntheticHandler(BaseHTTPRequestHandler):
     server_version = "SBI-Synthetic-Stage"
     sys_version = ""
@@ -89,6 +145,12 @@ class SyntheticHandler(BaseHTTPRequestHandler):
                 result = synthetic_smoke()
             except Exception:
                 return self._send(503, {**NO_FINANCE, "error": "SYNTHETIC_ENGINE_UNAVAILABLE"})
+            return self._send(200, result)
+        if self.path == "/api/stage3/synthetic-bridge":
+            try:
+                result = stage3_mock_smoke()
+            except Exception:
+                return self._send(503, {**NO_FINANCE, "error": "STAGE3_SYNTHETIC_BRIDGE_UNAVAILABLE"})
             return self._send(200, result)
         return self._send(404, {**NO_FINANCE, "error": "ROUTE_NOT_AVAILABLE"})
 

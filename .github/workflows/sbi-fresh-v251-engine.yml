@@ -19,10 +19,10 @@ jobs:
         with:
           python-version: "3.12"
       - name: Verify synthetic engine code syntax
-        run: python -m py_compile staging/fresh_financial_engine/sbi_engine/engine.py staging/fresh_financial_engine/demo.py staging/fresh_financial_engine/staging_server.py
+        run: python -m py_compile staging/fresh_financial_engine/sbi_engine/engine.py staging/fresh_financial_engine/demo.py staging/fresh_financial_engine/staging_server.py staging/fresh_financial_engine/stage3_mock_bridge.py
       - name: Fresh v2.51 rules synthetic regression
         run: |
-          PYTHONPATH=staging/fresh_financial_engine python -m unittest discover -s staging/fresh_financial_engine/tests -p 'test_*.py' -v
+          PYTHONPATH=staging/fresh_financial_engine:staging/aws_login_v150 python -m unittest discover -s staging/fresh_financial_engine/tests -p 'test_*.py' -v
       - name: Isolated AWS staging Compose and deploy-script safety contract
         run: |
           bash -n staging/fresh_financial_engine/deploy_synthetic_aws.sh
