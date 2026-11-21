@@ -19,16 +19,24 @@ cleanup() {
   local rc=$?
   trap - EXIT ERR INT TERM
   if [[ -n "$SCRATCH" && "$SCRATCH" =~ ^sbi_restore_qa_[a-z0-9_]+$ && "$SCRATCH" != "$DB" ]]; then
-    sudo -n -u postgres dropdb --if-exists "$SCRATCH" || {
-      echo "WARNING_TEMPORARY_QA_DATABASE_NOT_CLEANED=$SCRATCH"
+    if sudo -n -u postgres dropdb --if-exists "$SCRATCH"; then
+      echo "TEMPORARY_RESTORE_DATABASE_CLEANUP=PASS"
+    else
+      echo "TEMPORARY_RESTORE_DATABASE_CLEANUP=FAIL name=$SCRATCH"
       PRESERVE=yes
-    }
+      rc=99
+    fi
   fi
   if [[ -n "$TEMP_DIR" && "$TEMP_DIR" == /tmp/sbi_restore_qa_* && "$PRESERVE" == no ]]; then
-    sudo -n rm -rf -- "$TEMP_DIR"
+    if ! sudo -n rm -rf -- "$TEMP_DIR"; then
+      echo "TEMPORARY_ARCHIVE_COPY_CLEANUP=FAIL"
+      rc=98
+    fi
   fi
   if [[ "$rc" -ne 0 ]]; then
     echo "STAGE25_RECOVERY_QA=FAIL step=$STEP exit=$rc"
+  else
+    echo "STAGE25_RECOVERY_QA=PASS"
   fi
   echo "LIVE_PR129_DEPLOYMENT=NOT_PERFORMED"
   exit "$rc"
@@ -129,5 +137,5 @@ echo "REAL_FIREBASE_AUTHENTICATED_E2E=NOT_PERFORMED"
 echo "PRODUCTION_RELEASE=BLOCKED_PENDING_PRIVATE_STAGING_AUTH_QA_AND_OWNER_APPROVAL"
 echo "FINANCIAL_ENGINE=UNCHANGED"
 echo "CENTRAL_DATABASE_FINANCIAL_WRITES=NONE"
-echo "TEMPORARY_RESTORE_DATABASE=REMOVED_ON_EXIT"
+echo "TEMPORARY_RESTORE_DATABASE=REMOVAL_SCHEDULED_ON_EXIT"
 echo "NEXT=PREPARE_PRIVATE_STAGING_RUNTIME_AND_AUTHENTICATED_USER_TEST"
