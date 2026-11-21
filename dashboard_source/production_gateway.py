@@ -393,6 +393,11 @@ install_login_pages(app)
 install_user_management(app)
 install_account_pages(app)
 
+# Read-only Bulk Report. Reuse existing session, CSRF and report-viewer checks;
+# source-only uploads and verified selected-invoice lookups cannot write finance.
+from bulk_reports import bulk_report
+app.register_blueprint(bulk_report)
+
 # Read-only CREDIT NOTE reporting v1 — use the existing Firebase session guard.
 # install_sessions(app) runs before this blueprint and populates g.dil_user
 # only after revocation-checked Firebase cookie validation.
