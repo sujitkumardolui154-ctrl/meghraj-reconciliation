@@ -201,65 +201,11 @@ PY
 # Caddy matcher layout has changed. Keep @legacy's old sbi-preview upstream.
 sudo cp "$BACKUP/Caddyfile" "$WORK/proposed.Caddyfile"
 sudo chown "$(id -u):$(id -g)" "$WORK/proposed.Caddyfile"
-python3 - "$WORK/proposed.Caddyfile" "$CANDIDATE" "$HOST" <<'PY'
-from pathlib import Path
-import sys,re
-p=Path(sys.argv[1]); target=sys.argv[2]; host=sys.argv[3]
-original=p.read_text()
-lines=original.splitlines(keepends=True)
-headers=[i for i,line in enumerate(lines) if re.match(
-    r'^[ \t]*'+re.escape(host)+r'[ \t]*\{[ \t]*(?:#.*)?$',line.strip('\n'))]
-if len(headers)!=1:
-    raise SystemExit('STOP_MAIN_VHOST_HEADER_NOT_UNIQUE')
-start=headers[0]
-depth=0
-end=None
-for i in range(start,len(lines)):
-    stripped=lines[i].split('#',1)[0]
-    depth+=stripped.count('{')-stripped.count('}')
-    if depth==0:
-        end=i+1
-        break
-if end is None or end<=start+1:
-    raise SystemExit('STOP_MAIN_VHOST_BOUNDARY_UNREADABLE')
-site=''.join(lines[start:end])
-# Require the exact known mixed legacy/default/login architecture:
-if not re.search(r'handle[ \t]+@legacy[ \t]*\{',site):
-    raise SystemExit('STOP_NO_LEGACY_ROUTE_TO_PRESERVE')
-if not re.search(r'handle[ \t]+@login[ \t]*\{',site):
-    raise SystemExit('STOP_NO_LOGIN_ROUTE_TO_FIX')
-if re.search(r'handle_path\s+/api/bulk-report',site):
-    raise SystemExit('STOP_REPORT_PATH_STRIPPING_UNSUPPORTED')
-login_pattern=(r'(?m)(^[ \t]*handle[ \t]+@login[ \t]*\{[ \t]*\n'
-               r'[ \t]*reverse_proxy[ \t]+)sbi-source-reports-v1:8080')
-site,login_count=re.subn(login_pattern,lambda m:m.group(1)+target+":8080",site)
-default_pattern=(r'(?m)(^[ \t]*handle[ \t]*\{[ \t]*\n'
-                 r'[ \t]*reverse_proxy[ \t]+)sbi-preview:8080')
-site,default_count=re.subn(default_pattern,lambda m:m.group(1)+target+":8080",site)
-if login_count!=1 or default_count!=1:
-    raise SystemExit('STOP_MAIN_LOGIN_OR_DEFAULT_ROUTE_UNEXPECTED')
-# Named @legacy's old application remains byte-identical.
-if not re.search(r'handle[ \t]+@legacy[ \t]*\{[ \t]*\n[ \t]*reverse_proxy[ \t]+sbi-preview:8080',site):
-    raise SystemExit('STOP_LEGACY_APPLICATION_ROUTE_CHANGED')
-# Explicitly prioritize reporting API above any broad @legacy matcher.
-rt=re.search(r'(?m)^([ \t]*)route[ \t]*\{[ \t]*$',site)
-if rt is None or len(re.findall(r'(?m)^[ \t]*route[ \t]*\{[ \t]*$',site))!=1:
-    raise SystemExit('STOP_ROUTE_CONTAINER_MISMATCH')
-indent=rt.group(1)+'    '
-insert=('\n'+indent+'handle /api/bulk-report/* {\n'
-        +indent+'    reverse_proxy '+target+':8080\n'
-        +indent+'}\n')
-site=site[:rt.end()]+insert+site[rt.end():]
-updated=''.join(lines[:start])+site+''.join(lines[end:])
-if original.count('sbi-bulk-report-pr129-https-preview:8080') != updated.count('sbi-bulk-report-pr129-https-preview:8080'):
-    raise SystemExit('STOP_PR129_PREVIEW_ROUTE_MODIFIED')
-p.write_text(updated)
-print("MAIN_LOGIN_PROXY=REPAIRED")
-print("MAIN_DEFAULT_DASHBOARD_PROXY=PROMOTED")
-print("MAIN_EXPLICIT_REPORT_API_PROXY=ADDED")
-print("MAIN_LEGACY_API_UPSTREAM=PRESERVED")
-print("ALL_OTHER_VHOSTS=UNCHANGED")
-PY
+echo '=== MAIN CADDY ROUTE SELECTION QA ==='
+python3 scripts/sbi_main_caddy_route_patch.py --self-test
+python3 scripts/sbi_main_caddy_route_patch.py \
+  "$WORK/proposed.Caddyfile" "$CANDIDATE" "$HOST"
+echo 'MAIN_CADDY_ROUTE_SELECTOR=PASS'
 sudo docker cp "$WORK/proposed.Caddyfile" "$CADDY:/tmp/sbi-main-report-promotion.Caddyfile"
 sudo docker exec "$CADDY" caddy validate \
   --config /tmp/sbi-main-report-promotion.Caddyfile >/dev/null
