@@ -20,7 +20,7 @@ sudo docker inspect "$MAIN" --format '{{len .Mounts}}' | awk '{print "MAIN_MOUNT
 sudo docker inspect "$PREVIEW" --format '{{len .Mounts}}' | awk '{print "PREVIEW_MOUNT_COUNT="$1}'
 
 echo '=== CREDENTIAL BINDINGS (NO SECRET VALUES OR PATHS) ==='
-sudo docker exec -i "$PREVIEW" python -B - <<'PY'
+sudo docker exec -i -w /app "$PREVIEW" python -B - <<'PY'
 import os
 from pathlib import Path
 import google.auth
