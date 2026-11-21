@@ -33,6 +33,19 @@ FIN_BEFORE="$(counts)"
 [[ -z "$(sudo -n docker port "$OLD")" ]]
 echo "BASELINE=PASS"
 
+echo "=== A2. VERIFY LIVE AUTH SESSION ROUTE BEFORE BUILD ==="
+sudo -n docker exec -i "$LIVE" python3 -B - <<'PY'
+from app import app
+found={}
+for rule in app.url_map.iter_rules():
+ if rule.rule in ("/auth/session","/login"):
+  fn=app.view_functions.get(rule.endpoint)
+  found[rule.rule]=fn.__name__ if fn else "UNBOUND"
+for path,name in sorted(found.items()):
+ print("LIVE_AUTH_ROUTE="+path+" HANDLER="+name)
+print("LIVE_AUTH_SESSION_HANDLER_DISCOVERY=COMPLETE")
+PY
+
 echo "=== B. TWO SOURCE FILES: AWS-LOCAL COPY, NO SERVICE CREDENTIAL ==="
 STEP=COPY
 SCRATCH="$(mktemp -d /tmp/sbi_authmodules_XXXXXXXX)"
