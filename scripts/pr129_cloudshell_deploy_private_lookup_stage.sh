@@ -22,8 +22,15 @@ command -v gcloud >/dev/null || { echo 'STOP: RUN_IN_GCLOUD_SHELL'; exit 1; }
 [ "$(gcloud config get-value project 2>/dev/null)" = "$PROJECT" ] || {
   echo 'STOP: WRONG_GCP_PROJECT'; exit 1;
 }
-if gcloud run services describe "$SERVICE" --region "$REGION" \
-    --project "$PROJECT" --format="value(metadata.name)" >/dev/null 2>&1; then
+# Fail closed if the operator cannot list services; do not confuse
+# missing permission/network failures with a service that does not exist.
+if ! SERVICE_LIST="$(gcloud run services list \
+    --project "$PROJECT" --region "$REGION" \
+    --format='value(metadata.name)')"; then
+  echo 'STOP: CANNOT_VERIFY_CURRENT_CLOUD_RUN_SERVICES'
+  exit 1
+fi
+if printf '%s\n' "$SERVICE_LIST" | grep -Fxq "$SERVICE"; then
   echo 'STOP: STAGE_SERVICE_ALREADY_EXISTS_DO_NOT_REPLACE'
   exit 1
 fi
