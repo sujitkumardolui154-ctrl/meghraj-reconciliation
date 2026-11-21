@@ -1,7 +1,8 @@
 """Create ONE combined XLSX from the integrity-checked Bulk Report ZIP.
 
 Convert only recognized monetary fields to Excel numeric cells. Invoice numbers,
-SOL IDs, dates, remarks and review flags remain literal text. All changes are
+SOL IDs, remarks and review flags remain literal text. Recognized ISO dates
+become Excel date cells. All changes are
 export-time presentation only; no financial data or classifications are written.
 """
 from __future__ import annotations
@@ -13,6 +14,7 @@ import json
 import re
 import zipfile
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from datetime import datetime
 
 from openpyxl import Workbook
 from openpyxl.cell import WriteOnlyCell
@@ -52,6 +54,40 @@ CENT = Decimal('0.01')
 FLOAT_NOISE_TOLERANCE = Decimal('0.00000001')
 
 
+# Fixed 53-column contract: E Month, F Invoice Date, V Payment Date,
+# X GST Payment Date, AK other Date. Preserve FY, identifiers and all
+# unrecognized/ambiguous date strings as text.
+DATE_COLUMN_FORMATS = {
+    4: 'mmmm yyyy',
+    5: 'dd/mm/yyyy',
+    21: 'dd/mm/yyyy',
+    23: 'dd/mm/yyyy',
+    36: 'dd/mm/yyyy',
+}
+ISO_DATE = re.compile(
+    r'\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?)?\Z'
+)
+
+
+def _excel_date(value: str):
+    """Parse only unambiguous ISO calendar dates; never reinterpret local days."""
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not ISO_DATE.fullmatch(text):
+        return None
+    try:
+        parsed = datetime.fromisoformat(text)
+        if not 1900 <= parsed.year <= 9999:
+            return None
+        # The source fields record calendar dates, not UTC instants. Keep
+        # that recorded day unchanged and omit source 00:00:00 time.
+        return datetime(parsed.year, parsed.month, parsed.day)
+    except ValueError:
+        return None
+
+
+
 def _excel_money(value: str):
     """Return Excel numeric value for safe monetary text, else None.
 
@@ -84,11 +120,16 @@ def _excel_money(value: str):
 
 
 def _report_value(value: str, *, column: int, header: bool, money_sheet: bool):
-    if not header and money_sheet and column in AMOUNT_COLUMN_INDEXES:
-        number = _excel_money(value)
-        if number is not None:
-            return number, AMOUNT_NUMBER_FORMAT
-    # All other content remains literal text, including neutralized formulas.
+    if not header and money_sheet:
+        if column in AMOUNT_COLUMN_INDEXES:
+            number = _excel_money(value)
+            if number is not None:
+                return number, AMOUNT_NUMBER_FORMAT
+        if column in DATE_COLUMN_FORMATS:
+            parsed = _excel_date(value)
+            if parsed is not None:
+                return parsed, DATE_COLUMN_FORMATS[column]
+    # IDs, free text and invalid/missing dates remain literal text.
     return value, "@"
 
 
@@ -106,7 +147,7 @@ LOOKUP_HEADERS = ["Invoice No", "Reason"]
 
 
 def combined_excel_from_report_zip(payload: bytes) -> bytes:
-    """Return one XLSX with 6 or 7 sheets; amounts are numeric, IDs stay text."""
+    """Return one XLSX with 6 or 7 sheets; money numeric, dates dates, IDs text."""
     wb = Workbook(write_only=True)
     wb.properties.title = "SBI Bulk Report — Combined Excel"
     wb.properties.subject = "Source-only invoice payment-value classifications"
