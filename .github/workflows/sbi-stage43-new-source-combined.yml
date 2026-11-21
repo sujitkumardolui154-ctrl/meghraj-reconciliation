@@ -30,6 +30,12 @@ jobs:
           python -m unittest discover -s staging/fresh_financial_engine/stage42/tests -p 'test_source_contract_ci.py' -q
           python -m unittest discover -s staging/fresh_financial_engine/stage43/tests -p 'test_source_contract.py' -q
           echo "STAGE43_COMBINED_STDLIB_QA=PASS"
+      - name: Replay real fabricated XLSX binaries without artifact_tool
+        run: |
+          export PYTHONPATH="$GITHUB_WORKSPACE/staging/fresh_financial_engine/stage43:$GITHUB_WORKSPACE/staging/fresh_financial_engine/stage4:$GITHUB_WORKSPACE/staging/fresh_financial_engine"
+          python -m unittest discover -s staging/fresh_financial_engine/stage43/ci_tests -p 'test_static_xlsx_replay.py' -v
+          echo "STAGE43_STATIC_XLSX_E2E_QA=PASS"
+          echo "REPLAY_BANK_DATA=FABRICATED_ONLY"
       - name: Test synthetic workbook paths only if artifact_tool is installed
         run: |
           if python -c 'import artifact_tool' >/dev/null 2>&1; then
@@ -39,7 +45,7 @@ jobs:
             python -m unittest discover -s staging/fresh_financial_engine/stage43/tests -p 'test_workbook_e2e.py' -q
             echo "STAGE43_COMBINED_WORKBOOK_QA=PASS"
           else
-            echo "::warning::artifact_tool unavailable; workbook tests are NOT RUN on GitHub. Independent workbook release gate is pending."
+            echo "::warning::artifact_tool unavailable; dynamic workbook generation and v2.18 writer tests are NOT RUN on GitHub. The separate static XLSX parser-to-ledger replay IS run above; independent writer release QA remains pending."
             echo "STAGE43_COMBINED_WORKBOOK_QA=NOT_RUN_RUNTIME_UNAVAILABLE"
           fi
       - name: Confirm locked finance deployment boundary
