@@ -1,0 +1,38 @@
+name: SBI Stage 4 new-only offline integration QA
+on:
+  pull_request:
+    paths:
+      - "staging/fresh_financial_engine/stage4/**"
+      - ".github/workflows/sbi-stage4-new-only-offline.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  stage4-source-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile Stage 4 code
+        run: |
+          python -m py_compile staging/fresh_financial_engine/stage4/stage4_ledger.py
+      - name: Consolidated Stage 3 + Stage 4 synthetic regression
+        run: |
+          PYTHONPATH=staging/fresh_financial_engine:staging/aws_login_v150:staging/fresh_financial_engine/stage4 \
+            python -m unittest discover -s staging/fresh_financial_engine/tests -p 'test_*.py' -q
+          PYTHONPATH=staging/fresh_financial_engine/stage4 \
+            python -m unittest discover -s staging/fresh_financial_engine/stage4/tests -p 'test_*.py' -q
+      - name: Release restrictions remain enforced
+        run: |
+          grep -Fq 'PRODUCTION_FINANCE_APPLY_FORBIDDEN' staging/fresh_financial_engine/stage4/stage4_ledger.py
+          grep -Fq '"financial_writes":False' staging/fresh_financial_engine/stage4/stage4_ledger.py
+          grep -Fq 'financial_apply_enabled: bool = False' staging/fresh_financial_engine/stage4/stage4_ledger.py
+          echo 'STAGE4_CODE_QA=PASS'
+          echo 'AWS_STAGE4_DEPLOYMENT=NOT_PERFORMED'
+          echo 'PRODUCTION_FINANCIAL_APPLY=LOCKED'
+          echo 'HISTORICAL_BANK_DATA=NOT_ACCESSED_BY_CI'
