@@ -1,0 +1,43 @@
+name: SBI Lightsail restricted QA
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sbi-lightsail-restricted-qa
+  cancel-in-progress: false
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: sbi-lightsail-qa
+    steps:
+      - name: Configure authenticated SSH
+        shell: bash
+        env:
+          SSH_KEY: ${{ secrets.SBI_QA_SSH_PRIVATE_KEY }}
+          HOST_KEY: ${{ secrets.SBI_QA_KNOWN_HOST }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY"
+          test -n "$HOST_KEY"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/sbi_qa_key
+          printf '%s\n' "$HOST_KEY" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/sbi_qa_key ~/.ssh/known_hosts
+      - name: Run pre-approved server-side probe
+        shell: bash
+        env:
+          SSH_HOST: ${{ vars.SBI_QA_HOST }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_HOST"
+          ssh -T -i ~/.ssh/sbi_qa_key -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 sbiqa@"$SSH_HOST" 2>&1 | tee sbi_qa_result.txt
+      - name: Publish test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbi-qa-result
+          path: sbi_qa_result.txt
+          if-no-files-found: warn
+          retention-days: 14
