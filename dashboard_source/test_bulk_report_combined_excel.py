@@ -10,6 +10,12 @@ from bulk_report_excel import combined_excel_from_report_zip, _excel_money
 
 class CombinedExcelTest(unittest.TestCase):
     def test_money_conversion_preserves_precision_and_non_numeric_labels(self):
+        from bulk_report_excel import _excel_date
+        self.assertEqual(_excel_date("2023-10-17T00:00:00").strftime("%d/%m/%Y"), "17/10/2023")
+        self.assertEqual(_excel_date("2023-09-01").strftime("%Y-%m-%d"), "2023-09-01")
+        self.assertIsNone(_excel_date("CANCLED"))
+        self.assertIsNone(_excel_date("31/12/2023"))
+        self.assertIsNone(_excel_date("Mar-May 2026"))
         self.assertEqual(_excel_money("2.4299999999999997"), 2.43)
         self.assertEqual(_excel_money("43.739999999999995"), 43.74)
         self.assertEqual(_excel_money("608.8800000000001"), 608.88)
@@ -45,6 +51,9 @@ class CombinedExcelTest(unittest.TestCase):
 
         first_row = row("00000001", "", 118)
         first_row[10:14] = [27, 2.4299999999999997, 2.4299999999999997, 31.86]
+        first_row[4] = "2026-10-01T00:00:00"
+        first_row[18] = "2026-10-17T00:00:00"
+        first_row[20] = "2026-11-03T00:00:00"
         sheet.append(first_row)
         sheet.append(row("TEST-0002", 118, 0))
         sheet.append(row("TEST-0003", "INVALID", 118))
@@ -98,7 +107,16 @@ class CombinedExcelTest(unittest.TestCase):
         self.assertEqual(first.cell(4, 21).data_type, "s")  # INVALID
         self.assertEqual(first.cell(4, 21).value, "INVALID")
         self.assertEqual(first.cell(2, 7).data_type, "s")  # SOL ID
-        self.assertEqual(first.cell(2, 6).data_type, "s")  # Invoice date
+        self.assertEqual(first.cell(2, 5).data_type, "d")  # Month
+        self.assertEqual(first.cell(2, 5).number_format, "mmmm yyyy")
+        self.assertEqual(first.cell(2, 5).value.strftime("%Y-%m-%d"), "2026-10-01")
+        self.assertEqual(first.cell(2, 6).data_type, "d")  # Invoice date
+        self.assertEqual(first.cell(2, 6).number_format, "dd/mm/yyyy")
+        self.assertEqual(first.cell(2, 6).value.strftime("%Y-%m-%d"), "2026-10-31")
+        self.assertEqual(first.cell(2, 22).data_type, "d")  # Payment date
+        self.assertEqual(first.cell(2, 22).value.strftime("%Y-%m-%d"), "2026-10-17")
+        self.assertEqual(first.cell(2, 24).data_type, "d")  # GST payment date
+        self.assertEqual(first.cell(2, 24).value.strftime("%Y-%m-%d"), "2026-11-03")
         self.assertEqual(first.cell(2, 30).data_type, "s")
         # The upstream csv_bytes() intentionally prefixes an apostrophe to
         # any Excel-like formula. The combined exporter must retain that
