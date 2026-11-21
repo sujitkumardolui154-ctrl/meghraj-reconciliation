@@ -1,0 +1,32 @@
+# Separate Docker Compose project. DO NOT attach to the production Caddy network.
+name: sbi-new-engine-synthetic-stage
+services:
+  engine-synthetic:
+    build:
+      context: ../..
+      dockerfile: staging/fresh_financial_engine/Dockerfile.synthetic
+      args:
+        SBI_SOURCE_SHA: ${SBI_REVIEWED_SOURCE_SHA:?Exact 40-hex source commit required}
+    image: sbi-new-engine-synthetic:${SBI_REVIEWED_SOURCE_SHA:?Source SHA required}
+    restart: "no"
+    read_only: true
+    user: "10001:10001"
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=8m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 128m
+    ports:
+      - "127.0.0.1:18087:8080"
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      SBI_SYNTHETIC_STAGE_PORT: "8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz',timeout=3).close()"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
