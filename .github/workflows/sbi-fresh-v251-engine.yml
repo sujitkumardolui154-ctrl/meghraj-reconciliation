@@ -1,0 +1,46 @@
+name: SBI Fresh v2.51 Synthetic Engine QA
+on:
+  pull_request:
+    paths:
+      - "staging/fresh_financial_engine/**"
+      - ".github/workflows/sbi-fresh-v251-engine.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-finance-core:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify synthetic engine code syntax
+        run: python -m py_compile staging/fresh_financial_engine/sbi_engine/engine.py staging/fresh_financial_engine/demo.py
+      - name: Fresh v2.51 rules synthetic regression
+        run: |
+          PYTHONPATH=staging/fresh_financial_engine python -m unittest discover -s staging/fresh_financial_engine/tests -p 'test_*.py' -v
+      - name: End-to-end fabricated proposal demo
+        run: |
+          cd staging/fresh_financial_engine
+          python demo.py > /tmp/sbi-synthetic-demo.json
+          python - <<'PY'
+          import json
+          x=json.load(open('/tmp/sbi-synthetic-demo.json'))
+          assert x['proposal_count'] == 3
+          assert x['financial_writes'] is False
+          assert x['production_approved'] is False
+          assert x['historical_records_accessed'] is False
+          assert x['actual_financial_status']=='NOT_ASSIGNED'
+          print('FRESH_ENGINE_DEMO=PASS')
+          PY
+      - name: Verify production finance remains locked
+        run: |
+          echo "FRESH_V251_SYNTHETIC_QA=PASS"
+          echo "HISTORICAL_DATA=NOT_ACCESSED"
+          echo "PERSISTENT_LEDGER=NOT_CONNECTED"
+          echo "AWS_DEPLOYMENT=NOT_PERFORMED"
+          echo "FINANCIAL_APPLY=LOCKED"
