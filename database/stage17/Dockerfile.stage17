@@ -1,0 +1,11 @@
+ARG PR129_BASE_IMAGE
+FROM ${PR129_BASE_IMAGE}
+USER root
+WORKDIR /app
+RUN python3 -m pip install --no-cache-dir --disable-pip-version-check 'psycopg[binary]>=3.2,<3.4'
+COPY sbi_pg_reporting.py pg_reporting_blueprint.py patch_stage17_candidate.py test_stage17_blueprint.py test_sbi_pg_reporting_combined.py test_live_readonly_stdin_v2.py /app/
+RUN python3 patch_stage17_candidate.py \
+  && python3 -m py_compile sbi_pg_reporting.py pg_reporting_blueprint.py test_stage17_blueprint.py test_live_readonly_stdin_v2.py \
+  && echo 'STAGE17_IMAGE_BUILD=PASS'
+# This image is deliberately NOT deployed, and all Stage17 routes deny access
+# unless a server-side authorization callback is added after security review.
