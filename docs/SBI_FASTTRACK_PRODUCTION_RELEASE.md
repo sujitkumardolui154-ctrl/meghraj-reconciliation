@@ -32,3 +32,20 @@ The previously cited 64-character `189cd6e9...` and `85606f22...` values are **S
 - `ENGINE_BUILDER_SB18_PRE_BC_CHAIN_REMEDIATION_20261028_1939IST.zip`, archive SHA-256 `27149c9ab65065db51c14748708d0ee6775176d66d49a555711eb889b22c1e5f`, code SHA-256 `189cd6e9cff399412a50520afd0d7520752a3682c707751ec1f853c57c7ad256` (39 entries, not a certified full allocation engine).
 - `OUT_SCHEMA_V218_STAGING_BUILDER_20261028_1932IST.zip`, archive SHA-256 `b85bf68b2e241a71da4daccc3ff666f9576eb1c5a7ac7d46239d7003c9670c81`, code SHA-256 `85606f226ebb7b6555a648386021b3df2765d29c9f37312d499029b335b0719b` (17 entries, staging writer candidate).
 The proposed source-package location from handoff records is `/DIL_PRIMARY_AGENT_HUB/My_sec_Payment_Reconciliation/INBOX/ENGINE_BUILDER`. Current Google Drive search and Library title search did not locate these ZIP bytes. The original packages must be located and their manifests/content verified before treating them as recoverable source. No historical financial workbook may be opened, read or used for recovery. Known Builder/Primary tests are not production financial approval.
+
+
+## 2026-11-21 update — owner uploaded v2.51 archive; source and QA classification
+
+**This section supersedes earlier notes claiming the two October 28 ZIPs were not found.** Owner subsequently supplied both original source ZIPs, and archive/main-code SHA-256 checks matched original verification records. The ZIPs are real and recovered, but their integrity does **not** certify them for production.
+
+Owner also uploaded `SBI-Reconciliation-v2.51-20261121T135552Z-1-001.zip` and `DIL Financial Engine — Step-by-Step Repair Blueprint (v2.51, staging).docx`. Source-only ZIP directory inventory shows **17 entries: 7 DOCX, 4 XLSX, 3 TXT, 1 MD, 2 empty directory entries; 0 Python files and 0 runtime build scripts**. The 4 historical Excel files were **not opened or processed**. This is a documentation/financial backup archive, **not an application deployment package**; its deployment folder is empty.
+
+The ZIP's `04-QA-Evidence/Effective Controls-Only Release Manifest.txt` dated 2026-10-28 explicitly reports:
+- `CTRL_ONLY_20261028_01` applies to **control-plane administrative labels only**, not finance runtime; freeze active.
+- `Q218_D01_OUTPUT_WRITER` code SHA-256 `85606f226ebb7b6555a648386021b3df2765d29c9f37312d499029b335b0719b`: **QA_FAIL_BUGS_QUARANTINED** after **16/20 independent checks** and four numeric/text-identity defects. The recovered hash must **not** be deployed unchanged even though byte integrity passes.
+- `SB18_NEW` code SHA-256 `189cd6e9cff399412a50520afd0d7520752a3682c707751ec1f853c57c7ad256`: **QA_PENDING_STAGING**, not an approved allocator.
+- Complete `FIN_ENGINE` was **BLOCKED_NOT_BUILT** as of that manifest.
+
+From the user's original ChatGPT Library Builder inbox, `ENGINE_BUILDER_GLOBAL01_W13_20261031_101756IST.zip` was recovered. SHA-256 `ddc95b3ebb8fe86beef7f46455d79a14089e4922ffeac6238a201298094090d1` matches the Builder packet. It contains **synthetic-only** source modules for period/TDS/master/paid-marker/DNM-01/global conflict review and synthetic v2.18 writer. Its included results **report** 375/375 Builder-local tests passing (not independently rerun here). `IMPLEMENTATION_COVERAGE.json` says full automatic allocator, live source authority/ledger, waterfall-LAST integration, independent QA and Finance approval are **absent**.
+
+**Updated fast-track result:** historical reference specifications and parts of the prototype code are recovered. No evidence in these reviewed sources establishes a verified complete canonical v2.51 production allocator. Next work must obtain or complete the actual new-only transactional runner without reusing quarantined writer and complete one essential **synthetic** end-to-end release gate. No history access, no AWS mutation and no financial Apply activation were performed during this archive audit.
