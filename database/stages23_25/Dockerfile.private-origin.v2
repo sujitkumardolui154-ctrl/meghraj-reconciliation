@@ -1,0 +1,11 @@
+ARG STAGE23_IMAGE=sbi-pr129-pg-stage23-v2:isolated
+FROM ${STAGE23_IMAGE}
+USER root
+WORKDIR /app
+COPY patch_private_tunnel_origin_v2.py /app/
+RUN chmod 0644 /app/patch_private_tunnel_origin_v2.py \
+    && python3 -B patch_private_tunnel_origin_v2.py \
+    && python3 -B -m py_compile /app/dashboard_sessions.py \
+    && echo "PRIVATE_TUNNEL_ORIGIN_STRING_IMAGE=BUILT"
+# Private QA candidate only; origin verification and existing Firebase/session
+# checks remain enabled, no production routing or database privileges changed.
