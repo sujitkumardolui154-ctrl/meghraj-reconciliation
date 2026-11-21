@@ -32,3 +32,9 @@ Existing synthetic-only AWS server and its 127.0.0.1:18087 container are **uncha
 - One consolidated real integration/security/rollback QA on the exact deployable source, without repeating passing unchanged isolated tests.
 
 **RELEASE_STATUS=MOCK_STAGE3_ONLY, FINANCIAL_APPLY=LOCKED, HISTORICAL_FINANCIAL_DATA=NOT_PROCESSED.**
+
+## Isolated AWS Stage 3 preview (source PR #134)
+
+The Stage 3 branch extends the **isolated** synthetic Docker image with only a fixed-input `GET /api/stage3/synthetic-bridge` read-only probe, and includes the pre-existing D-030/D-031 modules in that image. The probe creates and destroys mock `:memory:` ledgers entirely inside one request. No caller-supplied payment, UTR, bank date or customer data is accepted. POST/PUT/PATCH/DELETE remain denied HTTP 403.
+
+The current deployed Stage 2 AWS container is not modified by pushing this source. An operator must separately run the SHA-pinned staging script against the Stage 3 branch; that replaces **only** the standalone synthetic staging container listening on `127.0.0.1:18087`. If staging validation fails, redeploy the prior Stage 2 pinned worktree. The existing public dashboard, reporting and Caddy routing are not changed.
