@@ -1,0 +1,11 @@
+ARG STAGE23_IMAGE=sbi-pr129-pg-stage23-v2:isolated
+FROM ${STAGE23_IMAGE}
+USER root
+WORKDIR /app
+COPY patch_private_tunnel_origin.py /app/
+RUN chmod 0644 /app/patch_private_tunnel_origin.py \
+    && python3 -B patch_private_tunnel_origin.py \
+    && python3 -B -m py_compile /app/dashboard_sessions.py \
+    && echo "PRIVATE_TUNNEL_ORIGIN_IMAGE=BUILT"
+# This is a private QA-only image. No origin validation is disabled.
+# Authentication, Firebase and report-policy checks remain in place.
