@@ -26,8 +26,10 @@ test "$(sudo docker inspect "$MAIN" --format '{{.HostConfig.NetworkMode}}')" = "
 sudo docker inspect "$CADDY" --format '{{range $n,$_ := .NetworkSettings.Networks}}{{println $n}}{{end}}' | grep -Fxq "$NETWORK" || {
   echo 'STOP_CADDY_NOT_ON_MAIN_NETWORK'; exit 1;
 }
-if sudo docker inspect "$MAIN" --format '{{range .Mounts}}{{println .Destination}}{{end}}' | grep -Eq '^/app(/|$)'; then
-  echo 'STOP_APP_PATH_IS_VOLUME_MOUNTED'; exit 1
+mounts="$(sudo docker inspect "$MAIN" --format '{{range .Mounts}}{{println .Destination}}{{end}}')"
+if [ -n "$mounts" ]; then
+  echo 'STOP_MAIN_HAS_PERSISTENT_MOUNTS_REQUIRING_EXACT_REPLICA'
+  exit 1
 fi
 
 revision="$(git rev-parse --short=12 HEAD)"
@@ -139,30 +141,29 @@ PY
 cat > "$TMP/build/Dockerfile" <<'EOF'
 ARG BASE_IMAGE
 FROM $BASE_IMAGE
+ARG APP_USER
+USER root
 WORKDIR /app
 RUN python -c "import openpyxl" || python -m pip install --no-cache-dir 'openpyxl>=3.1,<4'
 COPY *.py /app/
 COPY index.html invoice_import_contract.json /app/
 RUN printf 'AWS_FIRESTORE_READONLY_PR129\n' > /app/pr129_aws_invoice_lookup.enabled
 LABEL io.sbi.release.scope="bulk-report-only"
+USER $APP_USER
 EOF
 echo '=== BUILDING RELEASE IMAGE FROM EXISTING MAIN APP ==='
+app_user="$(sudo docker inspect "$MAIN" --format '{{.Config.User}}')"
+[ -n "$app_user" ] || app_user=root
 sudo docker build --pull=false --build-arg "BASE_IMAGE=$base_image" \
+  --build-arg "APP_USER=$app_user" \
   -t "$image" "$TMP/build" >/dev/null
 echo 'MAIN_BASED_IMMUTABLE_IMAGE=BUILT'
 
-# Copy original runtime environment; existing mounted data remain READ-ONLY.
-mounts="$(sudo docker inspect "$MAIN" --format '{{range .Mounts}}{{println .Destination}}{{end}}')"
-if [ -n "$mounts" ]; then
-  sudo docker run -d --restart unless-stopped --name "$candidate" \
-    --network "$NETWORK" --volumes-from "$MAIN:ro" \
-    --cap-drop ALL --security-opt no-new-privileges \
-    --env-file "$TMP/live.env" "$image" >/dev/null
-else
-  sudo docker run -d --restart unless-stopped --name "$candidate" \
-    --network "$NETWORK" --cap-drop ALL --security-opt no-new-privileges \
-    --env-file "$TMP/live.env" "$image" >/dev/null
-fi
+# Use the same main app base, user and environment. Any persistent
+# mount was rejected above so the live app cannot silently lose shared state.
+sudo docker run -d --restart unless-stopped --name "$candidate" \
+  --network "$NETWORK" --cap-drop ALL --security-opt no-new-privileges \
+  --env-file "$TMP/live.env" "$image" >/dev/null
 echo 'REPORT_CANDIDATE=STARTED'
 
 # Synthetic QA and backend map; NO financial records changed.
@@ -250,6 +251,8 @@ anon="$(curl --noproxy '*' --resolve "$HOST:443:127.0.0.1" \
   "https://$HOST/api/bulk-report/status" 2>/dev/null || true)"
 case "$anon" in 401|403) ;; *) echo "STOP_PUBLIC_ANON_HTTP=$anon"; exit 1 ;; esac
 
+sudo cp "$caddy_source" "$BACKUP/Caddyfile.deployed"
+sudo chmod 0600 "$BACKUP/Caddyfile.deployed"
 success=1
 echo 'SBI_BULK_REPORT_LIVE_DEPLOYMENT=PASS'
 echo "LIVE_IMAGE=$image"
