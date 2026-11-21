@@ -1,0 +1,16 @@
+ARG PR129_BASE_IMAGE
+FROM ${PR129_BASE_IMAGE}
+USER root
+WORKDIR /app
+RUN python3 -m pip install --no-cache-dir --disable-pip-version-check 'psycopg[binary]>=3.2,<3.4'
+COPY sbi_pg_reporting.py pg_reporting_blueprint.py patch_stage17_candidate.py test_stage17_blueprint.py test_sbi_pg_reporting_combined.py test_live_readonly_stdin_v2.py /app/
+# Curl downloads were created under umask 077 (0600) on the AWS host.
+# COPY preserved those permissions, so unprivileged synthetic tests could
+# not import or read their own sources. Make only public source files readable
+# inside this derived isolated test image (never the real PR129 image).
+RUN chmod 0644 /app/sbi_pg_reporting.py /app/pg_reporting_blueprint.py /app/patch_stage17_candidate.py /app/test_stage17_blueprint.py /app/test_sbi_pg_reporting_combined.py /app/test_live_readonly_stdin_v2.py \
+  && python3 patch_stage17_candidate.py \
+  && python3 -m py_compile sbi_pg_reporting.py pg_reporting_blueprint.py test_stage17_blueprint.py test_sbi_pg_reporting_combined.py test_live_readonly_stdin_v2.py \
+  && echo 'STAGE17_IMAGE_BUILD=PASS'
+# No new endpoint is enabled without a separately audited server-side
+# authorization callback. This image is not connected to live PR129.
