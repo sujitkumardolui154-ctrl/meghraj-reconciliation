@@ -27,12 +27,30 @@ jobs:
             python -m unittest discover -s staging/fresh_financial_engine/tests -p 'test_*.py' -q
           PYTHONPATH=staging/fresh_financial_engine/stage4 \
             python -m unittest discover -s staging/fresh_financial_engine/stage4/tests -p 'test_*.py' -q
-      - name: Release restrictions remain enforced
+      - name: Confirm finance locks as behavior, not text formatting
         run: |
-          grep -Fq 'PRODUCTION_FINANCE_APPLY_FORBIDDEN' staging/fresh_financial_engine/stage4/stage4_ledger.py
-          grep -Fq '"financial_writes":False' staging/fresh_financial_engine/stage4/stage4_ledger.py
-          grep -Fq 'financial_apply_enabled: bool = False' staging/fresh_financial_engine/stage4/stage4_ledger.py
-          echo 'STAGE4_CODE_QA=PASS'
-          echo 'AWS_STAGE4_DEPLOYMENT=NOT_PERFORMED'
-          echo 'PRODUCTION_FINANCIAL_APPLY=LOCKED'
-          echo 'HISTORICAL_BANK_DATA=NOT_ACCESSED_BY_CI'
+          PYTHONPATH=staging/fresh_financial_engine/stage4 python - <<'PY'
+          from stage4_ledger import Stage4Blocked, Stage4Policy, NewOnlyCandidateLedger
+          import tempfile
+          from pathlib import Path
+          secret=b'FAKE_STAGE4_CI_SECRET_ONLY_NOT_FINANCIAL_2026'
+          try:
+              Stage4Policy('SBI_INTERNAL_GATEWAY_TEST','2026-11-21','2026-11-22',secret,
+                           finance_apply_enabled=True)
+              raise AssertionError('Finance Apply unexpectedly enabled')
+          except Stage4Blocked as exc:
+              assert str(exc)=='PRODUCTION_FINANCE_APPLY_FORBIDDEN'
+          policy=Stage4Policy('SBI_INTERNAL_GATEWAY_TEST','2026-11-21','2026-11-22',secret)
+          with tempfile.TemporaryDirectory() as path:
+              with NewOnlyCandidateLedger(str(Path(path)/'stage4-ci.sqlite3'),policy) as db:
+                  status=db.status()
+                  assert status['financial_writes'] is False
+                  assert status['financial_apply_enabled'] is False
+                  assert status['invoice_paid_markers_updated'] is False
+                  assert status['bank_source_authenticated'] is False
+                  assert status['production_approved'] is False
+          print('STAGE4_CODE_QA=PASS')
+          print('AWS_STAGE4_DEPLOYMENT=NOT_PERFORMED')
+          print('PRODUCTION_FINANCIAL_APPLY=LOCKED')
+          print('HISTORICAL_BANK_DATA=NOT_ACCESSED_BY_CI')
+          PY
