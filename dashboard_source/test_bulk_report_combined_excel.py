@@ -6,9 +6,20 @@ import zipfile
 from openpyxl import Workbook, load_workbook
 from invoice_source_schema import HEADERS_34
 from bulk_reports import _build
-from bulk_report_excel import combined_excel_from_report_zip
+from bulk_report_excel import combined_excel_from_report_zip, _excel_money
 
 class CombinedExcelTest(unittest.TestCase):
+    def test_money_conversion_preserves_precision_and_non_numeric_labels(self):
+        self.assertEqual(_excel_money("2.4299999999999997"), 2.43)
+        self.assertEqual(_excel_money("43.739999999999995"), 43.74)
+        self.assertEqual(_excel_money("608.8800000000001"), 608.88)
+        self.assertEqual(_excel_money("1,234.56"), 1234.56)
+        self.assertEqual(_excel_money("-12.50"), -12.5)
+        self.assertEqual(_excel_money("1.005"), 1.005)
+        for token in ("CANCLED", "CREDIT NOTE", "'=1+2", "2023-10-17T00:00:00",
+                      "", "NaN", "Infinity", "99999999999999999.99"):
+            self.assertIsNone(_excel_money(token), token)
+
     def test_combined_xlsx_source_only(self):
         source = Workbook()
         sheet = source.active
