@@ -112,6 +112,66 @@ print("FIRESTORE_LOOKUP_GATE_PRESERVED=PASS")
 PY
 
 sudo docker restart "$C" >/dev/null
+
+# Verify the exact LIVE container bytes AFTER restart and generate one
+# synthetic XLSX via its freshly loaded modules. No real invoice is queried.
+expected="$(sha256sum dashboard_source/bulk_report_excel.py | awk '{print $1}')"
+actual="$(sudo docker exec "$C" sha256sum /app/bulk_report_excel.py | awk '{print $1}')"
+test "$expected" = "$actual"
+echo 'LIVE_CONTAINER_EXPORTER_SHA_MATCH=PASS'
+
+sudo docker exec -i -w /app "$C" python -B - <<'PY'
+import hashlib
+import io
+from openpyxl import load_workbook
+from invoice_number_selection import Selection
+from bulk_report_selection import build_selection_zip
+from bulk_report_excel import combined_excel_from_report_zip
+columns=[""]*53
+columns[4]="2023-09-01T00:00:00"
+columns[5]="2023-10-10T00:00:00"
+columns[12]="SYNTHETIC-ONLY"
+columns[14]="2.4299999999999997"
+columns[15]="43.739999999999995"
+columns[20]="31.86"
+columns[21]="2023-10-17T00:00:00"
+result={
+    "version":"invoice-selection-v1",
+    "dataset":"SYNTHETIC_ONLY",
+    "source_kind":"VERIFIED_READ_ONLY_REPORT_SOURCE",
+    "financial_writes":False,
+    "reconciliation_executed":False,
+    "database_updated":False,
+    "matches":[{"invoice_no":"SYNTHETIC-ONLY", "values":columns,
+                "payment_kind":"ok", "balance_review":False}],
+    "review":[],
+    "requested_count":1,"matched_count":1,"review_count":0,
+}
+bundle,_=build_selection_zip(
+    Selection(("SYNTHETIC-ONLY",), ()), result,
+    hashlib.sha256(b"synthetic only").hexdigest(),
+)
+workbook=load_workbook(
+    io.BytesIO(combined_excel_from_report_zip(bundle)),
+    read_only=True,data_only=False,
+)
+try:
+    row=workbook["All Invoices"]
+    assert row["M2"].data_type=="s"
+    assert row["O2"].data_type=="n" and row["O2"].value==2.43
+    assert row["P2"].data_type=="n" and row["P2"].value==43.74
+    assert row["U2"].data_type=="n" and row["U2"].value==31.86
+    assert row["E2"].data_type=="d"
+    assert row["E2"].number_format=="mmmm yyyy"
+    assert row["F2"].data_type=="d" and row["F2"].number_format=="dd/mm/yyyy"
+    assert row["V2"].data_type=="d"
+    assert row["V2"].value.strftime("%d/%m/%Y")=="17/10/2023"
+    assert len(workbook.sheetnames)==7
+    print("LIVE_CONTAINER_SYNTHETIC_XLSX_MONEY_AND_DATES=PASS")
+finally:
+    workbook.close()
+PY
+
 HTTP=000
 for i in 1 2 3 4 5 6 7 8; do
   HTTP="$(curl --noproxy '*' --resolve "$HOST:443:127.0.0.1" \
