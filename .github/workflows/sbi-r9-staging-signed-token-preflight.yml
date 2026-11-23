@@ -32,7 +32,7 @@ jobs:
           grep -Fq 'R9_REAL_STAGING_REFUSED:' scripts/ci/sbi_r9_real_staging_signed_token_probe.py
           test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
           echo 'R9_OPT_IN_SIGNED_TOKEN_HARNESS_SYNTAX=PASS'
-      - name: Execute only 18 R9 offline fail-closed guard tests
+      - name: Execute only 21 R9 offline fail-closed guard tests
         run: python -m unittest discover -s tests -p 'test_sbi_r9_real_staging_probe_guards.py' -v
       - name: Replay 19 prior staging process QA checks
         run: python -m unittest discover -s tests -p 'test_sbi_r8_staging_runtime.py' -v
