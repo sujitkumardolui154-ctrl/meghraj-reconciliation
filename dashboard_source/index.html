@@ -36,12 +36,15 @@ small{color:#9fb1cc}
 [hidden]{display:none!important}
 .dil-nav{max-width:1200px;margin:auto;padding:20px 24px 0;display:flex;gap:12px}
 .dil-nav button[aria-pressed="true"]{outline:2px solid #a9d5ff}
+.dil-nav .dil-tower-link{display:inline-flex;align-items:center;padding:10px 18px;background:#1c415e;border:1px solid #5185a3;border-radius:8px;color:#e5f7ff;text-decoration:none;font-weight:700}
+.dil-nav .dil-tower-link:hover,.dil-nav .dil-tower-link:focus-visible{background:#2a5a80}
 #dil-reports button:disabled{opacity:.5;cursor:not-allowed}
 #dil-report-message{white-space:pre-wrap}
 </style>
 <nav class="dil-nav" aria-label="Dashboard sections">
 <button type="button" id="dil-home-button"
  aria-controls="dil-home" aria-pressed="true">Dashboard</button>
+<a href="/control-tower" class="dil-tower-link" id="dil-tower-button">Control Tower</a>
 <button type="button" id="dil-reports-button"
  aria-controls="dil-reports" aria-pressed="false">Reports</button>
 
