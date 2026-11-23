@@ -17,10 +17,10 @@ class R9RealStagingProbePreflightTests(unittest.TestCase):
         self.base = {
             "SBI_R9_REAL_STAGING_PROBE": "R9_REAL_FIREBASE_STAGING_QA_ONLY",
             "SBI_R8_STAGING_MODE": "SBI_R8_STAGING_ONLY_NONFINANCIAL",
-            "SBI_R8_STAGING_FIREBASE_PROJECT_ID": "sbi-r8-staging-qa123",
+            "SBI_R8_STAGING_FIREBASE_PROJECT_ID": "sbi-r9-staging",
             "SBI_R9_STAGING_EXPECTED_SERVICE_ACCOUNT_EMAIL":
-                "sbi-r9-qa@sbi-r8-staging-qa123.iam.gserviceaccount.com",
-            "SBI_R8_STAGING_SITE_ORIGIN": "https://sbi-r8-staging-qa.example.invalid",
+                "sbi-r9-qa@sbi-r9-staging.iam.gserviceaccount.com",
+            "SBI_R8_STAGING_SITE_ORIGIN": "https://sbi-r9-staging-qa.example.invalid",
             "SBI_R8_STAGING_FIREBASE_WEB_API_KEY": "synthetic-r9-staging-only-00000000001",
             "SBI_READONLY_QUARANTINE_SOL_KEYS": "7001,7002,7003",
         }
@@ -57,11 +57,11 @@ class R9RealStagingProbePreflightTests(unittest.TestCase):
 
     def test_01_offline_validate_allowlisted_staging_values(self):
         project, origin, key, identity = self.checked()
-        self.assertEqual(project, "sbi-r8-staging-qa123")
-        self.assertEqual(origin, "https://sbi-r8-staging-qa.example.invalid")
+        self.assertEqual(project, "sbi-r9-staging")
+        self.assertEqual(origin, "https://sbi-r9-staging-qa.example.invalid")
         self.assertTrue(key.startswith("synthetic-r9-"))
         self.assertEqual(
-            identity, "sbi-r9-qa@sbi-r8-staging-qa123.iam.gserviceaccount.com"
+            identity, "sbi-r9-qa@sbi-r9-staging.iam.gserviceaccount.com"
         )
 
     def test_02_refuse_missing_R9_gate(self):
@@ -122,7 +122,7 @@ class R9RealStagingProbePreflightTests(unittest.TestCase):
     def test_14_refuse_http_origin(self):
         self.refused({
             "SBI_R8_STAGING_SITE_ORIGIN":
-                "http://sbi-r8-staging-qa.example.invalid"
+                "http://sbi-r9-staging-qa.example.invalid"
         }, "separate HTTPS staging origin")
 
     def test_15_refuse_malformed_staging_api_key(self):
@@ -158,14 +158,25 @@ class R9RealStagingProbePreflightTests(unittest.TestCase):
     def test_20_other_staging_service_account_denied(self):
         self.refused({
             "SBI_R9_STAGING_EXPECTED_SERVICE_ACCOUNT_EMAIL":
-                "sbi-r9-qa@sbi-r8-staging-different.iam.gserviceaccount.com"
+                "sbi-r9-qa@sbi-r9-staging-different.iam.gserviceaccount.com"
         }, "explicit separate staging-only service account")
 
     def test_21_no_live_cloud_code_invoked_during_offline_guard_import(self):
         # A fully valid fixture still runs only pure config checks, no SDK calls.
         # We never call execute() here.
         p = self.checked()
-        self.assertEqual(p[0], "sbi-r8-staging-qa123")
+        self.assertEqual(p[0], "sbi-r9-staging")
+
+    def test_22_refuse_old_R8_synthetic_project(self):
+        self.refused({
+            "SBI_R8_STAGING_FIREBASE_PROJECT_ID": "sbi-r8-staging-qa123"
+        }, "separate staging project")
+
+    def test_23_refuse_legacy_R8_origin_prefix(self):
+        self.refused({
+            "SBI_R8_STAGING_SITE_ORIGIN":
+                "https://sbi-r8-staging-qa.example.invalid"
+        }, "separate HTTPS staging origin")
 
 
 if __name__ == "__main__":
