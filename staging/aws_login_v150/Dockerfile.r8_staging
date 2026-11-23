@@ -27,8 +27,8 @@ ARG SBI_SOURCE_SHA=UNVERIFIED
 LABEL org.opencontainers.image.revision="${SBI_SOURCE_SHA}"
 ENV SBI_SOURCE_SHA=${SBI_SOURCE_SHA} PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 RUN chmod 0644 /app/*.py /app/*.html /app/*.css /app/*.js
-USER 10001:10001
-EXPOSE 8080
 # A dedicated mode-0700 volume mount point is required; mount a tmpfs in CI.
 RUN mkdir -p /var/lib/sbi-r8-staging-evidence && chown 10001:10001 /var/lib/sbi-r8-staging-evidence && chmod 0700 /var/lib/sbi-r8-staging-evidence
+USER 10001:10001
+EXPOSE 8080
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "1", "--threads", "4", "r8_staging_entrypoint:app"]
