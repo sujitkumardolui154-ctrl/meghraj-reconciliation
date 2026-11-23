@@ -101,14 +101,18 @@ os.environ["SBI_PAYMENT_EVIDENCE_DIR"] = data_dir
 os.environ["FIREBASE_WEB_API_KEY"] = os.environ["SBI_R8_STAGING_FIREBASE_WEB_API_KEY"]
 
 HERE = Path(__file__).resolve()
-ROOT = HERE.parents[2]
-# Python inserts new paths at position zero. Preserve explicit priority:
-# AWS app first, dashboard support next, Railway fallback last.
-for folder in reversed((
-    ROOT / "staging/aws_login_v150",
-    ROOT / "dashboard_source",
-    ROOT / "staging/railway_public",
-)):
+if (HERE.parent / "dashboard_sessions.py").is_file() and (HERE.parent / "app.py").is_file():
+    # Docker's approved compact /app layout: all modules are alongside us.
+    ordered_dirs = (HERE.parent,)
+else:
+    # GitHub's source checkout: AWS app must outrank Railway's app.py.
+    ROOT = HERE.parents[2]
+    ordered_dirs = (
+        ROOT / "staging/aws_login_v150",
+        ROOT / "dashboard_source",
+        ROOT / "staging/railway_public",
+    )
+for folder in reversed(ordered_dirs):
     if str(folder) in sys.path:
         sys.path.remove(str(folder))
     sys.path.insert(0, str(folder))
