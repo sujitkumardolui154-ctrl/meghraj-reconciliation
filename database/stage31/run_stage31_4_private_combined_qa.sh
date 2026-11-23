@@ -13,7 +13,8 @@ WORK=/home/ubuntu/sbi-stage31-private-qa
 EVID=/home/ubuntu/sbi-release-evidence
 BASE=https://raw.githubusercontent.com/sujitkumardolui154-ctrl/meghraj-reconciliation
 PIN=c3a401b50e31961a822bf03e8bcf3bbd70a125f5
-IMAGE=sbi-pr129-modern-release-final
+LIVE_CONTAINER=sbi-pr129-modern-release-final
+IMAGE=""
 mkdir -p "$WORK" "$EVID"
 chmod 700 "$WORK" "$EVID"
 LOG="$EVID/stage31_4_private_integration_$(date -u +%Y%m%dT%H%M%SZ).log"
@@ -90,8 +91,11 @@ BEFORE="$(counts)"
 [[ "$BEFORE" =~ ^[0-9]+\|[0-9]+\|[0-9]+\|[0-9]+$ ]] || exit 11
 echo "STAGE31_4_FINANCIAL_COUNTS_BEFORE=$BEFORE"
 CADDY_BEFORE="$(sudo -n sha256sum "$CADDY" | awk '{print $1}')"
-LIVE_BEFORE="$(timeout 15s sudo -n docker inspect -f '{{.Id}}|{{.Image}}|{{.State.Running}}' "$IMAGE")"
+LIVE_BEFORE="$(timeout 15s sudo -n docker inspect -f '{{.Id}}|{{.Image}}|{{.State.Running}}' "$LIVE_CONTAINER")"
 [[ "$LIVE_BEFORE" == *'|true' ]] || { echo "STAGE31_4_LIVE_PR129_NOT_RUNNING";exit 12; }
+IMAGE="$(printf '%s\n' "$LIVE_BEFORE" | cut -d '|' -f 2)"
+[[ "$IMAGE" == sha256:* ]] || { echo "STAGE31_4_RELEASE_IMAGE_DIGEST_NOT_VERIFIED";exit 12; }
+echo "STAGE31_4_TEST_IMAGE_PINNED_TO_RUNNING_RELEASE=PASS"
 echo "STAGE31_4_EXISTING_RELEASE_BASELINE=PASS"
 
 echo "=== B. PRODUCTION REPORTING ROLE CAN NEVER WRITE FINANCIAL TABLES ==="
