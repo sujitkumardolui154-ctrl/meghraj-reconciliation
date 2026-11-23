@@ -56,7 +56,7 @@ class ReadOnlyR4FlaskTests(unittest.TestCase):
         stack.enter_context(patch.dict(os.environ, {
             "SBI_PAYMENT_EVIDENCE_DIR": self.private.name,
             "SBI_PRIVATE_WORKSPACE_DB": "",
-            "SBI_READONLY_QUARANTINE_SOL_KEYS": "3970,6884,6928",
+            "SBI_READONLY_QUARANTINE_SOL_KEYS": "7001,7002,7003",
         }))
         stack.enter_context(patch("dashboard_sessions.firebase_app",
                                   return_value=None))
@@ -122,8 +122,8 @@ class ReadOnlyR4FlaskTests(unittest.TestCase):
     def test_case_and_zero_padding_near_duplicate_quarantined(self):
         with self.auth():
             upload = self.upload([
-                ("SYNTHETIC SAME", "03970", 5.25),
-                ("synthetic same", "3970", 5.25),
+                ("SYNTHETIC SAME", "07001", 5.25),
+                ("synthetic same", "7001", 5.25),
             ])
             self.assertEqual(upload.status_code, 201)
             response = self.preflight(upload.json["receipt_id"])

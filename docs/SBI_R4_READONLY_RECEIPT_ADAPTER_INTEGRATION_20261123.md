@@ -15,7 +15,7 @@ Flask/Firebase-mock CI and owner code review before any merge or AWS action.
   service allows 30,000); larger files receive a 409 review hold, not a
   partially analyzed result.
 - Quarantine configuration is private, normalized SOL keys for the three
-  documented collision groups (3970,6884,6928); no private master XLSX,
+  documented collision groups (provided privately at runtime; never embedded in public source); no private master XLSX,
   customer invoice data, real bank records, credentials or UTRs in GitHub.
 - Upload SHA deduplication is not bank transaction deduplication; bank date,
   UTR, full Master v2.51, Matrix v2.39 and durable financial writer are not
