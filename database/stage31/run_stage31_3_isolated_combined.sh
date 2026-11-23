@@ -77,7 +77,6 @@ STEP=BASELINE
 [[ "$DB" != "$MAINTENANCE_DB" && "$MAINTENANCE_DB" == postgres ]] ||
  { echo "STAGE31_3_ISOLATION_DB_MISMATCH"; exit 11; }
 BEFORE="$(getcounts)"
-[[ "$BEFORE" =~ ^[0-9]+\|[0-9]+\|[0-9]+\|[0-9]+\$ ]] && exit 12 || true
 [[ "$BEFORE" =~ ^[0-9]+\|[0-9]+\|[0-9]+\|[0-9]+$ ]] ||
  { echo "STAGE31_3_BASELINE_UNVERIFIED"; exit 13; }
 echo "STAGE31_3_SOURCE_FINANCIAL_COUNTS_BEFORE=$BEFORE"
@@ -86,7 +85,7 @@ CADDY_BEFORE="$(sudo -n sha256sum "$CADDY" | awk '{print $1}')"
 
 echo "=== B. LIVE CENTRAL DATABASE SCHEMA ONLY AND REPORT-ROLE WRITE-DENIAL ==="
 STEP=PRIVILEGE
-sudo -n -u postgres psql -X -A -t -v ON_ERROR_STOP=1 -d "$DB" <<'SQL' |
+SCHEMA_RESULT="$(sudo -n -u postgres psql -X -A -t -v ON_ERROR_STOP=1 -d "$DB" <<'SQL'
 BEGIN READ ONLY;
 SET LOCAL statement_timeout='10000ms';
 SELECT CASE WHEN (
@@ -109,10 +108,11 @@ FROM pg_class WHERE oid IN (
   'sbi.allocations'::regclass,'sbi.credit_notes'::regclass);
 COMMIT;
 SQL
-grep -E '^STAGE31_3_' "$LOG" | tail -2
-[[ "$(grep -c '^STAGE31_3_VERIFIED_PAISE_DATABASE_COLUMNS=PASS$' "$LOG")" -ge 1 ]] ||
+)"
+printf '%s\n' "$SCHEMA_RESULT"
+printf '%s\n' "$SCHEMA_RESULT" | grep -Fxq 'STAGE31_3_VERIFIED_PAISE_DATABASE_COLUMNS=PASS' ||
  { echo "STAGE31_3_PAISE_COLUMN_MAP_REVIEW_REQUIRED"; exit 16; }
-[[ "$(grep -c '^STAGE31_3_REPORT_ROLE_FINANCIAL_WRITE_DENIAL=PASS$' "$LOG")" -ge 1 ]] ||
+printf '%s\n' "$SCHEMA_RESULT" | grep -Fxq 'STAGE31_3_REPORT_ROLE_FINANCIAL_WRITE_DENIAL=PASS' ||
  { echo "STAGE31_3_ROLE_WRITE_DENIAL_FAIL"; exit 17; }
 
 echo "=== C. FETCH PINNED APPROVED CONTRACT AND CANDIDATE TEST FILES ==="
@@ -133,7 +133,7 @@ fetch database/stage31/stage31_2_schema_design.py stage31_2_schema_design.py 4ea
 fetch database/stage31/test_stage31_2_schema_design.py test_stage31_2_schema_design.py ea05ffc4c30b4bfca2b3425fc44f22a28978b629
 fetch database/stage31/stage31_3_ingest_candidate.py stage31_3_ingest_candidate.py 23ed83c9515b5f00b3848594272adeeda0f3ee6c
 fetch database/stage31/test_stage31_3_ingest_candidate.py test_stage31_3_ingest_candidate.py 9e66d957f956841c758bb7cf90bae5108539bda3
-fetch database/stage31/stage31_3_postgres_temp_synthetic_rollback.sql stage31_3_postgres_temp_synthetic_rollback.sql SQL_HASH_PLACEHOLDER
+fetch database/stage31/stage31_3_postgres_temp_synthetic_rollback.sql stage31_3_postgres_temp_synthetic_rollback.sql 3b8c86075d3f37dc4a217fdb7d08392be587af3d
 echo "STAGE31_3_PINNED_FILE_INTEGRITY=PASS"
 
 echo "=== D. RUN 51 SOURCE+MAPPING+PRECISION COMBINED REGRESSION TESTS ==="
