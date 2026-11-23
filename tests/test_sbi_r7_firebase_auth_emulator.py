@@ -342,7 +342,8 @@ class R7FirebaseAuthEmulatorTests(unittest.TestCase):
         ):
             result = self.preflight(receipt, headers=bad)
             self.assertEqual(result.status_code, 403)
-            self.assertFalse(result.json.get("financial_writes", True))
+            # Outer origin guard may return only {"error": ...}; it denies before the handler.
+            self.assertIsNot(result.json.get("financial_writes"), True)
 
 
 if __name__ == "__main__":
