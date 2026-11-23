@@ -73,6 +73,24 @@ BEFORE="$(counts)"
 echo "STAGE31_EXISTING_FINANCIAL_ROW_COUNTS=$BEFORE"
 echo "STAGE31_CADDY_BASELINE_SHA256=$CONF_SHA"
 echo "STAGE31_DATABASE_CATALOG_ONLY_NO_INVOICE_VALUES=TRUE"
+echo "=== A2. ENSURE LIVE REPORT LOGIN CANNOT WRITE FINANCIAL TABLES ==="
+STEP=REPORT_ROLE_DENY
+ROLE_CHECK="$(sudo -n -u postgres psql -X -A -t -v ON_ERROR_STOP=1 -d "$DB" -c "
+SELECT CASE WHEN (
+  SELECT count(*)=4 FROM pg_class
+   WHERE oid IN ('sbi.invoices'::regclass,'sbi.payments'::regclass,
+                 'sbi.allocations'::regclass,'sbi.credit_notes'::regclass)
+ ) AND (
+  SELECT bool_and(
+    NOT has_table_privilege('sbi_pr129_report_login',oid,'INSERT') AND
+    NOT has_table_privilege('sbi_pr129_report_login',oid,'UPDATE') AND
+    NOT has_table_privilege('sbi_pr129_report_login',oid,'DELETE')
+  ) FROM pg_class WHERE oid IN (
+    'sbi.invoices'::regclass,'sbi.payments'::regclass,
+    'sbi.allocations'::regclass,'sbi.credit_notes'::regclass)
+ ) THEN 'PASS' ELSE 'FAIL' END;" | tail -1)"
+echo "STAGE31_PRODUCTION_REPORT_LOGIN_FINANCIAL_WRITE_DENIAL=$ROLE_CHECK"
+[[ "$ROLE_CHECK" == PASS ]] || exit 14
 
 echo "=== B. ACTUAL DATABASE TABLE AND COLUMN CATALOG (NO DATA VALUES) ==="
 STEP=CATALOG
