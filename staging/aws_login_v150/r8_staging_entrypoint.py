@@ -119,6 +119,11 @@ session_config.PROJECT = project
 # No master user privileges are inherited from the production project.
 session_config.MASTER_UID = "R8_STAGING_ADMIN_DISABLED"
 session_config.MASTER_EMAIL = "disabled-r8@example.invalid"
+# Forbid any elevated master/admin designation in a staging identity, even if
+# a test user deliberately chooses matching UID/email/claims.
+def _staging_never_master(_user):
+    return False
+session_config.is_master = _staging_never_master
 session_config.ORIGINS.clear()
 session_config.ORIGINS.add(origin)
 
