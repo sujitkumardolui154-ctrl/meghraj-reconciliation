@@ -114,4 +114,9 @@ SELECT 'STAGE31_3_TRANSACTION_ROLLBACK_QA=PASS';
 
 -- Explicit global rollback (including creation of both temporary tables).
 ROLLBACK;
+SELECT CASE WHEN to_regclass('pg_temp.sbi_stage31_3_synthetic_invoices') IS NULL
+               AND to_regclass('pg_temp.sbi_stage31_3_synthetic_payments') IS NULL
+ THEN 'STAGE31_3_TEMP_OBJECT_CLEANUP=PASS'
+ ELSE 'STAGE31_3_TEMP_OBJECT_CLEANUP=FAIL'
+ END;
 SELECT 'STAGE31_3_MAINTENANCE_DB_SYNTHETIC_TEMP_TRANSACTION=PASS';
