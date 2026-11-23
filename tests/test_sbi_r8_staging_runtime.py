@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SMOKE = r"""
 import json, sys
 from pathlib import Path
+from types import SimpleNamespace
 root = Path.cwd()
 sys.path.insert(0, str(root / 'staging/aws_login_v150'))
 import r8_staging_entrypoint as stage
@@ -28,6 +29,11 @@ print('R8_STAGING_RESULT=' + json.dumps({
   'origins': sorted(ORIGINS),
   'site_origin': stage.original_app.SITE_ORIGIN,
   'master_uid': MASTER_UID,
+  'possible_master_login_denied': not stage.session_config.is_master(
+    SimpleNamespace(uid='R8_STAGING_ADMIN_DISABLED',
+      email='disabled-r8@example.invalid',
+      custom_claims={'dil_admin':True, 'dil_dashboard':True}, disabled=False)
+  ),
   'staging_flag': stage.app.config['SBI_R8_STAGING_ONLY'],
   'finance_lock': stage.app.config['SBI_R8_FINANCIAL_APPLY_LOCKED'],
   'health_code': health.status_code,
@@ -98,6 +104,7 @@ class R8StagingRuntimeTests(unittest.TestCase):
         ])
         self.assertEqual(info["origin"], info["site_origin"])
         self.assertEqual(info["master_uid"], "R8_STAGING_ADMIN_DISABLED")
+        self.assertTrue(info["possible_master_login_denied"])
         self.assertTrue(info["staging_flag"])
         self.assertTrue(info["finance_lock"])
         self.assertEqual(info["health_code"], 200)
