@@ -9,7 +9,7 @@ STEP=INIT
 DB=sbi_reconciliation_main
 MAINTENANCE_DB=postgres
 BASE=https://raw.githubusercontent.com/sujitkumardolui154-ctrl/meghraj-reconciliation
-PIN=95d4a36df02df07c4469e754af166c11c2c7752d
+PIN=831aaf09a99b9784bbe9e1418be1745ee53394ca
 WORK=/home/ubuntu/sbi-stage31-private-qa
 EVID=/home/ubuntu/sbi-release-evidence
 CADDY=/home/ubuntu/sbi-aws-app/staging/aws_lightsail/Caddyfile
@@ -133,7 +133,7 @@ fetch database/stage31/stage31_2_schema_design.py stage31_2_schema_design.py 4ea
 fetch database/stage31/test_stage31_2_schema_design.py test_stage31_2_schema_design.py ea05ffc4c30b4bfca2b3425fc44f22a28978b629
 fetch database/stage31/stage31_3_ingest_candidate.py stage31_3_ingest_candidate.py 23ed83c9515b5f00b3848594272adeeda0f3ee6c
 fetch database/stage31/test_stage31_3_ingest_candidate.py test_stage31_3_ingest_candidate.py 9e66d957f956841c758bb7cf90bae5108539bda3
-fetch database/stage31/stage31_3_postgres_temp_synthetic_rollback.sql stage31_3_postgres_temp_synthetic_rollback.sql 3b8c86075d3f37dc4a217fdb7d08392be587af3d
+fetch database/stage31/stage31_3_postgres_temp_synthetic_rollback.sql stage31_3_postgres_temp_synthetic_rollback.sql 2b460c02e8cc221d79f8a0d4f5aaf5144aa24da5
 echo "STAGE31_3_PINNED_FILE_INTEGRITY=PASS"
 
 echo "=== D. RUN 51 SOURCE+MAPPING+PRECISION COMBINED REGRESSION TESTS ==="
