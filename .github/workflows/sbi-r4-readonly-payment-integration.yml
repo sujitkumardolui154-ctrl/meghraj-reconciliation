@@ -1,0 +1,41 @@
+name: SBI R4 Read-only Payment Evidence HTTP QA
+on:
+  push:
+    branches:
+      - feature/sbi-r4-readonly-payment-adapter-ci-20261123
+  pull_request:
+    branches:
+      - feature/sbi-payment-reconciliation-readiness-gate-20261120
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  r4-flask:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install isolated source-test dependencies
+        run: python -m pip install -r staging/aws_login_v150/requirements.txt
+      - name: Existing Payment Evidence source tests
+        run: python -m unittest discover -s tests -p 'test_sbi_payment_evidence_upload.py' -v
+      - name: Existing receipt readiness refusal tests
+        run: python -m unittest discover -s tests -p 'test_sbi_reconciliation_readiness.py' -v
+      - name: New R4 actual Flask test-client integration (mock Firebase)
+        run: python -m unittest discover -s tests -p 'test_sbi_r4_readonly_flask_http.py' -v
+      - name: Verify finance paths stay disabled
+        run: |
+          python -m py_compile staging/aws_login_v150/reconciliation_readiness.py staging/aws_login_v150/reconciliation_review_adapter.py
+          python - <<'PY'
+          from pathlib import Path
+          app = Path('staging/aws_login_v150/app.py').read_text()
+          ui = Path('dashboard_source/index.html').read_text()
+          assert 'def disabled_financial_api(route)' in app
+          assert 'id="dil-payment-reconcile" disabled' in ui
+          print('FINANCIAL_APPLY=LOCKED')
+          PY
+      - name: Build isolated image only (not deployed)
+        run: docker build -f staging/aws_login_v150/Dockerfile --build-arg SBI_SOURCE_SHA="$GITHUB_SHA" -t sbi-r4-local-qa:latest .

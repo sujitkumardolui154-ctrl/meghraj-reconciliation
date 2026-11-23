@@ -18,6 +18,7 @@ from pathlib import Path
 from flask import Blueprint, g, jsonify, request
 from dashboard_sessions import csrf_valid
 from payment_evidence_upload import RECEIPT_RE, _store, _connection, _parse
+from reconciliation_review_adapter import OWNER_UPLOAD_CUTOFF_IST, ReviewBridgeBlocked, review_verified_receipt
 
 reconciliation_readiness = Blueprint("sbi_reconciliation_readiness", __name__)
 
@@ -44,6 +45,9 @@ def _base_response():
         "required_source_protection": "PAYMNENT!A:L and invoice originals unchanged",
         "staged_three_column_evidence_is_authoritative": False,
         "blockers": list(BLOCKERS),
+        "new_only_upload_cutoff_ist": OWNER_UPLOAD_CUTOFF_IST,
+        "bank_payment_date_authenticated": False,
+        "financial_apply_locked": True,
     }
 
 
@@ -112,8 +116,25 @@ def reconciliation_preflight():
         return jsonify(error="Staged evidence receipt summary mismatch",
                        financial_writes=False), 503
 
+    adapter_review = None
+    if parsed["review_rows"] == 0:
+        try:
+            adapter_review = review_verified_receipt(
+                source, expected_sha256=row["sha256"],
+                receipt_created_utc=row["created_utc"],
+                original_parsed=parsed,
+            )
+        except ReviewBridgeBlocked as exc:
+            return jsonify(
+                **_base_response(),
+                code="READ_ONLY_ADAPTER_REVIEW_REQUIRED",
+                error="Evidence requires further read-only review.",
+                reason_code=str(exc),
+            ), 409
+
     base_result = {
         **_base_response(),
+        "read_only_adapter": adapter_review,
         "receipt_id": rid,
         "evidence_sha256": row["sha256"],
         "evidence_verified": True,
