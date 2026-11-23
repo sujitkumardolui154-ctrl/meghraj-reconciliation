@@ -41,3 +41,40 @@ jobs:
           echo 'R8_REAL_SIGNED_FIREBASE_AUTH=NOT_EXECUTED'
           echo 'R8_AWS_DEPLOYMENT=NOT_EXECUTED'
           echo 'R8_FINANCIAL_APPLY=LOCKED'
+
+  staging-container:
+    name: Isolated R8 staging Docker boot and rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout read-only GitHub source
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Check staging Docker test script syntax
+        run: bash -n scripts/ci/sbi_r8_staging_image_canary.sh
+      - name: Build only the staging-specific Docker image
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker build -f staging/aws_login_v150/Dockerfile.r8_staging \
+            --build-arg SBI_SOURCE_SHA="$GITHUB_SHA" \
+            -t "sbi-r8-staging:$GITHUB_SHA" .
+          test "$(docker image inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "sbi-r8-staging:$GITHUB_SHA")" = "$GITHUB_SHA"
+          echo 'R8_STAGING_SOURCE_IMAGE=PASS'
+      - name: Fail-closed image boot, isolated smoke test, cleanup
+        shell: bash
+        env:
+          R8_STAGING_IMAGE: sbi-r8-staging:${{ github.sha }}
+          R8_STAGING_SHA: ${{ github.sha }}
+        run: bash scripts/ci/sbi_r8_staging_image_canary.sh
+      - name: Ensure no R8 canary container survived
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if docker ps -a --filter 'name=^/sbi-r8-ci-' --format '{{.Names}}' | grep -q .; then
+            echo 'R8_STAGING_POSTRUN_CLEANUP=FAIL'
+            exit 1
+          fi
+          echo 'R8_STAGING_POSTRUN_CLEANUP=PASS'
