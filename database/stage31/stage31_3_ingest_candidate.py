@@ -3,6 +3,7 @@
 This module deliberately lacks DB credentials or INSERT execution. Source rows
 must be verified against original Excel before any production ingestion.
 """
+from collections import Counter
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 import hashlib
@@ -145,7 +146,7 @@ def preview_invoice_batch(rows, source_file_sha256, source_sheet,
         if not isinstance(row,dict):
             raise ValueError("INVALID_SOURCE_ROW")
         ids.append(invoice_number(row))
-    duplicate_ids={x for x in ids if ids.count(x)>1}
+    duplicate_ids={x for x,c in Counter(ids).items() if c>1}
     if duplicate_ids:
         raise ValueError("DUPLICATE_IN_UPLOADED_SOURCE_REJECT_WHOLE_BATCH")
     candidate=[]
