@@ -84,6 +84,16 @@ def load_state():
         return {"consecutive_unhealthy_cycles":0,"last_alert_cycle":0}
 
 def private_append(file: Path, obj: dict):
+    # Retain the current log plus four 5 MiB archives; called under flock.
+    if file.exists() and file.stat().st_size >= 5 * 1024 * 1024:
+        fourth = file.with_name(file.name + ".4")
+        if fourth.exists():
+            fourth.unlink()
+        for i in (3, 2, 1):
+            previous = file.with_name(file.name + f".{i}")
+            if previous.exists():
+                previous.replace(file.with_name(file.name + f".{i+1}"))
+        file.replace(file.with_name(file.name + ".1"))
     fd=os.open(str(file), os.O_WRONLY|os.O_CREAT|os.O_APPEND, 0o600)
     with os.fdopen(fd, "a", encoding="utf-8") as f:
         f.write(json.dumps(obj,sort_keys=True,separators=(",",":"))+"\n")
