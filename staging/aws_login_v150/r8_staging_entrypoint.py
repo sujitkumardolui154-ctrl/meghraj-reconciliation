@@ -102,13 +102,16 @@ os.environ["FIREBASE_WEB_API_KEY"] = os.environ["SBI_R8_STAGING_FIREBASE_WEB_API
 
 HERE = Path(__file__).resolve()
 ROOT = HERE.parents[2]
-for folder in (
-    ROOT / "dashboard_source",
+# Python inserts new paths at position zero. Preserve explicit priority:
+# AWS app first, dashboard support next, Railway fallback last.
+for folder in reversed((
     ROOT / "staging/aws_login_v150",
+    ROOT / "dashboard_source",
     ROOT / "staging/railway_public",
-):
-    if str(folder) not in sys.path:
-        sys.path.insert(0, str(folder))
+)):
+    if str(folder) in sys.path:
+        sys.path.remove(str(folder))
+    sys.path.insert(0, str(folder))
 
 import dashboard_sessions as session_config
 
@@ -120,6 +123,9 @@ session_config.ORIGINS.clear()
 session_config.ORIGINS.add(origin)
 
 import app as original_app
+
+if Path(original_app.__file__).resolve() != HERE.parent / "app.py":
+    refuse("source import mismatch: AWS app required")
 
 # app.py adds its production SITE_ORIGIN at import. Remove it in the R8
 # staging-only process and keep exactly the owner-approved separate origin.
