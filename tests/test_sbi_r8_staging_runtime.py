@@ -23,6 +23,7 @@ health = stage.app.test_client().get('/healthz')
 status = stage.app.test_client().get('/api/payment-reconciliation/status')
 print('R8_STAGING_RESULT=' + json.dumps({
   'project': PROJECT,
+  'aws_app_source': str(Path(stage.original_app.__file__).resolve()),
   'origin': stage.origin,
   'origins': sorted(ORIGINS),
   'site_origin': stage.original_app.SITE_ORIGIN,
@@ -89,6 +90,9 @@ class R8StagingRuntimeTests(unittest.TestCase):
         )
         info = json.loads(line)
         self.assertEqual(info["project"], "sbi-r8-staging-qa123")
+        self.assertTrue(
+            info["aws_app_source"].endswith("/staging/aws_login_v150/app.py")
+        )
         self.assertEqual(info["origins"], [
             "https://sbi-r8-staging-qa.example.invalid"
         ])
