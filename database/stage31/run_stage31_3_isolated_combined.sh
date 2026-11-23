@@ -149,8 +149,11 @@ STEP=TRANSACTION
 [[ "$MAINTENANCE_DB" == postgres ]] || exit 21
 # Explicitly run against the built-in maintenance database, never the central DB.
 # Temp tables exist only in the SQL session; SQL itself has a guard and ROLLBACK.
+# The owner-only QA directory is mode 0700: postgres cannot traverse it.
+# Ubuntu opens this already-verified SQL file and passes only its contents as
+# stdin to psql. Do NOT chmod/chown the private directory or expose finance data.
 sudo -n -u postgres psql -X -A -t -v ON_ERROR_STOP=1 \
- -d "$MAINTENANCE_DB" -f "$WORK/stage31_3_postgres_temp_synthetic_rollback.sql"
+ -d "$MAINTENANCE_DB" < "$WORK/stage31_3_postgres_temp_synthetic_rollback.sql"
 echo "STAGE31_3_POSTGRESQL_TEMP_TRANSACTION_ROLLBACK=PASS"
 
 echo "=== F. STAGE 31.3 RELEASE RESTRICTIONS ==="
