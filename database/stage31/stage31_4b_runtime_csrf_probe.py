@@ -6,6 +6,8 @@ network calls, or live app mutations. Do not print origin allowlist or cookies.
 The check uses a TEST Flask request context in an isolated Python process
 inside the existing release image, importing only the deployed session helper.
 """
+import sys
+sys.path.insert(0, "/app")
 from flask import Flask
 from dashboard_sessions import csrf_valid, CSRF_COOKIE
 
