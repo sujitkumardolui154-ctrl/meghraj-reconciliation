@@ -1,0 +1,49 @@
+name: SBI R11 Keyless Firebase Auth API Read-only Offline QA (no Cloud)
+on:
+  push:
+    branches:
+      - review/sbi-r11-real-firebase-readonly-verification-20261124
+  pull_request:
+    branches:
+      - feature/sbi-payment-reconciliation-readiness-gate-20261120
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  r11-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Compile source without running live probe
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${SBI_R11_READONLY_FIREBASE:-}"
+          python -m py_compile scripts/ci/sbi_r11_firebase_keyless_readonly_probe.py
+          grep -Fq "accounts:batchGet?maxResults=1" scripts/ci/sbi_r11_firebase_keyless_readonly_probe.py
+          grep -Fq "SBI_R11_READ_ONLY_STAGING_FIREBASE_APPROVED" scripts/ci/sbi_r11_firebase_keyless_readonly_probe.py
+          echo "R11_SAFE_READ_ONLY_PROBE_SOURCE=PASS"
+      - name: Execute 14 offline/mock guard tests, no Firebase network
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python -m unittest discover -s tests -p 'test_sbi_r11_firebase_keyless_readonly.py' -v
+          echo 'R11_OFFLINE_SECURITY_TESTS=PASS'
+      - name: Retain original source financial restrictions
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          grep -Fq 'def disabled_financial_api(route)' staging/aws_login_v150/app.py
+          grep -Fq '2026-11-23T00:00:00+05:30' staging/aws_login_v150/reconciliation_review_adapter.py
+          grep -Fq 'id="dil-payment-reconcile" disabled' dashboard_source/index.html
+          echo 'R11_REAL_FIREBASE_API=NOT_CALLED_IN_CI'
+          echo 'R11_AWS_DEPLOYMENT=NOT_EXECUTED'
+          echo 'R11_FINANCIAL_APPLY=LOCKED'
