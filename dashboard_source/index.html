@@ -647,7 +647,12 @@ Reports include new invoices only after an import completes. Preview alone does 
       if (result.financial_writes !== false || result.reconciliation_executed !== false) {
         throw new Error("Unexpected reconciliation response; financial operation not verified");
       }
-      readinessResult.textContent=(result.error || "Reconciliation is not available.")+
+      const review = result.read_only_adapter || null;
+      const summary = review ? (" Read-only review: "+review.evidence_rows_reviewed+
+        " rows examined; "+Object.keys(review.review_hold_counts || {}).length+
+        " hold categories. Cutoff: "+review.owner_confirmed_upload_cutoff.owner_confirmed_intake_cutoff_ist+
+        ". Bank date and UTR not verified.") : "";
+      readinessResult.textContent=(result.error || "Reconciliation is not available.")+summary+
         " Blockers: "+(result.blockers || []).join(", ")+
         ". No invoice or payment database updates occurred.";
     } catch(e) { readinessResult.textContent="Readiness check failed: "+e.message; }
