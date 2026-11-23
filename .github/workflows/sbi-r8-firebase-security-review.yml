@@ -1,0 +1,79 @@
+name: SBI R8 Firebase Emulator Security Hardening (No AWS)
+on:
+  push:
+    branches:
+      - review/sbi-r8-auth-hardening-staging-readiness-20261123
+  pull_request:
+    branches:
+      - review/sbi-r7-firebase-emulator-payment-evidence-20261123
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  r8-emulator-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GCLOUD_PROJECT: demo-sbi-r7
+      CI: "true"
+    steps:
+      - name: Checkout source without write credentials
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install source-level and emulator dependencies
+        run: python -m pip install -r staging/aws_login_v150/requirements.txt
+      - name: Verify emulator-only protection even under Python optimization
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          target='tests/test_sbi_r7_firebase_auth_emulator.py'
+          if env -u FIREBASE_AUTH_EMULATOR_HOST python -O -c 'import runpy; runpy.run_path("tests/test_sbi_r7_firebase_auth_emulator.py")' > /tmp/r8-no-emulator.txt 2>&1; then
+            echo "R8_GUARD_MISSING_EMULATOR=FAIL"; exit 1
+          fi
+          grep -Fq "R8 refuses real Firebase" /tmp/r8-no-emulator.txt
+          if env FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 GCLOUD_PROJECT=meghraj-reconciliation python -O -c 'import runpy; runpy.run_path("tests/test_sbi_r7_firebase_auth_emulator.py")' > /tmp/r8-wrong-project.txt 2>&1; then
+            echo "R8_GUARD_PRODUCTION_PROJECT=FAIL"; exit 1
+          fi
+          grep -Fq "R8 refuses non-demo Firebase project" /tmp/r8-wrong-project.txt
+          if env FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 GCLOUD_PROJECT=demo-sbi-r7 GOOGLE_APPLICATION_CREDENTIALS=/tmp/r8-dummy-only.json python -O -c 'import runpy; runpy.run_path("tests/test_sbi_r7_firebase_auth_emulator.py")' > /tmp/r8-creds.txt 2>&1; then
+            echo "R8_GUARD_CREDENTIALS=FAIL"; exit 1
+          fi
+          grep -Fq "R8 must never load a production Firebase service account" /tmp/r8-creds.txt
+          echo "R8_OPTIMIZED_PYTHON_ENV_FAIL_CLOSED=PASS"
+      - name: Replay existing read-only payment and Flask tests
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python -m unittest discover -s tests -p 'test_sbi_payment_evidence_upload.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_reconciliation_readiness.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_r4_readonly_flask_http.py' -v
+      - name: Firebase Authentication Emulator issues local sessions only
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          npx --yes firebase-tools@14.22.0 emulators:exec \
+            --project demo-sbi-r7 \
+            --config scripts/ci/sbi-r7-firebase.json \
+            --only auth \
+            --non-interactive \
+            'python -m unittest discover -s tests -p "test_sbi_r7_firebase_auth_emulator.py" -v'
+          echo 'R8_AUTH_EMULATOR_FULL_SUITE=PASS'
+      - name: Verify immutable owner cutoff and financial denial
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          grep -Fq '2026-11-23T00:00:00+05:30' staging/aws_login_v150/reconciliation_review_adapter.py
+          grep -Fq 'def disabled_financial_api(route)' staging/aws_login_v150/app.py
+          grep -Fq 'id="dil-payment-reconcile" disabled' dashboard_source/index.html
+          echo 'R8_FINANCIAL_APPLY=LOCKED'
+          echo 'R8_REAL_FIREBASE_PROJECT=NOT_CONTACTED'
+          echo 'R8_AWS_DEPLOYMENT=NOT_EXECUTED'
