@@ -2,14 +2,14 @@
 **Date:** 23 November 2026 IST. **Development-only QA artifact.**
 
 ## Exact source
-- `scripts/ci/sbi_r9_real_staging_signed_token_probe.py` — deliberately **opt-in** executable. It is not called by any CI job or production application entrypoint. It requires `SBI_R9_REAL_STAGING_PROBE=R9_REAL_FIREBASE_STAGING_QA_ONLY` plus `SBI_R8_STAGING_MODE=SBI_R8_STAGING_ONLY_NONFINANCIAL`, an independently supplied `sbi-r8-staging-...` project, separate HTTPS staging origin, staging-only web key, an explicit synthetic SOL review-group list, and an **exactly matching staging-only ADC project and service-account identity**.
+- `scripts/ci/sbi_r9_real_staging_signed_token_probe.py` — deliberately **opt-in** executable. It is not called by any CI job or production application entrypoint. It requires `SBI_R9_REAL_STAGING_PROBE=R9_REAL_FIREBASE_STAGING_QA_ONLY` plus `SBI_R8_STAGING_MODE=SBI_R8_STAGING_ONLY_NONFINANCIAL`, an independently supplied `sbi-r9-staging` project, separate HTTPS staging origin, staging-only web key, an explicit synthetic SOL review-group list, and an **exactly matching staging-only ADC project and service-account identity**.
 - It refuses `FIREBASE_AUTH_EMULATOR_HOST`, `GOOGLE_APPLICATION_CREDENTIALS`, inherited production Firebase API key, financial evidence or workspace paths, and Google project mismatch **before Firebase Admin SDK import**.
 - It creates two random fictitious `@example.invalid` Firebase users **only after authorization and ADC project match** in the separate real staging project; signs in through Firebase Identity Toolkit password endpoint to retrieve an actual signed ID token; Admin SDK verifies token audience/issuer, mints session cookie, tests owner-scoped synthetic upload, anti-CSRF/login, duplicate refusal, blocked preflight, cross-user isolation, disabled-user denial and forbidden financial Apply. It deletes created Firebase QA users at the end; cleanup failure fails the run. No actual SBI data, payment matching or invoice posting.
-- `tests/test_sbi_r9_real_staging_probe_guards.py` runs **21 offline-only** negative/positive configuration checks, including under optimized Python.
+- `tests/test_sbi_r9_real_staging_probe_guards.py` runs **23 offline-only** negative/positive configuration checks, including under optimized Python.
 - `.github/workflows/sbi-r9-staging-signed-token-preflight.yml` executes **only** offline guard tests, never calls the real staging probe, and has `permissions: contents: read`.
 
 ## Real Firebase staging *not connected*: accepted plan for later execution
-1. Use a separately approved Firebase test project matching `sbi-r8-staging-...`. Never reuse `meghraj-reconciliation` or production users.
+1. Use a separately approved Firebase test project matching `sbi-r9-staging`. Never reuse `meghraj-reconciliation` or production users.
 2. Set dedicated authorized staging HTTPS origin and minimal staging runtime identity via workload/attached identity (not service account JSON committed to GitHub or chat).
 3. Provide staging web API key privately and a synthetic-only SOL quarantine list; no financial or SBI customer uploads.
 4. Before any live test, review the runtime identity permissions and confirm ADC project ID is the separate staging project. Ensure cost/usage safeguards and cleanup permissions.
