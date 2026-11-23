@@ -146,13 +146,15 @@ class R7FirebaseAuthEmulatorTests(unittest.TestCase):
             "/auth/session", json={"idToken": token}, headers=hdr
         )
 
-    def upload(self, rows=None, headers=None, client=None):
+    def upload(self, rows=None, headers=None, client=None, payload=None):
         rows = rows or [("SYNTHETIC R7 NOVEMBER", "07001", 5.25)]
         client = client or self.client
+        if payload is None:
+            payload = create_synthetic_xlsx(rows)
         return client.post(
             "/api/payment-evidence/upload",
             data={"file": (
-                io.BytesIO(create_synthetic_xlsx(rows)),
+                io.BytesIO(payload),
                 "SYNTHETIC_R7.xlsx",
             )},
             headers=self.headers() if headers is None else headers,
@@ -275,9 +277,15 @@ class R7FirebaseAuthEmulatorTests(unittest.TestCase):
 
     def test_08_duplicate_workbook_remains_review_only(self):
         self.assertEqual(self.login().status_code, 200)
-        first = self.upload()
+        # Duplicate contract is raw-source SHA256. Re-serializing a workbook
+        # can alter ZIP metadata across a timestamp boundary, producing a
+        # different binary file. Replay the SAME uploaded evidence bytes.
+        payload = create_synthetic_xlsx(
+            [("SYNTHETIC R7 NOVEMBER", "07001", 5.25)]
+        )
+        first = self.upload(payload=payload)
         self.assertEqual(first.status_code, 201)
-        duplicate = self.upload()
+        duplicate = self.upload(payload=payload)
         self.assertEqual(duplicate.status_code, 409)
 
     def test_09_invalid_session_cookie_rejected(self):
