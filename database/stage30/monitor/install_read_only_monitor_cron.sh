@@ -6,7 +6,7 @@ if [[ "$(id -un)" != "ubuntu" ]];then
   echo "STAGE30_9_INSTALL=BLOCKED_RUN_AS_UBUNTU_NONROOT";exit 10
 fi
 SCRIPT=/home/ubuntu/sbi_pr129_monitor.py
-EXPECTED_SHA=5bca473e870230cbe73310cabb266c217dbbeb47
+EXPECTED_SHA=f7dc687ad82114c487e5dcf21f45d2e39f91f427
 MARKER="SBI_PR129_READ_ONLY_MONITOR_STAGE30_9"
 ENTRY="*/10 * * * * /usr/bin/python3 $SCRIPT >/dev/null 2>&1 # $MARKER"
 echo "=== STAGE 30.9 — PINNED READ-ONLY MONITOR INSTALLATION ==="
