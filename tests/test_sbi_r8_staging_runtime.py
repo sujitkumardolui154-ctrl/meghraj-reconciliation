@@ -60,8 +60,8 @@ class R8StagingRuntimeTests(unittest.TestCase):
             self.env.pop(k, None)
         self.env.update({
             "SBI_R8_STAGING_MODE": "SBI_R8_STAGING_ONLY_NONFINANCIAL",
-            "SBI_R8_STAGING_FIREBASE_PROJECT_ID": "sbi-r8-staging-qa123",
-            "SBI_R8_STAGING_SITE_ORIGIN": "https://sbi-r8-staging-qa.example.invalid",
+            "SBI_R8_STAGING_FIREBASE_PROJECT_ID": "sbi-r9-staging",
+            "SBI_R8_STAGING_SITE_ORIGIN": "https://sbi-r9-staging-qa.example.invalid",
             "SBI_R8_STAGING_EVIDENCE_DIR": str(self.path),
             "SBI_R8_STAGING_FIREBASE_WEB_API_KEY": "r8-fake-key-for-offline-tests-only-000001",
             "SBI_READONLY_QUARANTINE_SOL_KEYS": "7001,7002,7003",
@@ -95,12 +95,12 @@ class R8StagingRuntimeTests(unittest.TestCase):
             if a.startswith("R8_STAGING_RESULT=")
         )
         info = json.loads(line)
-        self.assertEqual(info["project"], "sbi-r8-staging-qa123")
+        self.assertEqual(info["project"], "sbi-r9-staging")
         self.assertTrue(
             info["aws_app_source"].endswith("/staging/aws_login_v150/app.py")
         )
         self.assertEqual(info["origins"], [
-            "https://sbi-r8-staging-qa.example.invalid"
+            "https://sbi-r9-staging-qa.example.invalid"
         ])
         self.assertEqual(info["origin"], info["site_origin"])
         self.assertEqual(info["master_uid"], "R8_STAGING_ADMIN_DISABLED")
@@ -119,12 +119,12 @@ class R8StagingRuntimeTests(unittest.TestCase):
     def test_03_production_project_denied(self):
         self.assert_refused({
             "SBI_R8_STAGING_FIREBASE_PROJECT_ID": "meghraj-reconciliation"
-        }, "separate sbi-r8-staging prefix")
+        }, "exact sbi-r9-staging")
 
     def test_04_non_staging_project_denied(self):
         self.assert_refused({
             "SBI_R8_STAGING_FIREBASE_PROJECT_ID": "demo-r8"
-        }, "separate sbi-r8-staging prefix")
+        }, "exact sbi-r9-staging")
 
     def test_05_live_production_origin_denied(self):
         self.assert_refused({
@@ -134,13 +134,13 @@ class R8StagingRuntimeTests(unittest.TestCase):
 
     def test_06_http_origin_denied(self):
         self.assert_refused({
-            "SBI_R8_STAGING_SITE_ORIGIN": "http://sbi-r8-staging-qa.example.invalid"
+            "SBI_R8_STAGING_SITE_ORIGIN": "http://sbi-r9-staging-qa.example.invalid"
         }, "separate HTTPS staging origin")
 
     def test_07_origin_with_port_denied(self):
         self.assert_refused({
             "SBI_R8_STAGING_SITE_ORIGIN":
-                "https://sbi-r8-staging-qa.example.invalid:8080"
+                "https://sbi-r9-staging-qa.example.invalid:8080"
         }, "separate HTTPS staging origin")
 
     def test_08_inherited_auth_emulator_denied(self):
@@ -206,6 +206,11 @@ class R8StagingRuntimeTests(unittest.TestCase):
         )
         self.assertNotEqual(p.returncode, 0)
         self.assertIn("explicit nonproduction mode required", p.stderr)
+
+    def test_20_legacy_r8_synthetic_project_refused(self):
+        self.assert_refused({
+            "SBI_R8_STAGING_FIREBASE_PROJECT_ID": "sbi-r8-staging-qa123"
+        }, "exact sbi-r9-staging")
 
 
 if __name__ == "__main__":
