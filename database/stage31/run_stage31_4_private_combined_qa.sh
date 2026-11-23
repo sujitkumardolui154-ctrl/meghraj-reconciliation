@@ -12,7 +12,7 @@ CADDY=/home/ubuntu/sbi-aws-app/staging/aws_lightsail/Caddyfile
 WORK=/home/ubuntu/sbi-stage31-private-qa
 EVID=/home/ubuntu/sbi-release-evidence
 BASE=https://raw.githubusercontent.com/sujitkumardolui154-ctrl/meghraj-reconciliation
-PIN=c3a401b50e31961a822bf03e8bcf3bbd70a125f5
+PIN=e4b8ba918fd1fec307bbe92e876b1eda4ee636d1
 LIVE_CONTAINER=sbi-pr129-modern-release-final
 IMAGE=""
 mkdir -p "$WORK" "$EVID"
@@ -139,7 +139,7 @@ fetch backend_source/invoice_import_contract.json invoice_import_contract.json 9
 fetch backend_source/invoice_source_schema.py invoice_source_schema.py b70ac295c2f2c63e8662dbe4a596fb05144af1e3
 fetch backend_source/invoice_import_rules.py invoice_import_rules.py 2803c1b0d44848b02abe0908b3704d6f35a53703
 fetch backend_source/upload_api.py upload_api.py ff47c644acecba98d527b67d490ee94761642e1d
-fetch backend_source/invoice_excel_parser.py invoice_excel_parser.py 19fd8e6d174bd545cb0a972fa1ff4b15104977f0
+fetch backend_source/invoice_excel_parser.py invoice_excel_parser.py 38927c0b1ea793a47b649c14101caa0175663a5d
 fetch backend_source/invoice_import_preview.py invoice_import_preview.py 22af119657dcc6e98eb1bec02ce16b3eba6978ac
 fetch database/stage31/payment_evidence_contract.py payment_evidence_contract.py a05e53d5d54839fd2b4b122a533946ea46d49479
 fetch database/stage31/test_stage31_contracts.py test_stage31_contracts.py d1fdd803540a86c96a9ffd005f8fac8567c6ce8e
@@ -148,10 +148,10 @@ fetch database/stage31/test_stage31_2_schema_design.py test_stage31_2_schema_des
 fetch database/stage31/stage31_3_ingest_candidate.py stage31_3_ingest_candidate.py 23ed83c9515b5f00b3848594272adeeda0f3ee6c
 fetch database/stage31/test_stage31_3_ingest_candidate.py test_stage31_3_ingest_candidate.py 9e66d957f956841c758bb7cf90bae5108539bda3
 fetch database/stage31/stage31_4_private_preview.py stage31_4_private_preview.py df16907e24e751b3c6cd3136de8aecd934397e03
-fetch database/stage31/test_stage31_4_private_preview.py test_stage31_4_private_preview.py 65226c1177c483ed191a6ddaac344c7a341d7931
+fetch database/stage31/test_stage31_4_private_preview.py test_stage31_4_private_preview.py 1c60abd1469323b335836daf3b24d3e1f236fc90
 echo "STAGE31_4_PINNED_SOURCE_HASH_QA=PASS"
 
-echo "=== E. RUN PRIVATE 73-TEST SOURCE/FLASK/CSRF/EXCEL COMBINED QA ==="
+echo "=== E. RUN PRIVATE 75-TEST SOURCE/FLASK/CSRF/EXCEL COMBINED QA ==="
 STEP=TESTS
 # Single isolated short-lived container, no network, no database credentials,
 # no AWS routing change; bind-mounted sources read-only; actual live
@@ -172,6 +172,7 @@ timeout --signal=TERM --kill-after=5s 150s sudo -n docker run --rm \
     test_stage31_3_ingest_candidate.py \
     test_stage31_4_private_preview.py
 echo "STAGE31_4_FLASK_TEST_CLIENT_AUTH_CSRF_EXCEL_QA=PASS"
+echo "STAGE31_4_OPTIONAL_XLS_READER=NOT_INSTALLED_FAIL_CLOSED_WHEN_UNAVAILABLE"
 echo "STAGE31_4_NO_PUBLIC_PRIVATE_ENDPOINT=PASS_NOT_REGISTERED"
 
 echo "=== F. STAGE 31.4 GATES: PRIVATE SYNTHETIC ONLY ==="
