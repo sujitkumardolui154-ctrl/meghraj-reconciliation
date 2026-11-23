@@ -14,6 +14,7 @@ umask 077
 set +e
 timeout 25s docker run --rm --network none --read-only --cap-drop ALL \
   --security-opt no-new-privileges --user 10001:10001 \
+  --tmpfs /tmp:rw,noexec,nosuid,size=16m \
   "$R8_STAGING_IMAGE" > /tmp/r8-staging-expected-refusal.log 2>&1
 refusal=$?
 set -e
