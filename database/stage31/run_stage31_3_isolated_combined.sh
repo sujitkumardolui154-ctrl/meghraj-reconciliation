@@ -9,7 +9,7 @@ STEP=INIT
 DB=sbi_reconciliation_main
 MAINTENANCE_DB=postgres
 BASE=https://raw.githubusercontent.com/sujitkumardolui154-ctrl/meghraj-reconciliation
-PIN=831aaf09a99b9784bbe9e1418be1745ee53394ca
+PIN=e8180b729306f834ae22a7292022a8ce1f9d2c2b
 WORK=/home/ubuntu/sbi-stage31-private-qa
 EVID=/home/ubuntu/sbi-release-evidence
 CADDY=/home/ubuntu/sbi-aws-app/staging/aws_lightsail/Caddyfile
@@ -133,7 +133,7 @@ fetch database/stage31/stage31_2_schema_design.py stage31_2_schema_design.py 4ea
 fetch database/stage31/test_stage31_2_schema_design.py test_stage31_2_schema_design.py ea05ffc4c30b4bfca2b3425fc44f22a28978b629
 fetch database/stage31/stage31_3_ingest_candidate.py stage31_3_ingest_candidate.py 23ed83c9515b5f00b3848594272adeeda0f3ee6c
 fetch database/stage31/test_stage31_3_ingest_candidate.py test_stage31_3_ingest_candidate.py 9e66d957f956841c758bb7cf90bae5108539bda3
-fetch database/stage31/stage31_3_postgres_temp_synthetic_rollback.sql stage31_3_postgres_temp_synthetic_rollback.sql 2b460c02e8cc221d79f8a0d4f5aaf5144aa24da5
+fetch database/stage31/stage31_3_postgres_temp_synthetic_rollback.sql stage31_3_postgres_temp_synthetic_rollback.sql 213b57937a26d3d08709b025b40e690c7aebaae9
 echo "STAGE31_3_PINNED_FILE_INTEGRITY=PASS"
 
 echo "=== D. RUN 51 SOURCE+MAPPING+PRECISION COMBINED REGRESSION TESTS ==="
@@ -152,8 +152,18 @@ STEP=TRANSACTION
 # The owner-only QA directory is mode 0700: postgres cannot traverse it.
 # Ubuntu opens this already-verified SQL file and passes only its contents as
 # stdin to psql. Do NOT chmod/chown the private directory or expose finance data.
-sudo -n -u postgres psql -X -A -t -v ON_ERROR_STOP=1 \
- -d "$MAINTENANCE_DB" < "$WORK/stage31_3_postgres_temp_synthetic_rollback.sql"
+TX_OUTPUT="$(sudo -n -u postgres psql -X -A -t -v ON_ERROR_STOP=1 \
+ -d "$MAINTENANCE_DB" < "$WORK/stage31_3_postgres_temp_synthetic_rollback.sql")"
+printf '%s\n' "$TX_OUTPUT"
+for check in \
+  STAGE31_3_DUPLICATE_AND_AMOUNT_CONSTRAINT_QA=PASS \
+  STAGE31_3_TRANSACTION_ROLLBACK_QA=PASS \
+  STAGE31_3_TEMP_OBJECT_CLEANUP=PASS; do
+  if ! printf '%s\n' "$TX_OUTPUT" | grep -Fxq "$check"; then
+    echo "STAGE31_3_MANDATORY_TRANSACTION_ASSERTION_FAILED=$check"
+    exit 24
+  fi
+done
 echo "STAGE31_3_POSTGRESQL_TEMP_TRANSACTION_ROLLBACK=PASS"
 
 echo "=== F. STAGE 31.3 RELEASE RESTRICTIONS ==="
