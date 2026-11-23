@@ -90,5 +90,5 @@ jobs:
       - name: Build merged source Docker candidate without deployment
         run: |
           docker build -f staging/aws_login_v150/Dockerfile --build-arg SBI_SOURCE_SHA=37d0eea5d962f91c8644c281005a6a1870b6972a -t sbi-r4-merged-sha-review:local .
-          docker image inspect sbi-r4-merged-sha-review:local --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' | grep -Fx '${sha}'
+          docker image inspect sbi-r4-merged-sha-review:local --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' | grep -Fx '37d0eea5d962f91c8644c281005a6a1870b6972a'
           echo 'PR142_MERGED_SHA_IMAGE_ONLY_NO_AWS_DEPLOY=PASS'
