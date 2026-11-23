@@ -81,7 +81,14 @@ for attempt in $(seq 1 30); do
   fi
   sleep 1
 done
-[[ "$ready" == 1 ]] || { echo 'R8_STAGING_HEALTH_TIMEOUT'; exit 3; }
+if [[ "$ready" != 1 ]]; then
+  echo 'R8_STAGING_HEALTH_TIMEOUT'
+  echo 'R8_STAGING_CONTAINER_DIAGNOSTICS_START'
+  docker inspect -f '{{.State.Status}} {{.State.ExitCode}}' "$CANARY" || true
+  docker logs --tail 30 "$CANARY" 2>&1 || true
+  echo 'R8_STAGING_CONTAINER_DIAGNOSTICS_END'
+  exit 3
+fi
 
 docker exec -i "$CANARY" python - <<'PY'
 import json
