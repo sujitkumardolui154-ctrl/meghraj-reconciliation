@@ -1,6 +1,8 @@
 """Stage 31.4 isolated Flask test-client integration: synthetic auth, no DB."""
 import io
+import sys
 import unittest
+from unittest.mock import patch
 
 from flask import Flask
 from openpyxl import Workbook
@@ -156,6 +158,23 @@ class PrivateFlaskIntegration(unittest.TestCase):
         self.assertRegex(result.json["source_sha256"],r"^[a-f0-9]{64}$")
         self.assertNotIn("original_values",result.json)
         self.assertNotIn("STAGE31-PRIVATE-TEST-001",str(result.json))
+    def test_xlsx_preview_works_when_optional_xlrd_unavailable(self):
+        # The private image deliberately has no xlrd. XLSX parsing must not
+        # depend on the old XLS-only optional package at import time.
+        with patch.dict(sys.modules, {"xlrd": None}):
+            result=self.send(payload=invoice_xlsx())
+        self.assertEqual(result.status_code,200)
+        self.assertEqual(result.json["source_contract_ready_count"],1)
+
+    def test_xls_missing_optional_reader_fails_closed(self):
+        # Valid OLE header, but NOT a valid XLS: absence of xlrd must result
+        # in explicit refusal, not import-time failure of all preview routes.
+        ole=bytes.fromhex("d0cf11e0a1b11ae1")+bytes(80)
+        with patch.dict(sys.modules, {"xlrd": None}):
+            result=self.send(payload=ole,filename="invoice.xls")
+        self.assertEqual(result.status_code,400)
+        self.assertEqual(result.json["error"],"XLS_READER_UNAVAILABLE_IN_PRIVATE_IMAGE")
+
     def test_no_cache_on_all_private_responses(self):
         for response in (self.send(),self.client.post("/__stage31_4/invoice/apply")):
             self.assertEqual(response.headers["Cache-Control"],"no-store")
