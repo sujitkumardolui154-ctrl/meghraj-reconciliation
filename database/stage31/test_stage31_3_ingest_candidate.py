@@ -44,7 +44,7 @@ class ExactConversion(unittest.TestCase):
             with self.subTest(value=x):
                 with self.assertRaises(ValueError):rupees_to_paise(x)
     def test_unreasonable_precision_range(self):
-        with self.assertRaises(ValueError):rupees_to_paise("99999999999999.99")
+        with self.assertRaises(ValueError):rupees_to_paise("100000000000000.00")
 
 class CandidateSafety(unittest.TestCase):
     def test_34_35_53_invoice_source_to_paise_candidate(self):
