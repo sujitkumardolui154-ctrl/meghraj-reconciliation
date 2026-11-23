@@ -1,0 +1,71 @@
+name: SBI R6 Independent R5 Merged-SHA QA (GitHub only)
+on:
+  push:
+    branches:
+      - review/sbi-r6-r5-merged-sha-qa-20261123
+  pull_request:
+    branches:
+      - feature/sbi-payment-reconciliation-readiness-gate-20261120
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  replay-merged-r5:
+    name: Replay immutable R5 merged source
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      R6_REPLAY_SHA: 56b4dea540025dc9e013497e959ffbf855899cd7
+    steps:
+      - name: Checkout exact R5 merged source
+        uses: actions/checkout@v5
+        with:
+          ref: 56b4dea540025dc9e013497e959ffbf855899cd7
+          persist-credentials: false
+      - name: Verify immutable source SHA and R5 restrictions
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "$R6_REPLAY_SHA"
+          git diff --quiet
+          bash -n scripts/ci/sbi_r5_offline_canary.sh
+          grep -Fq -- '--network none' scripts/ci/sbi_r5_offline_canary.sh
+          grep -Fq -- '--read-only --user 10001:10001' scripts/ci/sbi_r5_offline_canary.sh
+          grep -Fq '2026-11-23T00:00:00+05:30' staging/aws_login_v150/reconciliation_review_adapter.py
+          grep -Fq 'def disabled_financial_api(route)' staging/aws_login_v150/app.py
+          echo "R6_R5_IMMUTABLE_MERGE_SHA=$R6_REPLAY_SHA"
+          echo "R6_R5_SOURCE_GUARDRAILS=PASS"
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install Flask source regression dependencies
+        run: python -m pip install -r staging/aws_login_v150/requirements.txt
+      - name: Replay existing payment evidence tests
+        run: python -m unittest discover -s tests -p 'test_sbi_payment_evidence_upload.py' -v
+      - name: Replay reconciliation refusal tests
+        run: python -m unittest discover -s tests -p 'test_sbi_reconciliation_readiness.py' -v
+      - name: Replay R4 Flask HTTP integration tests
+        run: python -m unittest discover -s tests -p 'test_sbi_r4_readonly_flask_http.py' -v
+      - name: Build R5 image from exact merged source (no registry push)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker build -f staging/aws_login_v150/Dockerfile --build-arg SBI_SOURCE_SHA="$R6_REPLAY_SHA" -t "sbi-r5-offline:$R6_REPLAY_SHA" .
+          test "$(docker image inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "sbi-r5-offline:$R6_REPLAY_SHA")" = "$R6_REPLAY_SHA"
+          echo 'R6_R5_MERGED_SOURCE_IMAGE=PASS'
+      - name: Execute offline network-isolated canary with rollback
+        shell: bash
+        env:
+          R5_IMAGE: sbi-r5-offline:56b4dea540025dc9e013497e959ffbf855899cd7
+          R5_SOURCE_SHA: 56b4dea540025dc9e013497e959ffbf855899cd7
+        run: bash scripts/ci/sbi_r5_offline_canary.sh
+      - name: Always verify all R5 canary containers removed
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if docker ps -a --filter 'name=^/sbi-r5-offline-' --format '{{.Names}}' | grep -q .; then
+            echo 'R6_R5_CANARY_CLEANUP=FAIL'
+            exit 1
+          fi
+          echo 'R6_R5_CANARY_CLEANUP=PASS'
