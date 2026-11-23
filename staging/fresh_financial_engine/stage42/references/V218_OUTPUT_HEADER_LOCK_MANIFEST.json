@@ -1,0 +1,142 @@
+{
+  "rule_id": "OUT-SCHEMA-V218-001",
+  "name": "Canonical v2.18 Excel output layout lock for all future v2.51+ executions",
+  "active_master_rulebook": "v2.51 (unchanged; no version bump)",
+  "reference_file": "MEGHRAJ_PAYMENT_RECONCILED_v2.18_2026-10-26.xlsx",
+  "reference_file_sha256": "c40030e30c94fbc204eab99d91f42e655d559366d37791115029450acf369e97",
+  "captured_utc": "2026-10-28T13:43:33.967084+00:00",
+  "sheets": [
+    "Invoice Details.",
+    "PAYMNENT",
+    "Credit Note",
+    "mail",
+    "Sheet3",
+    "stop",
+    "Sheet1",
+    "Pikcip Person",
+    "Sheet2"
+  ],
+  "headers": {
+    "Invoice Details.": {
+      "1": "Client Name",
+      "2": "FY",
+      "3": "Invoice Branch",
+      "4": "Invoice Generate Location",
+      "5": "Month",
+      "6": "Invoice Date",
+      "7": "Branch Code",
+      "8": "Client Name",
+      "9": "GST NO",
+      "10": "Invoice No",
+      "11": "Taxable Amount",
+      "12": "CGST",
+      "13": "SGST",
+      "14": "Total Bill Amount",
+      "15": "Less TDS",
+      "16": "Actual Reciaveable Ammount Deductionof  TDS (Including GST)",
+      "17": "Taxable Amount  Less TDS( Without GST",
+      "18": "Payment Received ( If With GST or Excluding GST)",
+      "19": "Payment Received ( If With GST or Excluding GST)_ Payment Date",
+      "20": "GST Payment_ Blance",
+      "21": "GST Payment Date",
+      "22": "TOTAL Paymnet Received( BASE Amt + GST)",
+      "23": "Creit Note Ammount",
+      "24": "Total Payment( Base Amt+ GST )-Credit Note & TDS",
+      "25": "Outstanding Balance/ Negetive Blance",
+      "26": "Mode",
+      "27": "Remraks",
+      "28": "Mail Id",
+      "29": "REMRAKS",
+      "30": "Sbi Contcat Number",
+      "31": "Meghraj Contact Number",
+      "32": "Others Remraks",
+      "33": "New Invoice Agansit of Credit Note",
+      "34": "Date",
+      "35": "Model SOL ID",
+      "36": "Model Proper Client Name",
+      "37": "Model Linked Bank Row (Working)",
+      "38": "Model Linked Bank Credit",
+      "39": "Model Match Evidence"
+    },
+    "PAYMNENT": {
+      "1": "Location",
+      "2": "Branch Name",
+      "3": "Txn Date",
+      "4": "Value Date",
+      "5": "Description",
+      "6": "Branch Code",
+      "7": "Name",
+      "8": "        Debit",
+      "9": "Credit",
+      "10": "Balance",
+      "11": "Record For Me",
+      "12": "",
+      "13": "Model Reconciliation Status",
+      "14": "Model Reconciliation Remarks",
+      "15": "Model Invoice No (Candidate if SUSPENSE)",
+      "16": "Model Invoice Source Row",
+      "17": "Model Match Method",
+      "18": "Model TDS Rate % (Inferred)",
+      "19": "Model Expected Credit (Hypothesis)",
+      "20": "Model Signed Residual",
+      "21": "Model Service / Evidence",
+      "22": "Model SOL ID",
+      "23": "Model Proper Client Name"
+    }
+  },
+  "source_preservation": {
+    "PAYMNENT": "A:L including empty L, exact header text and original cell values/formulas; only I Credit is bank receipt",
+    "Invoice Details.": "A:AH original source cells and formulas, preserve invoice paid marker S",
+    "other_sheets": "preserve all original sheets; do not add report/QA tabs unless requested"
+  },
+  "model_layout": {
+    "PAYMNENT": "M:W, exact eleven header labels and order; M is model status; N is remarks",
+    "Invoice Details.": "AI:AM, exact five header labels and order"
+  },
+  "status_enum": [
+    "OK",
+    "SUSPENSE",
+    "Duplicate Payment"
+  ],
+  "normal_execute": "one completed XLSX only, no reports/extra sheets unless user explicitly requests",
+  "baseline_counts": {
+    "payment_rows": 14898,
+    "OK": 14733,
+    "SUSPENSE": 163,
+    "Duplicate Payment": 2
+  },
+  "match_delta_diagnostic": {
+    "bounded_v251_read_only_audit_counts": {
+      "OK": 14461,
+      "SUSPENSE": 435,
+      "Duplicate Payment": 2
+    },
+    "higher_SUSPENSE_count": 272,
+    "v218_non_source_ok_by_method": {
+      "SAME-SOL DOMINANT NET (DNM-01)": 193,
+      "SERVICE PERIOD + MODELED AMOUNT": 48,
+      "MXP EXACT REFERENCE + AMOUNT": 31
+    },
+    "candidate_invoice_rows_checked": 272,
+    "matched_invoice_numbers": 272,
+    "invoice_S_blank": 272,
+    "invoice_R_nonblank": 272,
+    "duplicate_invoice_links_found": 0,
+    "interpretation": "272 previous provisional working matches require renewed source, allocation and independent QA checks. Not permission to auto-OK. R populated with S blank is a review flag, not by itself a paid-date marker.",
+    "source_byte_equivalence_of_v218_and_audit": "not established; same payment row count and original status tally only"
+  },
+  "no_auto_promotion": true,
+  "financial_freeze": "ACTIVE",
+  "required_gates": [
+    "FFI-001",
+    "FFI-002",
+    "OUT-001",
+    "QDG-01",
+    "original A:L protection",
+    "invoice original A:AH protection",
+    "independent QA",
+    "Finance signoff"
+  ],
+  "default_on_header_mismatch": "HOLD_OUTPUT_AND_REPAIR_IN_STAGING",
+  "default_on_status_delta": "GENERATE_INTERNAL_DIFF_AND_REQUIRE_EVIDENCE; DO_NOT_COPY_OLD_OK"
+}

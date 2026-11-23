@@ -1,0 +1,48 @@
+name: SBI Stage 4.1 v2.18 review-only writer source gate
+on:
+  pull_request:
+    paths:
+      - "staging/fresh_financial_engine/stage41/**"
+      - ".github/workflows/sbi-stage41-v218-review-writer.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review-writer-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile v2.18 review writer
+        run: python -m py_compile staging/fresh_financial_engine/stage41/v218_writer.py
+      - name: Verify original v2.18 manifest identity
+        run: |
+          cd staging/fresh_financial_engine/stage41
+          echo "1cd0ee356dba943b0a0d40f7d5679f17127627e148b01e5c714a8ebfc3f7b04e  references/V218_OUTPUT_HEADER_LOCK_MANIFEST.json" | sha256sum -c
+      - name: Run five source-only output-contract checks
+        run: |
+          PYTHONPATH=staging/fresh_financial_engine/stage41 python -m unittest discover \
+            -s staging/fresh_financial_engine/stage41/tests \
+            -p 'test_manifest_contract_ci.py' -v
+      - name: Writer runtime availability and synthetic workbook QA
+        run: |
+          if python -c 'import artifact_tool' >/dev/null 2>&1; then
+            PYTHONPATH=staging/fresh_financial_engine/stage41 python -m unittest discover \
+              -s staging/fresh_financial_engine/stage41/tests \
+              -p 'test_v218_writer.py' -v
+            echo "STAGE41_WRITER_FUNCTIONAL_QA=PASS"
+          else
+            echo "::warning::artifact_tool runtime unavailable on GitHub runner; full workbook QA NOT RUN in GitHub. Local 19-case test is separate evidence, not an independent production certification."
+            echo "STAGE41_WRITER_FUNCTIONAL_QA=NOT_RUN_RUNTIME_UNAVAILABLE"
+          fi
+      - name: Confirm finance remains locked
+        run: |
+          echo "STAGE41_SOURCE_SCHEMA_QA=PASS"
+          echo "AWS_STAGE41_DEPLOYMENT=NOT_PERFORMED"
+          echo "FINANCIAL_APPLY=LOCKED"
+          echo "PRODUCTION_FINANCIAL_WRITER=NOT_RELEASED"
