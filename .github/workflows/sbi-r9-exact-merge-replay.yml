@@ -1,0 +1,76 @@
+name: SBI R9 Exact Merged Development QA (offline)
+on:
+  push:
+    branches:
+      - review/sbi-r9-exact-merge-isolated-qa-20261123
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  immutable-r9:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PINNED_R9_MERGE: 9708f412445b70046f3d8327503e167cf1bc025d
+    steps:
+      - name: Checkout exact immutable R9 development merge
+        uses: actions/checkout@v5
+        with:
+          ref: 9708f412445b70046f3d8327503e167cf1bc025d
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Confirm exact R9 merge and financial locks
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "$PINNED_R9_MERGE"
+          git diff --quiet
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${FIREBASE_AUTH_EMULATOR_HOST:-}"
+          test -z "${SBI_R9_REAL_STAGING_PROBE:-}"
+          grep -Fq 'R9_REAL_FIREBASE_STAGING_QA_ONLY' scripts/ci/sbi_r9_real_staging_signed_token_probe.py
+          grep -Fq 'def disabled_financial_api(route)' staging/aws_login_v150/app.py
+          grep -Fq '2026-11-23T00:00:00+05:30' staging/aws_login_v150/reconciliation_review_adapter.py
+          echo "R9_EXACT_MERGE_SHA=$PINNED_R9_MERGE"
+          echo 'R9_NO_REAL_FIREBASE_OR_AWS=VERIFIED'
+      - name: Install existing source test dependencies
+        run: python -m pip install -r staging/aws_login_v150/requirements.txt
+      - name: Test R9 real signed-token test-harness safety ONLY, never execute actual probe
+        run: |
+          python -m py_compile scripts/ci/sbi_r9_real_staging_signed_token_probe.py
+          python -m unittest discover -s tests -p 'test_sbi_r9_real_staging_probe_guards.py' -v
+      - name: Retest R8 staging runtime safety and prior read-only Flask functions
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python -m unittest discover -s tests -p 'test_sbi_r8_staging_runtime.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_payment_evidence_upload.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_reconciliation_readiness.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_r4_readonly_flask_http.py' -v
+      - name: Build synthetic R8 staging image from exact R9 merged source
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker build -f staging/aws_login_v150/Dockerfile.r8_staging \
+            --build-arg SBI_SOURCE_SHA="$PINNED_R9_MERGE" \
+            -t "sbi-r8-staging:$PINNED_R9_MERGE" .
+          test "$(docker image inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "sbi-r8-staging:$PINNED_R9_MERGE")" = "$PINNED_R9_MERGE"
+          echo 'R9_EXACT_MERGE_OFFLINE_IMAGE=PASS'
+      - name: Verify network-isolated container denial, health and rollback
+        env:
+          R8_STAGING_IMAGE: sbi-r8-staging:9708f412445b70046f3d8327503e167cf1bc025d
+          R8_STAGING_SHA: 9708f412445b70046f3d8327503e167cf1bc025d
+        run: bash scripts/ci/sbi_r8_staging_image_canary.sh
+      - name: Always verify isolated temporary container removed
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if docker ps -a --filter 'name=^/sbi-r8-ci-' --format '{{.Names}}' | grep -q .; then
+            exit 1
+          fi
+          echo 'R9_EXACT_MERGE_CANARY_ROLLBACK=PASS'
+          echo 'R9_FINANCIAL_APPLY=LOCKED'
+          echo 'R9_REAL_SIGNED_FIREBASE_TOKEN=NOT_TESTED'
