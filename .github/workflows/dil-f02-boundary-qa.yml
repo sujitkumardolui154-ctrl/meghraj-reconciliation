@@ -1,0 +1,33 @@
+name: DIL F02 synthetic boundary QA
+on:
+  pull_request:
+    paths:
+      - 'backend_source/dil_evidence_boundary.py'
+      - 'tests/test_dil_evidence_boundary.py'
+      - '.github/workflows/dil-f02-boundary-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-no-write:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Exact-head synthetic tests (nonzero count; no skips)
+        run: |
+          python - <<'PY'
+          import subprocess,sys,re
+          p=subprocess.run([sys.executable,"-m","unittest","-v","tests/test_dil_evidence_boundary.py"],capture_output=True,text=True)
+          output=p.stdout+p.stderr
+          print(output)
+          m=re.search(r"Ran (\d+) tests?",output)
+          if p.returncode or not m or int(m.group(1))!=12 or re.search(r"skipped=|FAIL|ERROR",output):
+              sys.exit(1)
+          print("BATCH_QA=PASS; NEXT_GATE=INDEPENDENT_REVIEW; FINANCIAL_WRITES=0")
+          PY
