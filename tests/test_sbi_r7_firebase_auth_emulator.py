@@ -28,15 +28,14 @@ for folder in (
     sys.path.insert(0, str(folder))
 
 # Critical: fail closed before importing/authenticating any app SDK code.
-assert os.environ.get("FIREBASE_AUTH_EMULATOR_HOST") == "127.0.0.1:9099", (
-    "R7 refuses real Firebase: local Auth Emulator must be 127.0.0.1:9099"
-)
-assert os.environ.get("GCLOUD_PROJECT") == "demo-sbi-r7", (
-    "R7 refuses non-demo Firebase project"
-)
-assert not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"), (
-    "R7 must never load a production Firebase service account"
-)
+if os.environ.get("FIREBASE_AUTH_EMULATOR_HOST") != "127.0.0.1:9099":
+    raise RuntimeError(
+        "R8 refuses real Firebase: local Auth Emulator must be 127.0.0.1:9099"
+    )
+if os.environ.get("GCLOUD_PROJECT") != "demo-sbi-r7":
+    raise RuntimeError("R8 refuses non-demo Firebase project")
+if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+    raise RuntimeError("R8 must never load a production Firebase service account")
 
 import dashboard_sessions
 dashboard_sessions.PROJECT = "demo-sbi-r7"
@@ -303,6 +302,48 @@ class R7FirebaseAuthEmulatorTests(unittest.TestCase):
             self.client.get("/healthz").json["financial_execution_enabled"],
             False,
         )
+
+
+    def test_11_disabled_user_is_rejected_after_session_issued(self):
+        self.assertEqual(self.login("primary").status_code, 200)
+        uid = self.identities["primary"]["uid"]
+        try:
+            auth.update_user(uid, disabled=True, app=self.fb)
+            response = self.client.get("/api/payment-reconciliation/status")
+            self.assertIn(
+                response.status_code, (401, 403),
+                "Disabled authenticated users must not retain read-only access",
+            )
+        finally:
+            auth.update_user(uid, disabled=False, app=self.fb)
+
+    def test_12_removed_claim_blocks_existing_session(self):
+        self.assertEqual(self.login("secondary").status_code, 200)
+        uid = self.identities["secondary"]["uid"]
+        try:
+            auth.set_custom_user_claims(
+                uid, {"dil_dashboard": False}, app=self.fb,
+            )
+            response = self.client.get("/api/payment-reconciliation/status")
+            self.assertEqual(response.status_code, 403)
+        finally:
+            auth.set_custom_user_claims(
+                uid, {"dil_dashboard": True}, app=self.fb,
+            )
+
+    def test_13_authenticated_preflight_requires_correct_csrf(self):
+        self.assertEqual(self.login().status_code, 200)
+        upload = self.upload()
+        self.assertEqual(upload.status_code, 201)
+        receipt = upload.json["receipt_id"]
+        for bad in (
+            self.headers(token="0" * 64),
+            self.headers(origin="https://evil.invalid"),
+        ):
+            result = self.preflight(receipt, headers=bad)
+            self.assertEqual(result.status_code, 403)
+            # Outer origin guard may return only {"error": ...}; it denies before the handler.
+            self.assertIsNot(result.json.get("financial_writes"), True)
 
 
 if __name__ == "__main__":
