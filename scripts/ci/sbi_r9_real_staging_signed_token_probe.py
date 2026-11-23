@@ -78,7 +78,10 @@ def check_environment():
             fail("inherited Google project does not match approved staging project")
     if not os.environ.get("SBI_READONLY_QUARANTINE_SOL_KEYS"):
         fail("explicit synthetic-only quarantine SOL keys required")
-    return project, site, key
+    expected_identity = os.environ.get("SBI_R9_STAGING_EXPECTED_SERVICE_ACCOUNT_EMAIL", "")
+    if expected_identity != f"sbi-r9-qa@{project}.iam.gserviceaccount.com":
+        fail("explicit separate staging-only service account identity required")
+    return project, site, key, expected_identity
 
 
 def real_sign_in(email, password, web_api_key):
@@ -120,7 +123,7 @@ def check(value, message):
 
 
 def execute():
-    project, origin, web_key = check_environment()
+    project, origin, web_key, expected_identity = check_environment()
 
     # Discover bound runtime identity only AFTER the explicit environment gate.
     # Reject cross-project ADC, even when the Firebase SDK is given an explicit
@@ -129,9 +132,15 @@ def execute():
     credentials, adc_project = google.auth.default(
         scopes=("https://www.googleapis.com/auth/cloud-platform",)
     )
-    del credentials
     if adc_project != project:
         fail("runtime ADC project mismatch or unknown; no auth-user mutation permitted")
+    # Project-ID matching alone is insufficient: user ADC, a generic compute
+    # "default" identity or credentials belonging to a different principal
+    # cannot be used to create cloud QA users.
+    observed_identity = getattr(credentials, "service_account_email", None)
+    if observed_identity != expected_identity:
+        fail("runtime service account identity mismatch; no auth-user mutation permitted")
+    del credentials
 
     import sys
     if str(SOURCE_ROOT / "staging/aws_login_v150") not in sys.path:
