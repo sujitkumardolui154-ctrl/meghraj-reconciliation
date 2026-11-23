@@ -76,7 +76,7 @@ CADDY_BEFORE="$(sudo -n sha256sum /home/ubuntu/sbi-aws-app/staging/aws_lightsail
 echo "=== B. LIVE POSTGRESQL TABLE/COLUMN/INDEX METADATA ONLY (NO RECORD VALUES) ==="
 STEP=CATALOG
 CATALOG="$DIR/stage31_2_postgres_catalog_$(date -u +%Y%m%dT%H%M%SZ).json"
-sudo -n -u postgres psql -X -A -t -q -v ON_ERROR_STOP=1 -d "$DB" <<'SQL' |
+sudo -n -u postgres psql -X -A -t -q -v ON_ERROR_STOP=1 -d "$DB" > "$CATALOG" <<'SQL'
 BEGIN READ ONLY;
 SET LOCAL statement_timeout = '10000ms';
 SELECT jsonb_build_object(
@@ -135,8 +135,8 @@ fetch backend_source/invoice_source_schema.py invoice_source_schema.py b70ac295c
 fetch backend_source/invoice_import_rules.py invoice_import_rules.py 2803c1b0d44848b02abe0908b3704d6f35a53703
 fetch database/stage31/payment_evidence_contract.py payment_evidence_contract.py a05e53d5d54839fd2b4b122a533946ea46d49479
 fetch database/stage31/test_stage31_contracts.py test_stage31_contracts.py d1fdd803540a86c96a9ffd005f8fac8567c6ce8e
-fetch database/stage31/stage31_2_schema_design.py stage31_2_schema_design.py 72ec8b448f94b59eec555815be569c29ab5624ef
-fetch database/stage31/test_stage31_2_schema_design.py test_stage31_2_schema_design.py a32242689b414e7ceca538f51037f5d66588b858
+fetch database/stage31/stage31_2_schema_design.py stage31_2_schema_design.py 4eabfdcfa31a921504bc7a4999ff747557207c9d
+fetch database/stage31/test_stage31_2_schema_design.py test_stage31_2_schema_design.py ea05ffc4c30b4bfca2b3425fc44f22a28978b629
 python3 -B -m unittest -v test_stage31_contracts.py test_stage31_2_schema_design.py
 echo "STAGE31_2_OFFLINE_SOURCE_AND_MAPPING_REGRESSION=PASS"
 
