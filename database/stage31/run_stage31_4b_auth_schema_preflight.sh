@@ -13,7 +13,7 @@ CADDY=/home/ubuntu/sbi-aws-app/staging/aws_lightsail/Caddyfile
 EVID=/home/ubuntu/sbi-release-evidence
 WORK=/home/ubuntu/sbi-stage31-private-qa
 BASE=https://raw.githubusercontent.com/sujitkumardolui154-ctrl/meghraj-reconciliation
-PIN=2e70f56abfda405d288de160e262e86678364859
+PIN=842f54085bf069d04b239ffe81bf6bdb6e3ce222
 BEFORE=""
 CADDY_BEFORE=""
 LIVE_BEFORE=""
@@ -155,7 +155,8 @@ fetch(){
  [[ "$(git hash-object "$name")" == "$sha" ]] ||
   { echo "STAGE31_4B_INTEGRITY_MISMATCH=$name";exit 16; }
 }
-fetch database/stage31/stage31_4b_deployed_auth_inspect.py stage31_4b_deployed_auth_inspect.py 39b994a6a426990ceea58ffe71c12fd86f2c3767
+fetch database/stage31/stage31_4b_deployed_auth_inspect.py stage31_4b_deployed_auth_inspect.py ec73fb9da71e862a5b96aa4fcebb85bd107b4051
+fetch database/stage31/stage31_4b_runtime_csrf_probe.py stage31_4b_runtime_csrf_probe.py ee6a4981b7a00c7fb03fc376edfc5bc3ad937dfe
 fetch database/stage31/stage31_4b_auth_binding_candidate.py stage31_4b_auth_binding_candidate.py 1f8c94460859acf866c497f7e2661c4ba31687c2
 fetch database/stage31/test_stage31_4b_auth_binding_candidate.py test_stage31_4b_auth_binding_candidate.py 00567563fb130ab13451b83279ffbfceef453a8d
 fetch dashboard_source/dashboard_sessions.py dashboard_sessions.py de5656b33e0b4ff56e82086474c855316162a10e
@@ -184,11 +185,67 @@ timeout --signal=TERM --kill-after=5s 30s sudo -n docker exec -i "$LIVE" \
 cat "$INSPECT"
 grep -Fxq 'STAGE31_4B_SOURCE_INSPECTION=COMPLETE_REVIEW_REQUIRED_BEFORE_PRIVATE_DEPLOYMENT' "$INSPECT" ||
  { echo "STAGE31_4B_DEPLOYED_AUTH_SOURCE_AUDIT_FAILED";exit 22; }
-if grep -Fxq 'STAGE31_4B_LIVE_ORIGIN_POLICY=PRODUCTION_ORIGIN_PRESENT_IN_STATIC_ALLOWLIST' "$INSPECT";then
- echo "STAGE31_4B_LIVE_ORIGIN_PREFLIGHT=STATIC_SOURCE_PASS_REQUIRES_BROWSER_VERIFICATION"
+echo "=== D2. REAL DEPLOYED CSRF FUNCTION / SYNTHETIC ORIGIN PROBE (NO SESSION COOKIE) ==="
+STEP=CSRF_RUNTIME
+CSRF_PROBE="$EVID/stage31_4b_runtime_csrf_$(date -u +%Y%m%dT%H%M%SZ).txt"
+timeout --signal=TERM --kill-after=5s 30s sudo -n docker exec -i "$LIVE" \
+ python3 -B - < "$WORK/stage31_4b_runtime_csrf_probe.py" >"$CSRF_PROBE"
+cat "$CSRF_PROBE"
+if grep -Eq '^STAGE31_4B_CSRF_(UNTRUSTED_ORIGIN|MISMATCHED_TOKEN|MISSING_ORIGIN)_DENIED=FAIL
+
+echo "=== E. COMPARE EXISTING ANONYMOUS HTTPS AUTH GATES (NO POST/SESSION) ==="
+STEP=HTTPS
+for route in 'login|/login|200' \
+  'auth_me|/auth/me|401' \
+  'postgres_readonly|/api/reporting/v2/postgresql-summary|401' \
+  'bulk_status|/api/bulk-report/status|401';do
+ IFS='|' read -r label path status <<<"$route"
+ code="$(curl --noproxy '*' -4 -sS -o /dev/null \
+   --connect-timeout 4 --max-time 12 \
+   --resolve "$SITE:443:127.0.0.1" \
+   -w '%{http_code}' "https://$SITE$path" || true)"
+ echo "STAGE31_4B_ANONYMOUS_HTTPS=$label expected:$status actual:$code"
+ [[ "$code" == "$status" ]] || { echo "STAGE31_4B_ANONYMOUS_HTTPS=FAIL";exit 23; }
+done
+echo "STAGE31_4B_ANONYMOUS_HTTPS=PASS"
+
+echo "=== F. 96 PRIVATE SOURCE AND AUTH CONTRACT REGRESSIONS, ISOLATED ==="
+STEP=ISOLATED_TESTS
+# 75 previously passing upload-source tests + 21 new ownership+CSRF tests.
+# This is NOT a real Firebase ID/session-token validation.
+timeout --signal=TERM --kill-after=5s 160s sudo -n docker run --rm \
+ --name "sbi-stage31-4b-qa-$$" \
+ --network none --read-only \
+ --cap-drop ALL --security-opt no-new-privileges \
+ --pids-limit 64 --memory 256m --cpus 0.5 \
+ --user "$(id -u):$(id -g)" \
+ --tmpfs /tmp:rw,nosuid,nodev,size=16m \
+ --mount "type=bind,src=$WORK,dst=/qa,readonly" \
+ --workdir /qa --entrypoint python3 \
+ "$IMAGE" -B -m unittest -v \
+ test_stage31_contracts.py \
+ test_stage31_2_schema_design.py \
+ test_stage31_3_ingest_candidate.py \
+ test_stage31_4_private_preview.py \
+ test_stage31_4b_auth_binding_candidate.py
+echo "STAGE31_4B_OFFLINE_FLASK_AUTH_AND_PREVIEW_QA=PASS"
+echo "STAGE31_4B_NEW_PREVIEW_CALLBACK=CODE_ONLY_NOT_REGISTERED"
+
+echo "=== G. STATUS: NO PRODUCTION AUTH CHANGE OR WRITE ROLE ==="
+STEP=COMPLETE
+echo "STAGE31_4B_FINAL_SOURCE_POLICY_AUDIT=PASS_INSPECTION_NOT_AUTHENTICATED_E2E"
+echo "STAGE31_4B_PRIVATE_PREVIEW_ROLE=PROPOSED_NOT_GRANTED"
+echo "STAGE31_4B_PRIVATE_ENDPOINT_ACTIVATION=BLOCKED_UNTIL_OWNER_REVIEW"
+ "$CSRF_PROBE";then
+ echo "STAGE31_4B_CSRF_NEGATIVE_CONTROLS=FAIL"
+ exit 24
+fi
+if grep -Fxq 'STAGE31_4B_CSRF_ORIGIN_RUNTIME=PASS_SYNTHETIC_PRODUCTION_ORIGIN' "$CSRF_PROBE";then
+ echo "STAGE31_4B_LIVE_ORIGIN_PREFLIGHT=RUNTIME_SYNTHETIC_CSRF_PASS_BROWSER_POST_STILL_PENDING"
 else
  echo "STAGE31_4B_LIVE_ORIGIN_PREFLIGHT=REVIEW_REQUIRED_NO_PRIVATE_ROUTE_DEPLOYMENT"
 fi
+echo "STAGE31_4B_RUNTIME_CSRF_SOURCE_PROBE=COMPLETE_NO_REAL_FIREBASE_TOKENS"
 
 echo "=== E. COMPARE EXISTING ANONYMOUS HTTPS AUTH GATES (NO POST/SESSION) ==="
 STEP=HTTPS
