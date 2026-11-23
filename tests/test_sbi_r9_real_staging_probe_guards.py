@@ -18,6 +18,8 @@ class R9RealStagingProbePreflightTests(unittest.TestCase):
             "SBI_R9_REAL_STAGING_PROBE": "R9_REAL_FIREBASE_STAGING_QA_ONLY",
             "SBI_R8_STAGING_MODE": "SBI_R8_STAGING_ONLY_NONFINANCIAL",
             "SBI_R8_STAGING_FIREBASE_PROJECT_ID": "sbi-r8-staging-qa123",
+            "SBI_R9_STAGING_EXPECTED_SERVICE_ACCOUNT_EMAIL":
+                "sbi-r9-qa@sbi-r8-staging-qa123.iam.gserviceaccount.com",
             "SBI_R8_STAGING_SITE_ORIGIN": "https://sbi-r8-staging-qa.example.invalid",
             "SBI_R8_STAGING_FIREBASE_WEB_API_KEY": "synthetic-r9-staging-only-00000000001",
             "SBI_READONLY_QUARANTINE_SOL_KEYS": "7001,7002,7003",
@@ -54,10 +56,13 @@ class R9RealStagingProbePreflightTests(unittest.TestCase):
                 loc["check_environment"]()
 
     def test_01_offline_validate_allowlisted_staging_values(self):
-        project, origin, key = self.checked()
+        project, origin, key, identity = self.checked()
         self.assertEqual(project, "sbi-r8-staging-qa123")
         self.assertEqual(origin, "https://sbi-r8-staging-qa.example.invalid")
         self.assertTrue(key.startswith("synthetic-r9-"))
+        self.assertEqual(
+            identity, "sbi-r9-qa@sbi-r8-staging-qa123.iam.gserviceaccount.com"
+        )
 
     def test_02_refuse_missing_R9_gate(self):
         self.refused({"SBI_R9_REAL_STAGING_PROBE": None}, "dedicated explicit R9 gate")
@@ -139,7 +144,24 @@ class R9RealStagingProbePreflightTests(unittest.TestCase):
         self.assertNotEqual(p.returncode, 0)
         self.assertIn("dedicated explicit R9 gate required", p.stderr)
 
-    def test_18_no_live_cloud_code_invoked_during_offline_guard_import(self):
+    def test_18_missing_separate_service_account_denied(self):
+        self.refused({
+            "SBI_R9_STAGING_EXPECTED_SERVICE_ACCOUNT_EMAIL": None
+        }, "explicit separate staging-only service account")
+
+    def test_19_production_service_account_denied(self):
+        self.refused({
+            "SBI_R9_STAGING_EXPECTED_SERVICE_ACCOUNT_EMAIL":
+                "sbi-r9-qa@meghraj-reconciliation.iam.gserviceaccount.com"
+        }, "explicit separate staging-only service account")
+
+    def test_20_other_staging_service_account_denied(self):
+        self.refused({
+            "SBI_R9_STAGING_EXPECTED_SERVICE_ACCOUNT_EMAIL":
+                "sbi-r9-qa@sbi-r8-staging-different.iam.gserviceaccount.com"
+        }, "explicit separate staging-only service account")
+
+    def test_21_no_live_cloud_code_invoked_during_offline_guard_import(self):
         # A fully valid fixture still runs only pure config checks, no SDK calls.
         # We never call execute() here.
         p = self.checked()
