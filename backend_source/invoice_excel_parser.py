@@ -5,7 +5,6 @@ import json
 from pathlib import Path
 from datetime import date, datetime
 import openpyxl
-import xlrd
 from upload_api import validate_excel
 from invoice_source_schema import sheet_layout
 
@@ -99,6 +98,15 @@ def parse_excel(filename, data):
             if saved is not None:
                 saved.close()
     else:
+        # XLS parsing is optional and must not block XLSX-only preview QA
+        # when xlrd is absent from a restricted, network-isolated image.
+        # Do not silently parse XLS as XLSX or fabricate source values.
+        try:
+            import xlrd
+        except ImportError as exc:
+            raise ValueError(
+                "XLS_READER_UNAVAILABLE_IN_PRIVATE_IMAGE"
+            ) from exc
         book = xlrd.open_workbook(file_contents=data, on_demand=True)
         try:
             matches = [
