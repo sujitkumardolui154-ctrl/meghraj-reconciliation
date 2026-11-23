@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - feature/sbi-r4-readonly-payment-adapter-ci-20261123
+      - feature/sbi-payment-reconciliation-readiness-gate-20261120
+      - review/sbi-pr142-merged-sha-ci-audit-20261123
   pull_request:
     branches:
       - feature/sbi-payment-reconciliation-readiness-gate-20261120
@@ -39,3 +41,54 @@ jobs:
           PY
       - name: Build isolated image only (not deployed)
         run: docker build -f staging/aws_login_v150/Dockerfile --build-arg SBI_SOURCE_SHA="$GITHUB_SHA" -t sbi-r4-local-qa:latest .
+  r4-exact-merged-sha-replay:
+    name: Independently replay PR142 merged commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout exact PR142 merged commit, not the PR test merge
+        uses: actions/checkout@v5
+        with:
+          ref: 37d0eea5d962f91c8644c281005a6a1870b6972a
+          persist-credentials: false
+      - name: Assert immutable merged commit
+        env:
+          EXPECTED_MERGE_SHA: 37d0eea5d962f91c8644c281005a6a1870b6972a
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_MERGE_SHA"
+          git diff --exit-code --quiet
+          echo "PR142_EXACT_MERGE_SHA=$EXPECTED_MERGE_SHA"
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install pinned-branch compatibility requirements
+        run: python -m pip install -r staging/aws_login_v150/requirements.txt
+      - name: Replay original payment-evidence acceptance tests
+        run: python -m unittest discover -s tests -p 'test_sbi_payment_evidence_upload.py' -v
+      - name: Replay protected reconciliation preflight tests
+        run: python -m unittest discover -s tests -p 'test_sbi_reconciliation_readiness.py' -v
+      - name: Replay R4 Flask HTTP tests on merged commit
+        run: python -m unittest discover -s tests -p 'test_sbi_r4_readonly_flask_http.py' -v
+      - name: Assert Financial Apply and source guardrails remain locked
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          source = Path('staging/aws_login_v150/app.py').read_text()
+          adapter = Path('staging/aws_login_v150/reconciliation_review_adapter.py').read_text()
+          readiness = Path('staging/aws_login_v150/reconciliation_readiness.py').read_text()
+          ui = Path('dashboard_source/index.html').read_text()
+          assert 'def disabled_financial_api(route)' in source
+          assert '"financial_writes": False' in adapter
+          assert '"financial_apply_locked": True' in adapter
+          assert '2026-11-23T00:00:00+05:30' in adapter
+          assert 'review_verified_receipt' in readiness
+          assert 'id="dil-payment-reconcile" disabled' in ui
+          print('PR142_MERGED_SHA_SECURITY_LOCK=PASS')
+          PY
+      - name: Build merged source Docker candidate without deployment
+        run: |
+          docker build -f staging/aws_login_v150/Dockerfile --build-arg SBI_SOURCE_SHA=37d0eea5d962f91c8644c281005a6a1870b6972a -t sbi-r4-merged-sha-review:local .
+          docker image inspect sbi-r4-merged-sha-review:local --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' | grep -Fx '${sha}'
+          echo 'PR142_MERGED_SHA_IMAGE_ONLY_NO_AWS_DEPLOY=PASS'
