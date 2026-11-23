@@ -16,7 +16,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 _GUARD = "SBI_R8_STAGING_ONLY_NONFINANCIAL"
-_PROJECT_RE = re.compile(r"sbi-r8-staging-[a-z][a-z0-9-]{2,12}\Z")
+_PROJECT_RE = re.compile(r"sbi-r9-staging\Z")
 _PROD_PROJECT = "meghraj-reconciliation"
 _PROD_ORIGIN = "https://sbi-preview.13-232-241-221.sslip.io"
 
@@ -35,7 +35,7 @@ def checked_settings() -> tuple[str, str, str]:
 
     project = os.environ.get("SBI_R8_STAGING_FIREBASE_PROJECT_ID", "")
     if project == _PROD_PROJECT or not _PROJECT_RE.fullmatch(project):
-        refuse("staging Firebase project must have the separate sbi-r8-staging prefix")
+        refuse("staging Firebase project must be exact sbi-r9-staging")
     for env_name in ("GCLOUD_PROJECT", "GOOGLE_CLOUD_PROJECT", "GCP_PROJECT"):
         inherited = os.environ.get(env_name)
         if inherited and inherited != project:
@@ -50,7 +50,7 @@ def checked_settings() -> tuple[str, str, str]:
         origin == _PROD_ORIGIN
         or u.scheme != "https"
         or not u.hostname
-        or not u.hostname.startswith("sbi-r8-staging-")
+        or not u.hostname.startswith("sbi-r9-staging-")
         or u.username or u.password or u.port is not None
         or u.path or u.query or u.fragment
         or origin != ("https://" + u.hostname)

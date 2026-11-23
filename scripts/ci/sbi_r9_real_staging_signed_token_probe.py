@@ -49,9 +49,7 @@ def check_environment():
     if os.environ.get("SBI_PRIVATE_WORKSPACE_DB"):
         fail("inherited workspace database forbidden")
     project = os.environ.get("SBI_R8_STAGING_FIREBASE_PROJECT_ID", "")
-    if project == PRODUCTION_PROJECT or not __import__("re").fullmatch(
-        r"sbi-r8-staging-[a-z][a-z0-9-]{2,12}", project
-    ):
+    if project != "sbi-r9-staging" or project == PRODUCTION_PROJECT:
         fail("separate staging project prefix required")
     key = os.environ.get("SBI_R8_STAGING_FIREBASE_WEB_API_KEY", "")
     if not 20 <= len(key) <= 120 or any(c.isspace() for c in key):
@@ -65,7 +63,7 @@ def check_environment():
     if (
         url.scheme != "https"
         or not url.hostname
-        or not url.hostname.startswith("sbi-r8-staging-")
+        or not url.hostname.startswith("sbi-r9-staging-")
         or url.username or url.password or url.port is not None
         or url.path or url.query or url.fragment
         or site != f"https://{url.hostname}"

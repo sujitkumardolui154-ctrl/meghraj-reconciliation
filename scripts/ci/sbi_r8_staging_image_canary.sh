@@ -60,8 +60,8 @@ docker run -d --name "$CANARY" \
   --tmpfs /tmp:rw,noexec,nosuid,size=16m \
   --tmpfs /var/lib/sbi-r8-staging-evidence:rw,noexec,nosuid,uid=10001,gid=10001,mode=0700,size=16m \
   -e SBI_R8_STAGING_MODE=SBI_R8_STAGING_ONLY_NONFINANCIAL \
-  -e SBI_R8_STAGING_FIREBASE_PROJECT_ID=sbi-r8-staging-qa123 \
-  -e SBI_R8_STAGING_SITE_ORIGIN=https://sbi-r8-staging-qa.example.invalid \
+  -e SBI_R8_STAGING_FIREBASE_PROJECT_ID=sbi-r9-staging \
+  -e SBI_R8_STAGING_SITE_ORIGIN=https://sbi-r9-staging-qa.example.invalid \
   -e SBI_R8_STAGING_FIREBASE_WEB_API_KEY=r8-synthetic-only-00000000000000000001 \
   -e SBI_R8_STAGING_EVIDENCE_DIR=/var/lib/sbi-r8-staging-evidence \
   -e SBI_READONLY_QUARANTINE_SOL_KEYS=7001,7002,7003 \
