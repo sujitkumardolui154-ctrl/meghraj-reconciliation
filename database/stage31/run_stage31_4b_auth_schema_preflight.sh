@@ -38,7 +38,6 @@ finish(){
  if [[ -n "$BEFORE" ]];then
   local after
   after="$(count_source 2>/dev/null || true)"
-  if [[ "$before" == "$after" ]]; then :; fi
   if [[ "$BEFORE" == "$after" ]];then
    echo "STAGE31_4B_SOURCE_FINANCIAL_COUNTS_UNCHANGED=PASS"
   else
