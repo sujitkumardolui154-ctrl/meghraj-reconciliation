@@ -292,33 +292,72 @@ class IsolatedPostgresCombinedTests(unittest.TestCase):
         self.assertIn("QA-LR2", annexure_text)
 
     def test_08_private_vendor_bundle_qa_database_import(self):
-        """Real PostgreSQL QA: checked archive import updates only vendor profile."""
+        """Only in dedicated invoice_qa: new import + idempotent repeat, no override."""
         from importlib.util import module_from_spec, spec_from_file_location
         from tempfile import TemporaryDirectory
         from test_invoice_gst_private_vendor import synthetic_zip
+        from psycopg import sql
+
         importer_path = ROOT / "staging/invoice-gst/private_vendor_loader.py"
         spec = spec_from_file_location("qa_vendor_importer", importer_path)
         importer = module_from_spec(spec)
         spec.loader.exec_module(importer)
-        with TemporaryDirectory() as directory:
-            bundle = synthetic_zip(Path(directory))
-            outcome = importer.apply_only_isolated_qa(
-                self.dsn, bundle, "qa-verified-reviewer"
-            )
-            self.assertEqual(outcome["status"], "PRIVATE_VENDOR_QA_PROFILE_LOADED")
-            self.assertFalse(outcome["production_write"])
+
+        # Keep existing synthetic invoice PDF fixture intact after testing a
+        # first-time importer. No customer, payment or settlement rows touched.
         with self.connect() as conn:
             saved = conn.execute(
-                """SELECT legal_name, exact_logo_verified, registered_office,
-                          head_office, website, length(logo_image) AS logo_bytes
-                   FROM sbi_invoice_gst.vendor_profiles
+                """SELECT * FROM sbi_invoice_gst.vendor_profiles
                    WHERE vendor_key='MEGHRAJ_EXPRESS'"""
             ).fetchone()
-        self.assertEqual(saved["legal_name"], "MEGHRAJ EXPRESS")
-        self.assertTrue(saved["exact_logo_verified"])
-        self.assertEqual(saved["registered_office"], "QA PLACEHOLDER")
-        self.assertEqual(saved["head_office"], "QA PLACEHOLDER")
-        self.assertGreater(saved["logo_bytes"], 50)
+            self.assertIsNotNone(saved)
+            conn.execute(
+                """DELETE FROM sbi_invoice_gst.vendor_profiles
+                   WHERE vendor_key='MEGHRAJ_EXPRESS'"""
+            )
+
+        try:
+            with TemporaryDirectory() as directory:
+                bundle = synthetic_zip(Path(directory))
+                outcome = importer.apply_only_isolated_qa(
+                    self.dsn, bundle, "qa-verified-reviewer"
+                )
+                self.assertEqual(outcome["status"], "PRIVATE_VENDOR_QA_PROFILE_LOADED")
+                self.assertFalse(outcome["production_write"])
+                repeat = importer.apply_only_isolated_qa(
+                    self.dsn, bundle, "qa-verified-reviewer"
+                )
+                self.assertEqual(
+                    repeat["status"], "PRIVATE_VENDOR_QA_PROFILE_ALREADY_VERIFIED_UNCHANGED"
+                )
+            with self.connect() as conn:
+                imported = conn.execute(
+                    """SELECT legal_name, exact_logo_verified, registered_office,
+                              head_office, website, length(logo_image) AS logo_bytes
+                       FROM sbi_invoice_gst.vendor_profiles
+                       WHERE vendor_key='MEGHRAJ_EXPRESS'"""
+                ).fetchone()
+            self.assertEqual(imported["legal_name"], "MEGHRAJ EXPRESS")
+            self.assertTrue(imported["exact_logo_verified"])
+            self.assertEqual(imported["registered_office"], "QA PLACEHOLDER")
+            self.assertEqual(imported["head_office"], "QA PLACEHOLDER")
+            self.assertGreater(imported["logo_bytes"], 50)
+        finally:
+            # Restore all original columns, not only the logo: other tests
+            # verify the original invoice render from the same synthetic vendor.
+            with self.connect() as conn:
+                conn.execute(
+                    """DELETE FROM sbi_invoice_gst.vendor_profiles
+                       WHERE vendor_key='MEGHRAJ_EXPRESS'"""
+                )
+                columns = list(saved.keys())
+                stmt = sql.SQL(
+                    "INSERT INTO sbi_invoice_gst.vendor_profiles ({}) VALUES ({})"
+                ).format(
+                    sql.SQL(",").join(map(sql.Identifier, columns)),
+                    sql.SQL(",").join(sql.Placeholder() for _ in columns),
+                )
+                conn.execute(stmt, [saved[key] for key in columns])
 
     def test_07_unapproved_logo_denied(self):
         with self.connect() as conn:
