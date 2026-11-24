@@ -289,4 +289,18 @@ def main():
 
 
 if __name__=="__main__":
-    main()
+    try:
+        main()
+    except Exception as exc:
+        # Catch unexpected *test-harness* exceptions too; never print raw
+        # traceback, error message, UID, credentials or receipt contents.
+        # Explicit STOP=... results (SystemExit) are never swallowed.
+        kinds={
+            "TypeError","AttributeError","ValueError","KeyError",
+            "RuntimeError","AssertionError","OSError","LookupError",
+            "ImportError","IndexError",
+        }
+        label=type(exc).__name__
+        stop("UNHANDLED_TEST_EXCEPTION_"+(
+            label.upper() if label in kinds else "OTHER"
+        ))
