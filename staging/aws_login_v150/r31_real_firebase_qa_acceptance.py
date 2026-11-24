@@ -79,6 +79,40 @@ def firebase_api_key():
     return key
 
 
+# Firebase returns a generic HTTP 400 for multiple unrelated errors.
+# Decode ONLY known, public error identifiers; never print response bodies,
+# emails, passwords, API keys or any returned identity tokens.
+SAFE_FIREBASE_SIGNIN_ERRORS = frozenset({
+    "INVALID_LOGIN_CREDENTIALS",
+    "EMAIL_NOT_FOUND",
+    "INVALID_PASSWORD",
+    "USER_DISABLED",
+    "OPERATION_NOT_ALLOWED",
+    "PASSWORD_LOGIN_DISABLED",
+    "INVALID_API_KEY",
+    "API_KEY_INVALID",
+    "PROJECT_NOT_FOUND",
+    "TOO_MANY_ATTEMPTS_TRY_LATER",
+    "MISSING_PASSWORD",
+    "MISSING_EMAIL",
+})
+
+
+def safe_firebase_signin_error(exc: urllib.error.HTTPError) -> str:
+    """Return a short whitelisted error label without identity disclosure."""
+    if exc.code != 400:
+        return "REJECTED_HTTP_" + str(exc.code)
+    try:
+        raw = exc.read(4096)
+        body = json.loads(raw)
+        message = body.get("error", {}).get("message")
+    except (ValueError, UnicodeError, AttributeError, TypeError, OSError):
+        message = None
+    if type(message) is str and message in SAFE_FIREBASE_SIGNIN_ERRORS:
+        return message
+    return "REJECTED_HTTP_400"
+
+
 def obtain_firebase_test_id_token(key: str):
     if not sys.stdin.isatty():
         blocked("INTERACTIVE_TERMINAL_REQUIRED_FOR_PRIVATE_PASSWORD")
@@ -106,7 +140,7 @@ def obtain_firebase_test_id_token(key: str):
         with urllib.request.urlopen(request, timeout=25) as response:
             payload = json.loads(response.read(25000))
     except urllib.error.HTTPError as exc:
-        blocked("FIREBASE_TEST_SIGNIN_REJECTED_HTTP_" + str(exc.code))
+        blocked("FIREBASE_TEST_SIGNIN_" + safe_firebase_signin_error(exc))
     except (urllib.error.URLError, TimeoutError, ValueError):
         blocked("FIREBASE_TEST_SIGNIN_NETWORK_OR_RESPONSE_ERROR")
     token = payload.get("idToken") if isinstance(payload, dict) else None
