@@ -8,14 +8,14 @@ BEGIN READ ONLY;
 SET LOCAL statement_timeout='15s';
 SET LOCAL lock_timeout='2s';
 SELECT 'DB_R31_CATALOG_BEGIN|'||current_database();
-SELECT 'SCHEMA|'||n.nspname||'|'||c.relname||'|'||c.relkind||'|RLS='||c.relrowsecurity
+SELECT 'SCHEMA|'||n.nspname||'|'||c.relname||'|'||c.relkind::text||'|RLS='||c.relrowsecurity::text
 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
 WHERE n.nspname='sbi' AND
 (c.relname IN ('import_batches','invoice_source_rows','payment_source_rows','invoices','payments','branch_master')
  OR c.relname ~* '(allocat|reconcil|branch.*master|payment.*summary|invoice.*summary|receipt|credit.*note)')
 AND c.relkind IN ('r','p','v','m')
 ORDER BY c.relname;
-SELECT 'COLUMN|'||t.table_name||'|'||t.ordinal_position||'|'||t.column_name||'|'||t.udt_name||'|NULLABLE='||t.is_nullable||'|DEFAULT='||
+SELECT 'COLUMN|'||t.table_name||'|'||t.ordinal_position::text||'|'||t.column_name||'|'||t.udt_name||'|NULLABLE='||t.is_nullable||'|DEFAULT='||
 CASE WHEN t.column_default IS NULL THEN 'NONE' ELSE 'YES' END
 FROM information_schema.columns t
 WHERE t.table_schema='sbi' AND t.table_name IN
@@ -29,13 +29,13 @@ WHERE c.conrelid IN (
  ('import_batches','invoice_source_rows','payment_source_rows','invoices','payments','branch_master')
 ) AND c.contype IN ('p','f','u','c')
 ORDER BY c.conrelid::regclass::text,c.conname;
-SELECT 'INDEX|'||t.relname||'|'||idx.relname||'|UNIQUE='||i.indisunique||'|DEFINITION='||pg_get_indexdef(i.indexrelid)
+SELECT 'INDEX|'||t.relname||'|'||idx.relname||'|UNIQUE='||i.indisunique::text||'|DEFINITION='||pg_get_indexdef(i.indexrelid)
 FROM pg_index i JOIN pg_class t ON t.oid=i.indrelid
 JOIN pg_class idx ON idx.oid=i.indexrelid
 JOIN pg_namespace n ON n.oid=t.relnamespace
 WHERE n.nspname='sbi' AND t.relname IN ('import_batches','payment_source_rows','payments','branch_master')
 ORDER BY t.relname,idx.relname;
-SELECT 'ROLE|'||r.rolname||'|LOGIN='||r.rolcanlogin||'|SUPERUSER='||r.rolsuper
+SELECT 'ROLE|'||r.rolname||'|LOGIN='||r.rolcanlogin::text||'|SUPERUSER='||r.rolsuper::text
 FROM pg_roles r WHERE r.rolname ~* '(sbi.*(report|read|ingest|engine)|pr129)'
 ORDER BY r.rolname;
 SELECT 'REPORT_ROLE|'||rel.relname||'|SELECT='||
