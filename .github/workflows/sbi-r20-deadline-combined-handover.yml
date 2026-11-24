@@ -1,0 +1,102 @@
+name: SBI R20 Deadline Handover Combined QA (Synthetic and Disposable PostgreSQL)
+on:
+  push:
+    branches:
+      - review/sbi-r20-deadline-handover-combined-20261124
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  combined-r15-r20-isolated-handover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic-ci-only
+          POSTGRES_DB: sbi_r20_synthetic_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d sbi_r20_synthetic_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI: 'true'
+      SBI_FINANCIAL_APPLY: LOCKED
+      SBI_R20_DISPOSABLE_DSN: postgresql://postgres:synthetic-ci-only@127.0.0.1:5432/sbi_r20_synthetic_qa
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install Excel parser and PostgreSQL client for isolated tests
+        run: python -m pip install 'openpyxl>=3.1.5,<4' 'psycopg[binary]>=3.2,<4'
+      - name: Run all existing R15-R19 source, SOL, finance-shadow and XLSX tests
+        run: |
+          set -Eeuo pipefail
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${FIREBASE_AUTH_EMULATOR_HOST:-}"
+          python -m unittest discover -s tests -p 'test_sbi_r15_financial_source_preflight.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_r16_master_identity_shadow.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_r17_synthetic_financial_shadow.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_r18_output_parity_gate.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_r19_combined_synthetic_rehearsal.py' -v
+      - name: Execute actual synthetic XLSX serialization and verify all original cells
+        run: |
+          set -Eeuo pipefail
+          python -m py_compile scripts/ci/sbi_r20_synthetic_review_writer.py
+          python -m unittest discover -s tests -p 'test_sbi_r20_synthetic_review_writer.py' -v
+      - name: Run disposable-only PostgreSQL role, transactions and conservation
+        run: |
+          set -Eeuo pipefail
+          python -m py_compile scripts/ci/sbi_r20_ephemeral_postgres_qa.py
+          python -m unittest discover -s tests -p 'test_sbi_r20_ephemeral_postgres_qa.py' -v
+      - name: Confirm combined fail-closed release boundaries and prepare handover proof
+        run: |
+          set -Eeuo pipefail
+          mkdir -p r20-artifacts
+          python scripts/ci/sbi_r19_combined_synthetic_rehearsal.py > r20-artifacts/synthetic_chain_evidence.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path("r20-artifacts/synthetic_chain_evidence.json").read_text())
+          assert r['output_statuses_structure_only']=={'SUSPENSE':4}
+          assert r['financial_apply_locked']
+          assert r['real_financial_allocations']==0
+          assert not r['engine_v251_certified']
+          assert not r['production_excel_writer_connected']
+          assert not r['real_firebase_app_session_tested']
+          assert not r['financial_database_connected']
+          expected={
+            "stage":"R20_SAME_DAY_DEVELOPMENT_HANDOVER",
+            "date_ist":"2026-11-24",
+            "synthetic_only":True,
+            "r15_r16_r17_r18_r19_r20_tested":True,
+            "finance_apply_locked":True,
+            "approved_v251_v239_engine":False,
+            "real_v218_financial_writer":False,
+            "aws_financial_database_tested":False,
+            "real_firebase_flask_session_tested":False,
+            "real_bank_evidence_used":False,
+            "production_release_authorized":False,
+            "pending_release_gates":r["pending_real_release_gates"],
+          }
+          Path("r20-artifacts/same_day_handover_release_gates.json").write_text(
+            json.dumps(expected,indent=2,sort_keys=True)+"\n")
+          print("R20_COMBINED_SYNTHETIC_HANDOVER=PASS")
+          print("R20_REAL_BANK_SOURCE=NOT_IMPORTED")
+          print("R20_LIVE_AUTH_AND_PRODUCTION_POSTGRES=NOT_TESTED")
+          print("R20_FINANCIAL_APPLY=LOCKED")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbi-r20-same-day-handover-synthetic-qa
+          path: r20-artifacts/
+          retention-days: 30
+          if-no-files-found: error
