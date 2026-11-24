@@ -7,6 +7,8 @@ service. All staged reservations are explicitly rolled back, and schema dropped.
 """
 from __future__ import annotations
 from decimal import Decimal
+import ipaddress
+import os
 
 DBNAME = "sbi_r20_synthetic_qa"
 SCHEMA = "sbi_r20_shadow_only"
@@ -123,8 +125,13 @@ def run_ephemeral_pg_probe(dsn):
         with con.cursor() as cur:
             cur.execute("SELECT current_database(), inet_server_addr()")
             database, server_address = cur.fetchone()
-            if database != DBNAME or str(server_address) not in ("127.0.0.1", "::1"):
-                raise PostgreSQLIsolationRefusal("NOT_LOCAL_DISPOSABLE_DATABASE")
+            # Docker-published 127.0.0.1 ports terminate on a private bridge IP.
+            # Require Github CI, a localhost connection target, the exact
+            # disposable database name and a private container-side server IP.
+            if (database != DBNAME or os.environ.get("GITHUB_ACTIONS") != "true"
+                    or server_address is None
+                    or not ipaddress.ip_address(str(server_address)).is_private):
+                raise PostgreSQLIsolationRefusal("NOT_GITHUB_DISPOSABLE_DATABASE")
             try:
                 cur.execute(SCHEMA_SQL)
                 result["postgresql_schema_created_in_disposable_ci_only"] = True
