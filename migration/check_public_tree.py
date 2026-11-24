@@ -17,6 +17,10 @@ REVIEWED_FIRESTORE_SOURCE = frozenset({
     "backend_source/sbi_firestore_contract_v5.py",
     "backend_source/sbi_firestore_credit_live.py",
     "tools/sbi_batch8_firestore_pagination.sh",
+    # Reviewed source-code filenames only; NO bank exports or raw data.
+    "staging/aws_login_v150/payment_received_ledger.py",
+    "staging/aws_login_v150/payment_received_reports.py",
+    "tests/test_sbi_r31_payment_received_ledger_sol_reports.py",
 })
 patterns = [
     re.compile(rb"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
