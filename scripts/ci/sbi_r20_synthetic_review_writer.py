@@ -97,7 +97,7 @@ def create_locked_synthetic_review_xlsx(
             payment_sheet.cell(row, 23, source.client)
 
         for row in range(2, invoice_sheet.max_row + 1):
-            invoice_id = invoice_sheet.cell(row, 13).value
+            invoice_id = invoice_sheet.cell(row, 10).value
             invoice = inv.get(invoice_id)
             if invoice is None:
                 _refuse("SYNTHETIC_INVOICE_ROW_MISSING")

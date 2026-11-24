@@ -25,7 +25,8 @@ from sbi_r15_financial_source_preflight import (
 
 MASTER_SHEET = "Clean Branch Master"
 INVOICE_SHEET = "Invoice Details."
-EXPECTED_INVOICE_HEADERS = {7: "Branch Code", 8: "Client Name", 13: "Invoice No"}
+EXPECTED_INVOICE_HEADERS = {7: "Branch Code", 8: "Client Name", 10: "Invoice No", 13: "SGST"}
+# Historical approved source A:AH: J = invoice number, M = SGST. Never relocate money into J/M.
 MASTER_REQUIRED_HEADERS = ("Official Branch Name", "SOL ID")
 MAX_MASTER_BYTES = 16 * 1024 * 1024
 MAX_MASTER_UNPACKED = 64 * 1024 * 1024
@@ -173,11 +174,11 @@ def shadow_identity_preflight(
                 refuse("INVOICE_ROW_LIMIT")
             for col, label in EXPECTED_INVOICE_HEADERS.items():
                 if normalize_name(sheet.cell(1, col).value) != normalize_name(label):
-                    refuse("INVOICE_G_H_M_HEADER_CONTRACT_MISMATCH")
+                    refuse("INVOICE_G_H_J_M_HEADER_CONTRACT_MISMATCH")
 
             invoice_ids = Counter()
             for row in sheet.iter_rows(min_row=2, max_col=19):
-                inv_cell = row[12]
+                inv_cell = row[9]
                 if (inv_cell.data_type not in ("f", "e")
                     and isinstance(inv_cell.value, str)
                     and inv_cell.value.strip()):
@@ -186,7 +187,7 @@ def shadow_identity_preflight(
             stats = Counter()
             for row in sheet.iter_rows(min_row=2, max_col=19):
                 stats["rows_seen"] += 1
-                invoice_cell = row[12]
+                invoice_cell = row[9]
                 value = invoice_cell.value
                 invoice_key = (
                     value.strip().casefold()

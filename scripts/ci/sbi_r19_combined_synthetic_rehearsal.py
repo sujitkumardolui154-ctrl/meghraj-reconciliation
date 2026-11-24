@@ -40,8 +40,8 @@ EXPECTED_PAYMENT_FIELDS = {
 }
 EXPECTED_INVOICE_FIELDS = {
     5: "Month", 6: "Invoice Date", 7: "Branch Code", 8: "Client Name",
-    13: "Invoice No", 14: "Taxable Amount", 15: "CGST", 16: "SGST",
-    17: "Total Bill Amount",
+    10: "Invoice No", 11: "Taxable Amount", 12: "CGST", 13: "SGST",
+    14: "Total Bill Amount",
 }
 SOURCE_GATE_NAMES = (
     "R15_ORIGINAL_SOURCE_PREFLIGHT",
@@ -131,7 +131,7 @@ def _strict_synthetic_inputs(source_bytes, master_bytes):
 
         invoices = {}
         for row in inv.iter_rows(min_row=2, max_col=34):
-            key, sol, client = row[12].value, row[6].value, row[7].value
+            key, sol, client = row[9].value, row[6].value, row[7].value
             if not isinstance(key, str) or not INVOICE_ID.fullmatch(key):
                 refuse("NON_SYNTHETIC_INVOICE_ROW_REFUSED")
             if key in invoices:
@@ -140,10 +140,10 @@ def _strict_synthetic_inputs(source_bytes, master_bytes):
                 refuse("NON_SYNTHETIC_INVOICE_IDENTITY_REFUSED")
             issue_date = _literal_date(row[5].value)
             period = _literal_period(row[4].value)
-            if any(row[i].data_type in ("f", "e") for i in (13, 14, 15, 16)):
+            if any(row[i].data_type in ("f", "e") for i in (10, 11, 12, 13)):
                 refuse("SYNTHETIC_FORMULA_MONEY_UNSUPPORTED")
             taxable, cgst, sgst, gross = (
-                Decimal(str(row[c].value)) for c in (13, 14, 15, 16)
+                Decimal(str(row[c].value)) for c in (10, 11, 12, 13)
             )
             if taxable + cgst + sgst != gross:
                 refuse("SYNTHETIC_INVOICE_GROSS_COMPONENT_MISMATCH")
@@ -217,12 +217,12 @@ def build_synthetic_fixture():
     for idx, key in ((2, "SYN-MXP-001"), (3, "SYN-MXP-002")):
         for col, value in (
             (5, "2026-09"), (6, date(2026, 9, 1)),
-            (7, "0001"), (8, "SYNTHETIC ALPHA"), (13, key),
-            (14, 1000), (15, 90), (16, 90), (17, 1180),
+            (7, "0001"), (8, "SYNTHETIC ALPHA"), (10, key),
+            (11, 1000), (12, 90), (13, 90), (14, 1180),
         ):
             inv.cell(idx, col, value)
     inv["S3"] = 0  # Protected numeric zero is nonblank; never eligible.
-    inv["AH2"] = "=SUM(N2:P2)"
+    inv["AH2"] = "=SUM(K2:M2)"
     extra["A1"] = "SYNTHETIC ORIGINAL AUXILIARY"
     extra["A2"] = "=SUM(2,3)"
 

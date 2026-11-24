@@ -26,7 +26,7 @@ def source_workbook():
     inv.title = "Invoice Details."
     for col in range(1, 35):
         inv.cell(1, col, "UNMODIFIED_" + str(col))
-    inv["G1"], inv["H1"], inv["M1"] = "Branch Code", "Client Name", "Invoice No"
+    inv["G1"], inv["H1"], inv["J1"], inv["M1"] = "Branch Code", "Client Name", "Invoice No", "SGST"
     rows = [
         ("00001", "BRANCH ALPHA", "MXP10001", None),
         ("00002", "STATE BANK OF INDIA", "MXP10002", None),
@@ -38,7 +38,7 @@ def source_workbook():
     for i, (sol, client, invoice, status) in enumerate(rows, start=2):
         inv.cell(i, 7, sol)
         inv.cell(i, 8, client)
-        inv.cell(i, 13, invoice)
+        inv.cell(i, 10, invoice)
         inv.cell(i, 19, status)
         inv.cell(i, 34, "SYNTHETIC_ORIGINAL_AH")
     payment = book.create_sheet("PAYMNENT")
@@ -179,21 +179,21 @@ class R16IdentityShadowTests(unittest.TestCase):
 
     def test_13_duplicate_invoice_group_quarantine_includes_source_rows(self):
         src = source_workbook()
-        src["Invoice Details."]["M2"] = "MXP10005"
+        src["Invoice Details."]["J2"] = "MXP10005"
         report = scan(source=src)
         self.assertEqual(report["invoice_identity_counts"]["duplicate_invoice_rows_quarantined"], 3)
         self.assertEqual(report["invoice_duplicate_id_groups"], 1)
 
     def test_14_missing_invoice_number_is_not_eligible_identity(self):
         src = source_workbook()
-        src["Invoice Details."]["M2"] = ""
+        src["Invoice Details."]["J2"] = ""
         report = scan(source=src)
         self.assertEqual(report["invoice_identity_counts"]["candidate_identity_on_hold"], 3)
 
     def test_15_invalid_invoice_header_contract_refused(self):
         src = source_workbook()
-        src["Invoice Details."]["M1"] = "Wrong"
-        with self.assertRaisesRegex(IdentityGateRefused, "INVOICE_G_H_M_HEADER_CONTRACT_MISMATCH"):
+        src["Invoice Details."]["J1"] = "Wrong"
+        with self.assertRaisesRegex(IdentityGateRefused, "INVOICE_G_H_J_M_HEADER_CONTRACT_MISMATCH"):
             scan(source=src)
 
     def test_16_missing_master_sheet_refused(self):
@@ -248,7 +248,7 @@ class R16IdentityShadowTests(unittest.TestCase):
 
     def test_23_formula_invoice_number_is_held_not_a_reference(self):
         src = source_workbook()
-        src["Invoice Details."]["M2"] = "=1+1"
+        src["Invoice Details."]["J2"] = "=1+1"
         report = scan(source=src)
         self.assertEqual(report["invoice_identity_counts"]["invoice_no_missing_or_nontext"], 1)
         self.assertEqual(report["invoice_identity_counts"]["candidate_identity_on_hold"], 3)
@@ -267,6 +267,41 @@ class R16IdentityShadowTests(unittest.TestCase):
         report = scan(master=m, source=src)
         self.assertEqual(report["invoice_identity_counts"]["candidate_client_name_mismatch_review"], 1)
         self.assertFalse(report["master_aliases_used"])
+
+
+    def test_26_approved_history_invoice_is_in_J_and_sgst_in_M(self):
+        source = source_workbook()
+        invoice_sheet = source["Invoice Details."]
+        self.assertEqual(invoice_sheet["J1"].value, "Invoice No")
+        self.assertEqual(invoice_sheet["M1"].value, "SGST")
+        self.assertEqual(invoice_sheet["J2"].value, "MXP10001")
+        self.assertIsNone(invoice_sheet["M2"].value)  # source SGST is untouched by identity tests
+        report = scan(source=source)
+        self.assertEqual(report["invoice_identity_counts"]["candidate_exact_sol_and_official_name_only"], 1)
+
+    def test_27_original_monetary_SGST_column_must_not_be_invoice_number(self):
+        source = source_workbook()
+        invoice_sheet = source["Invoice Details."]
+        invoice_sheet["M2"] = 999.99
+        report = scan(source=source)
+        self.assertEqual(report["invoice_duplicate_id_groups"], 1)
+        self.assertEqual(report["invoice_identity_counts"]["candidate_exact_sol_and_official_name_only"], 1)
+        self.assertEqual(invoice_sheet["M2"].value, 999.99)
+
+    def test_28_wrong_sgst_header_M_refused_even_if_J_correct(self):
+        source = source_workbook()
+        source["Invoice Details."]["M1"] = "Invoice No"
+        with self.assertRaisesRegex(IdentityGateRefused, "INVOICE_G_H_J_M_HEADER_CONTRACT_MISMATCH"):
+            scan(source=source)
+
+    def test_29_protected_S_independent_of_payment_date_interpretation(self):
+        source = source_workbook()
+        source["Invoice Details."]["S2"] = "2026-01-15"
+        report = scan(source=source)
+        self.assertEqual(report["invoice_identity_counts"]["protected_paid_marker_s_nonblank"], 2)
+        self.assertEqual(report["invoice_identity_counts"].get(
+            "candidate_exact_sol_and_official_name_only", 0), 0)
+
 
 
 if __name__ == "__main__":

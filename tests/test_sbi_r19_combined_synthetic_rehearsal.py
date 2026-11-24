@@ -150,7 +150,7 @@ class CombinedR19SyntheticRehearsalTests(unittest.TestCase):
 
     def test_18_non_synthetic_invoice_number_refused(self):
         src, master = change_source(
-            lambda book: setattr(book["Invoice Details."]["M2"], "value", "MXP19970")
+            lambda book: setattr(book["Invoice Details."]["J2"], "value", "MXP19970")
         )
         with self.assertRaisesRegex(r19.R19CombinedGateError,"NON_SYNTHETIC_INVOICE_ROW_REFUSED"):
             run(src, master)
@@ -192,7 +192,7 @@ class CombinedR19SyntheticRehearsalTests(unittest.TestCase):
 
     def test_24_duplicate_invoice_number_quarantined(self):
         src, master = change_source(
-            lambda book: setattr(book["Invoice Details."]["M3"], "value", "SYN-MXP-001")
+            lambda book: setattr(book["Invoice Details."]["J3"], "value", "SYN-MXP-001")
         )
         with self.assertRaisesRegex(r19.R19CombinedGateError,"DUPLICATE_SYNTHETIC_INVOICE_ID"):
             run(src, master)
@@ -206,7 +206,7 @@ class CombinedR19SyntheticRehearsalTests(unittest.TestCase):
 
     def test_26_wrong_invoice_headers_refused(self):
         src, master = change_source(
-            lambda book: setattr(book["Invoice Details."]["Q1"], "value", "Wrong")
+            lambda book: setattr(book["Invoice Details."]["N1"], "value", "Wrong")
         )
         with self.assertRaisesRegex(r19.R19CombinedGateError,"SYNTHETIC_INVOICE_HEADER_CONTRACT_MISMATCH"):
             run(src, master)
@@ -220,14 +220,14 @@ class CombinedR19SyntheticRehearsalTests(unittest.TestCase):
 
     def test_28_invoice_total_formula_rejected(self):
         src, master = change_source(
-            lambda book: setattr(book["Invoice Details."]["Q2"], "value", "=SUM(N2:P2)")
+            lambda book: setattr(book["Invoice Details."]["N2"], "value", "=SUM(K2:M2)")
         )
         with self.assertRaisesRegex(r19.R19CombinedGateError,"SYNTHETIC_FORMULA_MONEY_UNSUPPORTED"):
             run(src, master)
 
     def test_29_gross_component_mismatch_rejected(self):
         src, master = change_source(
-            lambda book: setattr(book["Invoice Details."]["Q2"], "value", 1190)
+            lambda book: setattr(book["Invoice Details."]["N2"], "value", 1190)
         )
         with self.assertRaisesRegex(r19.R19CombinedGateError,"SYNTHETIC_INVOICE_GROSS_COMPONENT_MISMATCH"):
             run(src, master)

@@ -39,9 +39,9 @@ def make_source():
     p["I3"].number_format = '#,##0.00'
     for col in range(1, 35):
         i.cell(1, col, "SOURCE_" + str(col))
-    i["G1"], i["H1"], i["M1"] = "Branch Code", "Client Name", "Invoice No"
-    i["G2"], i["H2"], i["M2"] = "001505", "SYNTHETIC BANK", "SYN-MXP-001"
-    i["AH2"] = "=SUM(N2:P2)"
+    i["G1"], i["H1"], i["J1"], i["M1"] = "Branch Code", "Client Name", "Invoice No", "SGST"
+    i["G2"], i["H2"], i["J2"], i["M2"] = "001505", "SYNTHETIC BANK", "SYN-MXP-001", 90
+    i["AH2"] = "=SUM(K2:M2)"
     i["AH2"].number_format = '#,##0.000'
     i["S3"] = 0
     i["AH3"] = "ORIGINAL AH"
@@ -198,7 +198,7 @@ class R18StructureParity(unittest.TestCase):
         with self.assertRaisesRegex(R18GateError,"PROTECTED_ORIGINAL"):check(src,dump(out))
 
     def test_23_changed_AH_formula_blocked(self):
-        src=dump(make_source());out=build_output(src);out["Invoice Details."]["AH2"]="=SUM(N2:O2)"
+        src=dump(make_source());out=build_output(src);out["Invoice Details."]["AH2"]="=SUM(K2:L2)"
         with self.assertRaisesRegex(R18GateError,"PROTECTED_ORIGINAL"):check(src,dump(out))
 
     def test_24_changed_payment_J_formula_blocked(self):
