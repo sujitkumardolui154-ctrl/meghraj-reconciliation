@@ -136,3 +136,29 @@ Use existing schema migration `001_isolated_invoice_schema.sql` before
 importing, and do not enable finalization until private QA and owner approval
 prove the logo, legal details, addresses, SOL text, original print and report
 parity. Test files are synthetic and do not contain live customer records.
+
+## Screenshot correction — original company information panel (24 Nov 2026)
+
+The owner supplied a screenshot of the native Excel invoice. In addition to
+the logo image on the left, the Excel invoice has an office/contact panel
+on the right containing registered office address, registered telephone,
+email, head office address, head office telephone and website, plus vendor
+GSTIN. The earlier PDF previews omitted this panel.
+
+Corrected QA implementation:
+- `staging/invoice-gst/002_vendor_header_fields.sql`: additive private
+  vendor-profile columns. Apply **after** schema 001 on isolated QA only.
+- `dashboard_source/invoice_gst_pdf.py`: PDF header now includes verified
+  left logo plus right office/contact panel, screenshot-style bordered
+  TAX INVOICE heading and unshaded financial table.
+- `staging/invoice-gst/private_vendor_loader.py`: validates and loads all
+  required header fields from the SHA256 checked private asset bundle.
+- `dashboard_source/invoice_gst_feature.py`: invoice finalization now
+  refuses an incomplete verified vendor-office panel.
+- A newer private bundle (not stored in public GitHub) includes the office
+  data transcribed from the owner screenshot and the original WebP logo.
+
+No real private master or vendor bundle is uploaded to the public repository.
+The corrected six-page reference PDF retains the original five annexure
+pages. This remains a screenshot-aligned **preview**, not certification
+of an identical native XLSX print rendering.
