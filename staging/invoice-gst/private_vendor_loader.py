@@ -16,6 +16,8 @@ REQUIRED_FIELDS = (
     "legal_name", "declaration_text", "bank_instructions",
     "pan", "gstin", "vendor_id", "service_type", "sac_code",
     "footer_text", "authorized_signature_label",
+    "registered_office", "registered_phone", "registered_email",
+    "head_office", "head_phone", "website",
 )
 
 
@@ -77,9 +79,10 @@ def apply_only_isolated_qa(dsn, archive, reviewer):
                (vendor_key, legal_name, logo_image, logo_mime, exact_logo_verified,
                 declaration_text, bank_instructions, pan, gstin, vendor_id,
                 service_type, sac_code, footer_text, authorized_signature_label,
-                verified_by, verified_at)
+                registered_office, registered_phone, registered_email,
+                head_office, head_phone, website, verified_by, verified_at)
                VALUES ('MEGHRAJ_EXPRESS',%s,%s,%s,TRUE,
-                       %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,now())
+                       %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,now())
                ON CONFLICT (vendor_key) DO UPDATE SET
                  legal_name=EXCLUDED.legal_name,
                  logo_image=EXCLUDED.logo_image,
@@ -94,13 +97,22 @@ def apply_only_isolated_qa(dsn, archive, reviewer):
                  sac_code=EXCLUDED.sac_code,
                  footer_text=EXCLUDED.footer_text,
                  authorized_signature_label=EXCLUDED.authorized_signature_label,
+                 registered_office=EXCLUDED.registered_office,
+                 registered_phone=EXCLUDED.registered_phone,
+                 registered_email=EXCLUDED.registered_email,
+                 head_office=EXCLUDED.head_office,
+                 head_phone=EXCLUDED.head_phone,
+                 website=EXCLUDED.website,
                  verified_by=EXCLUDED.verified_by,
                  verified_at=EXCLUDED.verified_at""",
             (profile["legal_name"], logo, profile["logo_mime"],
              profile["declaration_text"], profile["bank_instructions"],
              profile["pan"], profile["gstin"], profile["vendor_id"],
              profile["service_type"], profile["sac_code"], profile["footer_text"],
-             profile["authorized_signature_label"], reviewer),
+             profile["authorized_signature_label"],
+             profile["registered_office"], profile["registered_phone"],
+             profile["registered_email"], profile["head_office"],
+             profile["head_phone"], profile["website"], reviewer),
         )
     return {
         "status": "PRIVATE_VENDOR_QA_PROFILE_LOADED",
