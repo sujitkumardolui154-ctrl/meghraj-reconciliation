@@ -80,3 +80,59 @@ must verify correct SOL, name, address, invoicing location, GSTIN, and aliases.
 with `SBI_INVOICE_GST_TEST_DSN` set to an **invoice_qa** PostgreSQL DB.
 GitHub workflow `sbi-invoice-gst-combined-qa.yml` provisions isolated
 Postgres and runs the module plus existing GST rule regression tests.
+
+## Owner-provided logo and vendor source (24 Nov 2026)
+
+The owner provided a real 306x105 WebP Meghraj Express logo plus a six-page
+PDF which is itself the previously generated invoice preview, not the original
+native XLSX. The source logo can now be placed in the invoice renderer.
+A **private** SHA256-manifested archive was prepared outside GitHub containing
+the logo and source-derived vendor profile; it contains bank instructions and
+must not be committed into this public repository.
+
+The supplied PDF establishes the **reference print layout** and the original
+company/declaration fields; it does **not** certify pixel-exact original merged
+Excel cells. Original native layout equivalence is separately pending.
+
+New features:
+- `dashboard_source/invoice_gst_pdf.py`: PDF generated using the exact
+  approved private logo image and stored vendor profile. Includes all six
+  shipment annexure columns, invoice details and auto-calculated amounts.
+- `GET /api/invoice-gst/invoices/<invoice_no>.pdf`: authenticated PDF download
+  from a verified finalized immutable invoice. The Reports TAB now has a
+  Download Finalized Invoice PDF button.
+- `staging/invoice-gst/private_vendor_loader.py`: local hash-verified
+  loader of the owner-provided private asset ZIP into dedicated
+  `invoice_qa` PostgreSQL only. Never upload package or logo/bank
+  details to public source control.
+
+GitHub **contains** `staging/mxp-gst/matcher.py` and
+`config/approved_alias_rules_v2_7.json`; a full private Clean Branch Master
+containing all branch addresses is **not present** in the checked repository
+tree. The approved matching rules are now connected through
+`staging/invoice-gst/private_master_adapter.py`, and the private
+`load_private_branch_master.py` can load independently approved CSV
+and verified address/customer metadata to isolated PostgreSQL only, after
+matching both input SHA256 digests.
+
+## Private staging usage (operator-run, NOT performed by PR)
+
+```bash
+# Run only on authorized isolated staging with dedicated invoice_qa database.
+# Never print passwords, bank account numbers, or full customer records.
+export SBI_INVOICE_GST_TEST_DSN='(private QA PostgreSQL DSN)'
+python staging/invoice-gst/private_vendor_loader.py \
+  --bundle /private/path/Meghraj_Invoice_Private_Assets_QA_20261124.zip \
+  --reviewer <approved-reviewer-id>
+
+python staging/invoice-gst/load_private_branch_master.py \
+  --master-csv /private/path/Clean_Branch_Master.csv \
+  --evidence-json /private/path/verified_customer_address_evidence.json \
+  --master-sha256 <approved-master-64-hex> \
+  --evidence-sha256 <approved-evidence-64-hex> \
+  --apply-to-isolated-qa
+```
+Use existing schema migration `001_isolated_invoice_schema.sql` before
+importing, and do not enable finalization until private QA and owner approval
+prove the logo, legal details, addresses, SOL text, original print and report
+parity. Test files are synthetic and do not contain live customer records.
