@@ -23,3 +23,19 @@ The file `test_bridge.py` exercises basic XLSX cells, shared strings, formula re
 1. Exact staging Firebase authenticated Flask route test with persistent, non-production SQLite storage.
 2. Existing PostgreSQL reporting route parity using the dedicated report role.
 3. Row-level invalid-only exclusion contract, durable outbox/recovery for mismatched SQLite and PostgreSQL transactions, and production-specific database permissions, followed by explicit cutover approval.
+
+## FT04 v2 — partial-row eligibility and durable delivery (staging only)
+
+`classify_payment_rows` uses the **existing application's parser** as the source of accepted amounts and review counts. For workbooks containing review rows, it builds isolated one-row XLSX representations of each candidate and re-runs the same parser, preserving the original row number. The eligible row count, review row count, source row count and eligible credit total must all agree with the original full-workbook parser. A mismatch, unsupported structure, or a file with more than 2,000 rows needing individual review fails closed: no guessed financial rows are inserted. Invalid rows are recorded with their source row number and reason in the private outbox, and eligible rows alone are inserted. This is **staging validation**, not yet proof of full historical row-policy parity.
+
+`sbi_pg_outbox.py` adds a SQLite delivery queue with synchronous FULL durability, pending/retry/review/committed states and idempotent SHA-256 keys. `outbox_worker.py` checks for original SQLite receipts whose corresponding immutable `receipt_uuid.xlsx` source file is present and SHA-matches, repairs a crash between original receipt creation and outbox insertion, and retries PostgreSQL delivery without UPDATE or DELETE financial privileges. Successful queue delivery removes the duplicate outbox payload; the original receipt file and database evidence remain. No financial allocations are performed.
+
+`install_aws_staging_v2.sh` creates a **new QA-only image**, a **dedicated persistent private Docker volume** for original SQLite receipts and the outbox, and separate isolated application and delivery-worker containers. It does not modify the existing staging image/container or live application. Only the internal synthetic PostgreSQL network/database/writer are permitted. The original `/api/payment-evidence/upload` route and its real Firebase session/CSRF protections remain authoritative. This installer does not prove real Firebase-authenticated end-to-end behavior, report endpoint parity, or production readiness.
+
+### Before production release
+
+- Run a **real Firebase-authenticated** upload through the isolated v2 service with persistent staging-only credentials, check duplicate handling and the original SQLite receipt response.
+- Verify source row-level decisions for workbooks with valid and invalid rows against the actual original parser's flags; review evidence and statuses must reconcile to the approved policy.
+- Authenticate and compare all existing database-backed report endpoints, not just raw SQL totals.
+- Monitor pending outbox entries, failed attempts, and unrecoverable receipts. Add alerting and production-specific permission review before any cutover.
+- Explicitly authorize production rollout; no stage script changes Caddy or enables production financial writes.
