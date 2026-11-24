@@ -319,10 +319,12 @@ def combined_synthetic_run(source_bytes, master_bytes, *, expected_source_sha256
         expected_source_sha256=expected_source_sha256,
         expected_candidate_sha256=sha256(locked_output).hexdigest(),
     )
+    path = Path(__file__).resolve().parents[2] / "backend_source" / "invoice_import_contract.json"
+    approved_53_headers = json.loads(path.read_text())["headers"]
     if report_headers is None:
-        path = Path(__file__).resolve().parents[2] / "backend_source" / "invoice_import_contract.json"
-        report_headers = json.loads(path.read_text())["headers"]
-    report_check = verify_53_header_contract(report_headers, report_headers)
+        report_headers = approved_53_headers
+    # Never compare a caller-supplied report contract to itself.
+    report_check = verify_53_header_contract(report_headers, approved_53_headers)
     candidate_gate = audit_candidate_source(None, None)
 
     if r16["invoice_identity_counts"].get("protected_paid_marker_s_nonblank") != 1:
