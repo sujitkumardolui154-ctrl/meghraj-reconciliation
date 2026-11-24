@@ -1,8 +1,8 @@
-name: SBI R27 FFI-001 + Cases 2.1-2.6 Finance-Locked Evidence QA
+name: SBI R28 Calculation Deployment Owner Policy + Finance-Locked QA
 on:
   push:
     branches:
-      - review/sbi-r27-real-financial-evidence-intake-preflight-20261124
+      - review/sbi-r28-owner-calculation-deploy-without-certificate-20261124
   pull_request:
     branches:
       - feature/sbi-payment-reconciliation-readiness-gate-20261120
@@ -1097,6 +1097,64 @@ jobs:
           print("R27_1_FINANCIAL_SOURCE_CERTIFICATION=BLOCKED")
           print("R27_1_FINANCIAL_APPLY=LOCKED")
           print("R27_1_REAL_DB_WRITES=0")
+          PY
+      - name: R28 owner calculation deployment without formal finance certificate, no financial apply
+        run: |
+          set -Eeuo pipefail
+          python -m py_compile \
+            scripts/ci/sbi_r28_owner_deployment_and_row_exclusion_policy.py \
+            tests/test_sbi_r28_owner_deployment_and_row_exclusion_policy.py
+          python -m unittest discover -s tests -p 'test_sbi_r28_owner_deployment_and_row_exclusion_policy.py' -v
+          python - <<'PY'
+          import json,sys
+          from pathlib import Path
+          sys.path.insert(0,str(Path("scripts/ci").resolve()))
+          from sbi_r28_owner_deployment_and_row_exclusion_policy import (
+              OperatorTechnicalChecks,assess_calculation_deployment,
+              ScreenedSourceRecord,ScreenedMatch,partition_screened_source)
+          checks=OperatorTechnicalChecks(True,True,True,True,True)
+          scope=assess_calculation_deployment(checks)
+          assert scope["operator_reported_deployment_candidate"]
+          assert scope["formal_financial_certification_required_for_deployment"] is False
+          assert scope["technical_prerequisites_independently_attested_by_module"] is False
+          assert scope["aws_or_production_deployment_performed"] is False
+          assert scope["financial_apply_locked"]
+          shadow=partition_screened_source((
+              ScreenedSourceRecord("INVOICE",2,"SYN-MXP-100","PASS"),
+              ScreenedSourceRecord("INVOICE",3,"SYN-MXP-101","EXCLUDE",("NONMATCH_AMOUNT",)),
+              ScreenedSourceRecord("PAYMENT",2,"SYN-BANK-100","PASS"),
+              ScreenedSourceRecord("PAYMENT",3,"SYN-BANK-101","EXCLUDE",("UNMATCHED_SOL",)),
+          ),(
+              ScreenedMatch(2,2,"PASS"),
+              ScreenedMatch(3,2,"PASS"),
+              ScreenedMatch(2,3,"PASS"),
+          ),source_sha256="d"*64)
+          assert len(shadow["method_candidates"])==1
+          assert len(shadow["excluded_pairs"])==2
+          assert shadow["source_rows_deleted"]==0
+          assert shadow["payment_status_column_m_written"] is False
+          assert shadow["real_bank_allocations"]==0
+          assert shadow["real_database_writes"]==0
+          receipt={
+              "stage":scope["stage"],
+              "owner_deployment_policy":"CALCULATION_AND_REPORT_NO_FINANCIAL_WRITE",
+              "financial_certification_required_for_calculation_deploy":False,
+              "operator_claims_are_independent_verification":False,
+              "real_aws_deployment_done":False,
+              "existing_combined_synthetic_tests":1086,
+              "new_r28_tests":30,
+              "source_row_exclusions_are_not_source_deletions":True,
+              "real_bank_rows_in_ci":0,
+              "financial_write_authorized":False,
+              "financial_apply":"LOCKED",
+              "real_database_writes":0,
+          }
+          Path("r20-artifacts/r28_owner_calculation_deploy_no_finance_certificate.json").write_text(
+              json.dumps(receipt,sort_keys=True,indent=2)+"\\n")
+          print("R28_OWNER_FORMAL_CERT_FOR_CALC_DEPLOY=NOT_REQUIRED")
+          print("R28_INDIVIDUAL_RULE_FAILED_ROWS=EXCLUDED_ONLY")
+          print("R28_FINANCIAL_APPLY=LOCKED")
+          print("R28_ACTUAL_AWS_DEPLOYMENT=NOT_PERFORMED")
           PY
       - uses: actions/upload-artifact@v4
         with:
