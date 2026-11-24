@@ -19,9 +19,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Python bytecode and 30 synthetic source/transaction contracts
+      - name: Python bytecode and source/transaction + private Flask tests
         run: |
           set -Eeuo pipefail
+          python -m pip install "Flask>=3.1,<4"
           python -m py_compile database/stage31/db_r31_ft04_ingest_qa.py \
             database/stage31/test_db_r31_ft04_ingest_qa.py \
             database/stage31/db_r31_ft04_parser_parity.py \
@@ -30,6 +31,9 @@ jobs:
             database/stage31/test_db_r31_private_sol_master.py \
             database/stage31/db_r31_pg_sol_report_readonly.py \
             database/stage31/test_db_r31_pg_sol_report_readonly.py \
+            database/stage31/db_r31_pg_report_private_wsgi.py \
+            database/stage31/db_r31_pg_report_staging_wsgi.py \
+            database/stage31/test_db_r31_pg_report_private_wsgi.py \
             database/stage31/qa_r31_ft04_real_pg_smoke.py
           python -m unittest discover -s database/stage31 \
             -p 'test_db_r31_ft04_ingest_qa.py' -v
@@ -39,6 +43,8 @@ jobs:
             -p 'test_db_r31_private_sol_master.py' -v
           python -m unittest discover -s database/stage31 \
             -p 'test_db_r31_pg_sol_report_readonly.py' -v
+          python -m unittest discover -s database/stage31 \
+            -p 'test_db_r31_pg_report_private_wsgi.py' -v
           python -m unittest discover -s database/stage31 \
             -p 'test_db_r31_source_reporting.py' -v
           python -m unittest discover -s database/stage31 \
@@ -155,6 +161,28 @@ jobs:
           echo 'DB_R31_MAIN_WRITES=NONE'
           echo 'DB_R31_FULL_V251_V239_ENGINE=NOT_CONNECTED'
           echo 'DB_R31_AWS_LIVE_STAGE=NOT_PERFORMED'
+      - name: Build PINNED source-only AWS Firebase report overlay image (no AWS deployment)
+        run: |
+          set -Eeuo pipefail
+          docker build -f r31-pinned-app/staging/aws_login_v150/Dockerfile \
+            --build-arg SBI_SOURCE_SHA=ec5f175aad8c3d7897333e48374b00ba0f174328 \
+            -t "sbi-r31-login-pinned:$GITHUB_SHA" r31-pinned-app
+          docker build -f database/stage31/Dockerfile.pg-report-private-qa \
+            --build-arg BASE_IMAGE="sbi-r31-login-pinned:$GITHUB_SHA" \
+            -t "sbi-r31-pg-report-private-qa:$GITHUB_SHA" .
+      - name: Original Firebase session middleware still denies anonymous PG report
+        run: |
+          set -Eeuo pipefail
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --user 10001:10001 \
+            -e SBI_R31_PG_REPORT_STAGING_ENABLED=true \
+            -e SBI_FINANCIAL_APPLY=LOCKED \
+            -e PGDATABASE=sbi_ft04g_clean_0e858f93 \
+            -e PGUSER=sbi_ft04q_report \
+            -e SBI_R31_REPORT_DSN='host=127.0.0.1 dbname=sbi_ft04g_clean_0e858f93' \
+            "sbi-r31-pg-report-private-qa:$GITHUB_SHA" python -c \
+            'import os; from db_r31_pg_report_staging_wsgi import app; c=app.test_client(); assert os.getuid()==10001; assert c.get("/healthz").status_code==200; assert c.get("/api/payment-received/sol-report").status_code==401; assert c.get("/api/payment-received/sol-report.csv").status_code==401; assert c.get("/api/payment-received/payment-details.csv").status_code==401; assert c.post("/api/payment-reconciliation/run").status_code==403; print("DB_R31_STAGE_REAL_FIREBASE_MIDDLEWARE_ANONYMOUS_DENIAL=PASS")'
+          echo 'DB_R31_REAL_AUTHENTICATED_AWS_UAT=STILL_PENDING'
       - name: Ensure isolated synthetic container is removed
         if: always()
         run: |
