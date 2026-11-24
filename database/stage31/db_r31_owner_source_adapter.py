@@ -15,8 +15,8 @@ import json
 import re
 import uuid
 
-QA_DB = "sbi_ft04g_clean_0e858f93"
-QA_USER = "sbi_ft04q_ingest"
+QA_DB = "sbi_r31_owner_qa_20261125"
+QA_USER = "sbi_r31_ownerqa_ingest"
 PARSER_VERSION = "R31_SOURCE_EVIDENCE_V1"
 SHA = re.compile(r"[0-9a-f]{64}\Z")
 SOL = re.compile(r"[0-9]{1,12}\Z")
