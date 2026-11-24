@@ -42,7 +42,6 @@ def create_invoice_gst_blueprint(can_read, can_create, csrf_valid,
         try:
             return connect()
         except Exception:
-            blueprint.logger if False else None  # No DB URL in failure response.
             raise RuntimeError("INVOICE_DATABASE_UNAVAILABLE") from None
 
     @blueprint.before_request
