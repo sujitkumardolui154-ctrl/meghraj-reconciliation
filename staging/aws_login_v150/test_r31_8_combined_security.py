@@ -15,6 +15,29 @@ INNER=(ROOT/"r31_8_combined_security_incontainer.py").read_text("utf-8")
 
 
 class DBR318SecurityOfflineTests(TestCase):
+    def test_actual_firebase_middleware_rejects_fake_session_cookie(self):
+        # Test real Flask protect_dashboard hook, with a synthetic Firebase
+        # verifier rejection. Does not contact Firebase or require secrets.
+        from app import app, SITE_ORIGIN
+        from dashboard_sessions import SESSION_COOKIE
+        from firebase_admin import auth
+        with patch("dashboard_sessions.auth.verify_session_cookie",
+                   side_effect=auth.InvalidSessionCookieError("invalid test cookie")):
+            with app.test_client() as client:
+                client.set_cookie(
+                    SESSION_COOKIE,"not-a-firebase-session-cookie",
+                    domain="sbi-preview.13-232-241-221.sslip.io",
+                    secure=True,httponly=True)
+                denied=client.get("/api/r31-private-qa/sol-report",
+                                  base_url=SITE_ORIGIN)
+        self.assertEqual(denied.status_code,401)
+
+    def test_forged_cookie_failure_diagnostic_is_typed_not_secret_text(self):
+        self.assertIn("DB_R31_8_CURRENT_CHECK=FORGED_FIREBASE_SESSION_COOKIE",INNER)
+        self.assertIn("FORGED_COOKIE_EXCEPTION_",INNER)
+        self.assertIn("type(exc).__name__",INNER)
+        self.assertNotIn('str(exc)',INNER)
+
     def test_streaming_runner_emits_approved_receipts_without_batched_capture(self):
         from r31_8_combined_security import accepted_qa_line, ALLOWED_QA_KEYS
         self.assertIn("DB_R31_8_REAL_FIREBASE_SESSION",ALLOWED_QA_KEYS)
