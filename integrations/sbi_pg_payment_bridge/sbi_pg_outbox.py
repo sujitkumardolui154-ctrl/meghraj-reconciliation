@@ -83,6 +83,16 @@ def queue_delivery(payload: bytes, owner_uid: str):
     digest = hashlib.sha256(payload).hexdigest()
     now = _utc()
     with _connect() as con:
+        # Current staging PostgreSQL has global SHA uniqueness and lacks
+        # verified owner scope. Allow ONE owner per QA installation until
+        # Database Management approves tenant-scoped central lineage.
+        # BEGIN IMMEDIATE serializes concurrent owners before the insert.
+        con.execute('BEGIN IMMEDIATE')
+        owners = [r[0] for r in con.execute(
+            'SELECT DISTINCT owner_uid FROM delivery_queue LIMIT 2'
+        ).fetchall()]
+        if len(owners) > 1 or (owners and owners[0] != owner_uid):
+            raise ValueError('STAGING_MULTI_OWNER_REQUIRES_OWNER_SCOPED_PG_SCHEMA')
         con.execute('''INSERT OR IGNORE INTO delivery_queue
           (owner_uid,source_sha256,payload,state,created_utc,updated_utc)
           VALUES (?, ?, ?, 'PENDING', ?, ?)''',
@@ -99,6 +109,12 @@ def queue_delivery(payload: bytes, owner_uid: str):
 def _claim(owner_uid=None, source_sha=None):
     with _connect() as con:
         con.execute('BEGIN IMMEDIATE')
+        # Do not deliver any pre-upgrade mixed-owner queue into global-SHA PG.
+        owner_count = con.execute(
+            'SELECT count(DISTINCT owner_uid) FROM delivery_queue'
+        ).fetchone()[0]
+        if owner_count > 1:
+            raise RuntimeError('STAGING_MULTI_OWNER_QUEUE_REQUIRES_SCHEMA_REVIEW')
         conditions = ["(state IN ('PENDING','RETRY') OR (state='PROCESSING' AND lease_epoch < ?))",
                       'attempt_count < ?']
         params = [time.time()-STALE_SECONDS, MAX_ATTEMPTS]
