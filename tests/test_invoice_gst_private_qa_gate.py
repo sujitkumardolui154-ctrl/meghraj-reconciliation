@@ -17,6 +17,7 @@ GOOD = {
     "source": {
         "owner_approved_pdf_template": "APPROVED_REFERENCE_LOCKED",
         "branch_master_hash_checked": True,
+        "approved_pdf_sha256_checked": True,
         "branch_master_source_status": "WORKING_REVIEW_NOT_APPROVED_FOR_AUTOMATIC_IMPORT",
         "private_vendor_bundle_status": "OWNER_SOURCE_ARCHIVE_HASH_VERIFIED",
         "original_logo_hash_checked": True,
@@ -41,6 +42,13 @@ class PrivateQaDecisionTests(unittest.TestCase):
                          "READY_FOR_OPERATOR_AUTHENTICATED_PRIVATE_QA")
         self.assertEqual(result["production_deployment"], "NOT_AUTHORIZED")
         self.assertEqual(result["authenticated_aws_e2e"], "NOT_VERIFIED_BY_THIS_GATE")
+
+    def test_missing_exact_approved_pdf_refuses_private_qa(self):
+        payload = json.loads(json.dumps(GOOD))
+        payload["source"]["approved_pdf_sha256_checked"] = False
+        result = gate.evaluate_staging_preflight(payload)
+        self.assertFalse(result["ready_for_authenticated_private_qa"])
+        self.assertIn("APPROVED_PDF_SHA256_VERIFIED", result["outstanding"])
 
     def test_missing_qa_database_fails_closed(self):
         payload = json.loads(json.dumps(GOOD))
