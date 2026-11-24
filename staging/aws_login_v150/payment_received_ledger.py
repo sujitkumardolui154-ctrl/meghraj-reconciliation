@@ -167,6 +167,8 @@ def append_receipt(conn, *, owner_uid, receipt_id, source_sha256,
            re.fullmatch(r"[a-f0-9]{32}",receipt_id) is not None and
            SHA.fullmatch(source_sha256) is not None,
            "PAYMENT_RECEIPT_IDENTITY_INVALID")
+    # Initialize the dedicated append-only payment table inside the receipt transaction.
+    ensure_payment_schema(conn)
     selected,master_state,master_digest=load_private_master()
     from payment_evidence_upload import (
         _norm_description,_norm_sol,_norm_credit,
