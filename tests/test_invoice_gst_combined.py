@@ -384,6 +384,25 @@ class IsolatedPostgresCombinedTests(unittest.TestCase):
             ).fetchone()["n"]
             self.assertEqual(count, 1)
 
+    def test_10_owner_approved_vendor_profile_is_not_silently_overwritten(self):
+        import tempfile
+        from test_invoice_gst_private_vendor import synthetic_zip
+        from private_vendor_loader import apply_only_isolated_qa
+        with tempfile.TemporaryDirectory() as folder:
+            bundle = synthetic_zip(Path(folder))
+            with self.assertRaisesRegex(
+                ValueError, "VENDOR_PROFILE_CONFLICT_NEW_OWNER_APPROVAL_REQUIRED"
+            ):
+                apply_only_isolated_qa(self.dsn, bundle, "qa-reviewer")
+        with self.connect() as conn:
+            row = conn.execute(
+                """SELECT bank_instructions, legal_name
+                   FROM sbi_invoice_gst.vendor_profiles
+                   WHERE vendor_key='MEGHRAJ_EXPRESS'"""
+            ).fetchone()
+        self.assertEqual(row["bank_instructions"], "QA BANK")
+        self.assertEqual(row["legal_name"], "MEGHRAJ EXPRESS")
+
     def test_05_fy_conflict_and_review(self):
         response = self.client.get("/api/invoice-gst/gst.xlsx?month=2026-02&fy=2026-2027")
         self.assertEqual(response.status_code, 422)
