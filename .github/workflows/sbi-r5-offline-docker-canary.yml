@@ -1,0 +1,58 @@
+name: SBI R5 Offline Docker Canary QA (no AWS)
+on:
+  push:
+    branches:
+      - review/sbi-r5-offline-docker-canary-20261123
+  pull_request:
+    branches:
+      - feature/sbi-payment-reconciliation-readiness-gate-20261120
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sbi-r5-offline-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  offline-canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Read-only checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Verify source and shell syntax
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -f staging/aws_login_v150/reconciliation_review_adapter.py
+          test -f staging/aws_login_v150/reconciliation_readiness.py
+          grep -Fq '2026-11-23T00:00:00+05:30' staging/aws_login_v150/reconciliation_review_adapter.py
+          bash -n scripts/ci/sbi_r5_offline_canary.sh
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          echo 'R5_SOURCE_AND_CUTOFF=VERIFIED'
+      - name: Build ephemeral R4 source Docker image (no push)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker build -f staging/aws_login_v150/Dockerfile \
+            --build-arg SBI_SOURCE_SHA="$GITHUB_SHA" \
+            -t "sbi-r5-offline:$GITHUB_SHA" .
+          test "$(docker image inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "sbi-r5-offline:$GITHUB_SHA")" = "$GITHUB_SHA"
+          echo 'R5_IMAGE_SHA=VERIFIED'
+      - name: Start networkless container, assert HTTP denial, automatically rollback
+        shell: bash
+        env:
+          R5_IMAGE: sbi-r5-offline:${{ github.sha }}
+          R5_SOURCE_SHA: ${{ github.sha }}
+        run: bash scripts/ci/sbi_r5_offline_canary.sh
+      - name: Verify no R5 container survives the job
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if docker ps -a --filter 'name=^/sbi-r5-offline-' --format '{{.Names}}' | grep -q .; then
+            echo 'R5_ROLLBACK_ASSERTION=FAIL'
+            exit 1
+          fi
+          echo 'R5_ROLLBACK_ASSERTION=PASS'

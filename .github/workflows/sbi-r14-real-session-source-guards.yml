@@ -1,0 +1,28 @@
+name: SBI R14 Manual Real Firebase Session Probe Source Guard (offline only)
+on:
+  push:
+    branches:
+      - review/sbi-r14-real-firebase-app-session-readonly-20261124
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  r14-offline-source-guards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Compile and test fail-closed R14 safety without real Firebase
+        env:
+          CI: "true"
+        run: |
+          python -m py_compile scripts/ci/sbi_r14_real_app_session_readonly.py
+          python -m unittest discover -s tests -p 'test_sbi_r14_real_app_session_readonly.py' -v
+          python scripts/ci/sbi_r14_real_app_session_readonly.py 2>&1 | grep -F 'R14_REAL_APP_SESSION=BLOCKED:EXPLICIT_APPROVAL_GATE_REQUIRED'
+          echo 'R14_REAL_FIREBASE_APPLICATION_SESSION=NOT_TESTED'
+          echo 'R14_AWS_AND_FINANCIAL_WRITES=NONE'

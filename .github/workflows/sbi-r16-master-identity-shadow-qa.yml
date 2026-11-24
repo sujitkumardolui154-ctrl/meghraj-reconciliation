@@ -1,0 +1,36 @@
+name: SBI R16 Private Master Identity Shadow QA (synthetic only)
+on:
+  push:
+    branches:
+      - review/sbi-r16-master-identity-shadow-preflight-20261124
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  identity-shadow-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install local XLSX reader for synthetic fixtures
+        run: python -m pip install 'openpyxl>=3.1.5,<4'
+      - name: R15 immutable source + R16 SHA master identity shadow
+        env:
+          CI: "true"
+        run: |
+          set -Eeuo pipefail
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${FIREBASE_AUTH_EMULATOR_HOST:-}"
+          python -m py_compile scripts/ci/sbi_r16_master_identity_shadow.py
+          python -m unittest discover -s tests -p 'test_sbi_r15_financial_source_preflight.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_r16_master_identity_shadow.py' -v
+          echo 'R16_PRIVATE_MASTER_SOURCE_IDENTITY_SHADOW=PASS'
+          echo 'R16_REAL_BANK_AND_MASTER_DATA=NOT_IMPORTED'
+          echo 'R16_V251_SETTLEMENT=NOT_EXECUTED'
+          echo 'R16_AWS_POSTGRESQL=UNCHANGED'
+          echo 'R16_FINANCIAL_APPLY=LOCKED'
