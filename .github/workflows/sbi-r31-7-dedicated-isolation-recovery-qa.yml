@@ -1,0 +1,96 @@
+name: SBI R31.7 Dedicated QA Network Recovery (Disposable Docker Only)
+on:
+  push:
+    branches:
+      - fix/sbi-r31-7-dedicated-internal-qa-20261125
+  pull_request:
+    branches:
+      - sbi-central-postgresql-main-20261121
+permissions:
+  contents: read
+jobs:
+  dedicated-disposable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: src
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ec5f175aad8c3d7897333e48374b00ba0f174328
+          path: r31-pinned-app
+          persist-credentials: false
+      - name: Dedicated network allowlist and source unit regression
+        working-directory: src
+        run: |
+          set -Eeuo pipefail
+          python3 -B -m unittest discover -s database/stage31 \
+             -p 'test_db_r31_7_dedicated_isolated.py' -v
+          python3 -B -m py_compile database/stage31/db_r31_7_dedicated_isolated.py \
+             database/stage31/db_r31_owner_qa_combined.py
+          test -z "$(git status --porcelain --untracked-files=all)" ||
+              { echo 'DB_R31_7_GIT_WORKTREE_DIRTY'; exit 1; }
+          echo 'DB_R31_7_DEDICATED_NETWORK_NEGATIVE_TESTS=PASS'
+      - name: Build source pinned synthetic runner image and pull synthetic Postgres
+        run: |
+          set -Eeuo pipefail
+          docker pull postgres:16-alpine
+          docker build -f r31-pinned-app/staging/aws_login_v150/Dockerfile \
+            --build-arg SBI_SOURCE_SHA=ec5f175aad8c3d7897333e48374b00ba0f174328 \
+            -t "sbi-r31-base:$GITHUB_SHA" r31-pinned-app
+          docker build -f src/database/stage31/Dockerfile.pg-report-private-qa \
+            --build-arg BASE_IMAGE="sbi-r31-base:$GITHUB_SHA" \
+            -t "sbi-r31-dedicated-test:$GITHUB_SHA" src
+          docker run --detach --name sbi-pr129-modern-release-final \
+            --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges \
+            "sbi-r31-dedicated-test:$GITHUB_SHA" \
+            python3 -c 'import time; time.sleep(1200)'
+          docker inspect -f '{{.State.Running}}' sbi-pr129-modern-release-final |
+            grep -Fx true
+          echo 'DB_R31_7_PINNED_SYNTHETIC_SOURCE_IMAGE=PASS'
+      - name: Create operator-only non-production directory in disposable CI runner
+        run: |
+          set -Eeuo pipefail
+          sudo -n install -d -o "$(id -un)" -g "$(id -gn)" -m 0755 \
+             /home/ubuntu/sbi-db-management
+          test ! -e /home/ubuntu/sbi-db-management/db-r31-7-dedicated
+          echo 'DB_R31_7_DISPOSABLE_CREDENTIAL_PARENT=PASS'
+      - name: Actual isolated QA on dedicated single-member network
+        working-directory: src
+        run: |
+          set -Eeuo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 -B \
+             database/stage31/db_r31_7_dedicated_isolated.py |
+             tee "$RUNNER_TEMP/r31-7-dedicated.log"
+          for marker in \
+            'DB_R31_7_SEPARATE_SYNTHETIC_FT04_SCHEMA=PASS' \
+            'DB_R31_7_DEDICATED_NETWORK_ONLY_QA_PG=PASS' \
+            'DB_R31_OWNER_QA_SCHEMA_PERSISTED|PASS' \
+            'DB_R31_TWO_OWNER_SAME_SHA_PERSISTENT_QA=PASS' \
+            'DB_R31_DUPLICATE_REPLAY_NO_NEW_WRITES=PASS' \
+            'DB_R31_INVALID_SOURCE_ROWS_AND_STATUS=PASS' \
+            'DB_R31_OWNER_FILTERED_SQL_AND_CSV_PARITY=PASS' \
+            'DB_R31_FT04_QA_EXISTING_ROW_COUNTS_UNCHANGED=PASS' \
+            'DB_R31_7_AWS_DEDICATED_SOURCE_AND_REPORT_QA=PASS' \
+            'DB_R31_7_DEDICATED_TEST_ASSETS_REMOVED=YES' \
+            'DB_R31_7_RELEASE_STATUS=DEDICATED_ISOLATED_AWS_QA_PASS_ONLY'; do
+             grep -F "$marker" "$RUNNER_TEMP/r31-7-dedicated.log" >/dev/null ||
+             { echo "DB_R31_7_DEDICATED_REQUIRED_MARKER_MISSING"; exit 1; }
+          done
+          echo 'DB_R31_7_DISPOSABLE_END_TO_END_DEDICATED_QA=PASS'
+      - name: Check dedicated test assets removed
+        if: always()
+        run: |
+          set -Eeuo pipefail
+          if docker container inspect sbi-r31-7-dedicated-pg >/dev/null 2>&1 ||
+             docker network inspect sbi-r31-7-dedicated-internal >/dev/null 2>&1 ||
+             test -e /home/ubuntu/sbi-db-management/db-r31-7-dedicated; then
+             echo 'DB_R31_7_DEDICATED_DISPOSABLE_CLEANUP_INCOMPLETE'
+             exit 1
+          fi
+          echo 'DB_R31_7_DEDICATED_DISPOSABLE_CLEANUP=PASS'
+          docker rm -f sbi-pr129-modern-release-final >/dev/null 2>&1 || true
+          echo 'DB_R31_7_EXISTING_LIVE_AWS_UNTOUCHED=YES'
