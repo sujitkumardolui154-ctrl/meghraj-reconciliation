@@ -14,6 +14,17 @@ BEGIN
     OR to_regclass('sbi.payments') IS NULL THEN
    RAISE EXCEPTION 'DB_R31_REQUIRED_SOURCE_TABLES_MISSING';
  END IF;
+ -- The guarded down migration must never drop a pre-existing column/table.
+ IF EXISTS (
+   SELECT 1 FROM information_schema.columns
+   WHERE table_schema='sbi' AND table_name='import_batches'
+     AND column_name IN ('owner_uid','source_receipt_id',
+                         'source_sheet_name','source_parser_version')
+ ) OR to_regclass('sbi.payment_source_status_v1') IS NOT NULL
+   OR to_regclass('sbi.payment_received_source_v1') IS NOT NULL
+   OR to_regclass('sbi.ix_sbi_r31_batch_owner_receipt') IS NOT NULL THEN
+   RAISE EXCEPTION 'DB_R31_QA_CANDIDATE_OBJECT_ALREADY_PRESENT_REVIEW';
+ END IF;
  IF NOT EXISTS (
    SELECT 1 FROM pg_attribute
    WHERE attrelid='sbi.payment_source_rows'::regclass
