@@ -1,7 +1,7 @@
 import io
 import sys
 import types
-sys.modules.setdefault("flask", types.SimpleNamespace(jsonify=None, request=None))
+sys.modules.setdefault("flask", types.SimpleNamespace(jsonify=None, request=None, g=None))
 import unittest
 import zipfile
 from pathlib import Path
@@ -41,6 +41,21 @@ class Tests(unittest.TestCase):
         self.assertEqual(payment_rows(fixture(shared=True))[0][2],11800)
     def test_formula_rejected(self):
         with self.assertRaises(ContractError): payment_rows(fixture(formula=True))
+    def test_numeric_sol_cell_rejected(self):
+        from io import BytesIO
+        with zipfile.ZipFile(BytesIO(fixture())) as arc:
+            data = {name: arc.read(name) for name in arc.namelist()}
+        data['xl/worksheets/sheet1.xml'] = data['xl/worksheets/sheet1.xml'].replace(
+            b'<c r="B2" t="inlineStr"><is><t>99999</t></is></c>',
+            b'<c r="B2"><v>99999</v></c>'
+        )
+        blob = BytesIO()
+        with zipfile.ZipFile(blob, 'w') as arc:
+            for name, raw in data.items():
+                arc.writestr(name, raw)
+        with self.assertRaisesRegex(ContractError, 'Excel text'):
+            payment_rows(blob.getvalue())
+
     def test_precision(self):
         with self.assertRaises(ContractError): _credit_paise('118.001')
     def test_zero(self):
