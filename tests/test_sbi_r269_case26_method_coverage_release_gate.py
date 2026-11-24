@@ -345,6 +345,94 @@ class Case26MethodQA(unittest.TestCase):
         self.assertEqual(a["real_database_writes"],0)
 
 
+    def test_50b_all_methods_same_upload_integrated_synthetic(self):
+        ivs=(
+            inv(),
+            inv(source_row=3,invoice_no="MXP10002",sol="0002",
+                client="SYNTHETIC BETA"),
+            inv(source_row=4,invoice_no="MXP10003",sol="0003",
+                client="SYNTHETIC GAMMA"),
+            inv(source_row=5,invoice_no="MXP10004",sol="",
+                client="SYNTHETIC SBISA"),
+            inv(source_row=6,invoice_no="MXP10005",sol="0006",
+                client="SYNTHETIC DELTA"),
+            inv(source_row=7,invoice_no="MXP10006",sol="0008",
+                client="SYNTHETIC EPSILON"),
+            inv(source_row=8,invoice_no="MXP10007",sol="0009",
+                client="SYNTHETIC ZETA"),
+            inv(source_row=9,invoice_no="MXP10008",sol="0010",
+                client="SYNTHETIC THETA",gross="600.00",
+                taxable="600.00",cgst="0.00",sgst="0.00"),
+            inv(source_row=10,invoice_no="MXP10009",sol="0010",
+                client="SYNTHETIC THETA",issue_date=D+timedelta(days=1),
+                gross="500.00",taxable="500.00",cgst="0.00",sgst="0.00"),
+        )
+        pays=(
+            bank(),
+            bank(source_row=3,bank_key="SYN-PAY-003",sol="0002",
+                 client="SYNTHETIC BETA",credit="180.00",
+                 narration="GST MXP10002 SEPTEMBER"),
+            bank(source_row=4,bank_key="SYN-PAY-004",sol="0003",
+                 client="SYNTHETIC GAMMA",credit="500.00",
+                 narration="POSTAGE MXP10003 SEPTEMBER"),
+            bank(source_row=5,bank_key="SYN-PAY-005",sol="1",
+                 client="SYNTHETIC SBISA",credit="500.00",
+                 narration="SBISA POSTAGE SEPTEMBER"),
+            bank(source_row=6,bank_key="SYN-PAY-006",sol="0007",
+                 client="SYNTHETIC BANK CROSS",credit="700.00",
+                 narration="POSTAGE MXP10005 SEPTEMBER"),
+            bank(source_row=7,bank_key="SYN-PAY-007",sol="0008",
+                 client="SYNTHETIC EPSILON",credit="700.00",
+                 narration="POSTAGE SEPTEMBER"),
+            bank(source_row=8,bank_key="SYN-PAY-008",sol="0009",
+                 client="SYNTHETIC ZETA",credit="700.00",
+                 narration="POSTAGE SEPTEMBER"),
+            bank(source_row=9,bank_key="SYN-PAY-009",sol="0010",
+                 client="SYNTHETIC THETA",credit="1000.00",
+                 narration="POSTAGE SEPTEMBER"),
+        )
+        steps=(
+            step(),
+            step(bank_key="SYN-PAY-003",invoice_no="MXP10002",
+                 portion="180.00",method="GST_COMPONENT_REVIEW",
+                 tds_rate=None,proof_tag="SYN-GST-2"),
+            step(bank_key="SYN-PAY-004",invoice_no="MXP10003",
+                 portion="500.00",method="PARTIAL_REVIEW",
+                 tds_rate=None,proof_tag="SYN-PARTIAL-3"),
+            step(bank_key="SYN-PAY-005",invoice_no="MXP10004",
+                 portion="500.00",method="SBISA_REVIEW",
+                 tds_rate=None,proof_tag="SYN-SBISA-4"),
+            step(bank_key="SYN-PAY-006",invoice_no="MXP10005",
+                 portion="700.00",method="CROSS_SOL_REVIEW",
+                 tds_rate=None,proof_tag="SYN-CROSS-5"),
+            step(bank_key="SYN-PAY-007",invoice_no="MXP10006",
+                 portion="700.00",method="SAME_SOL_REVIEW",
+                 tds_rate=None,proof_tag="SYN-SAME-6"),
+            step(bank_key="SYN-PAY-008",invoice_no="MXP10007",
+                 portion="0.00",method=DNM,
+                 tds_rate=None,proof_tag="SYN-DNM-7"),
+            step(bank_key="SYN-PAY-009",invoice_no="MXP10008",
+                 portion="600.00",method=WATERFALL,
+                 tds_rate=None,proof_tag="SYN-WATERFALL-8"),
+            step(bank_key="SYN-PAY-009",invoice_no="MXP10009",
+                 portion="400.00",method=WATERFALL,
+                 tds_rate=None,proof_tag="SYN-WATERFALL-9"),
+        )
+        result=run(ivs=ivs,pays=pays,steps=steps,
+            master=(("0007","SYNTHETIC BANK CROSS"),
+                    ("0006","SYNTHETIC DELTA")),
+            relationships=(("0007","0006"),))
+        self.assertEqual(len(result["methods_rehearsed"]),7)
+        self.assertEqual(result["cash_reserved"],"4740.00")
+        self.assertEqual(result["cash_unassigned"],"700.00")
+        self.assertEqual(result["invoice_cash_coverage_gap_not_receivable"],
+                         "4620.00")
+        self.assertEqual(len(result["dnm_provisional_unreserved"]),1)
+        self.assertTrue(result["method_oracle_cash_conserved"])
+        self.assertFalse(result["full_matching_method_coverage_certified"])
+        self.assertFalse(result["production_release_authorized"])
+
+
 class Case26ReleaseGateQA(unittest.TestCase):
     def test_51_external_evidence_all_blocked(self):
         r=review_release_readiness(run())
