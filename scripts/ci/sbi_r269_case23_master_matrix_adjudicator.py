@@ -28,7 +28,7 @@ import json
 import re
 
 from sbi_r267_readonly_real_candidate_engine import (
-    InvoiceInput, BankInput, RelationshipProof, refs, plan_review_only,
+    InvoiceInput, BankInput, RelationshipProof, refs, normalized, plan_review_only,
     STAGE as MATRIX_STAGE,
 )
 from sbi_r269_core_cash_ledger_dry_run import GlobalAdjudicationBoundary, money
@@ -218,7 +218,10 @@ def connect_master_matrix_review(
             contested.update(r for r in refs(bank.description) if r in master_ix)
     held_edges=[]
     stage_edges=[]
+    approved_master_pairs=set((code,normalized(name)) for code,name in master_pairs)
     for source_row,invoice_no,credit,matrix_method,tds_rate in result["candidate_rows"]:
+        if matrix_method=="DNM01_PROVISIONAL_NO_RESERVATION":
+            continue
         if source_row not in scoped_bank or invoice_no not in master_ix:
             raise MasterMatrixRefusal("MATRIX_PROPOSAL_OUTSIDE_VERIFIED_SOURCE")
         if invoice_no in contested:
@@ -232,6 +235,13 @@ def connect_master_matrix_review(
             holds[source_row].add("COMPOUND_EXCEPTION_NEEDS_INDEPENDENT_PROOF")
             held_edges.append((source_row,invoice_no,
                                "COMPOUND_EXCEPTION_NEEDS_INDEPENDENT_PROOF"))
+            continue
+        if (method=="CROSS_SOL_REVIEW"
+                and ((inv.sol,normalized(inv.client)) not in approved_master_pairs
+                     or (bank.sol,normalized(bank.client)) not in approved_master_pairs)):
+            holds[source_row].add("CROSS_SOL_OFFICIAL_MASTER_IDENTITY_NOT_VERIFIED")
+            held_edges.append((source_row,invoice_no,
+                               "CROSS_SOL_OFFICIAL_MASTER_IDENTITY_NOT_VERIFIED"))
             continue
         # Extra guard against planner regression or forged candidate cash.
         if money(credit)!=money(scoped_bank[source_row].credit):
@@ -311,7 +321,7 @@ def connect_master_matrix_review(
         )),
         "same_sol_without_exact_ref_fully_integrated":False,
         "approved_waterfall_reservation_fully_integrated":False,
-        "tns_tds_gst_credit_note_settlement_certified":False,
+        "tds_gst_credit_note_settlement_certified":False,
         "pending_methods":HOLD_STAGES,
         "real_bank_payments_reconciled":0,
         "final_payment_status":"NOT_ASSIGNED",
