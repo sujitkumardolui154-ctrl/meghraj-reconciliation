@@ -94,8 +94,9 @@ class OwnerSourceAdapterTests(unittest.TestCase):
             plan(review=[])
         with self.assertRaisesRegex(SourceContractError,"PARSER_REVIEW_ROW_MISMATCH"):
             plan(review=[{"source_row":2,"reason":"INVALID"}])
+        changed=dict(ONE, Description="ALTERED SOURCE ROW")
         with self.assertRaisesRegex(SourceContractError,"PARSER_ELIGIBLE_ROW_MISMATCH"):
-            plan(elig=[(2,ONE,11700)])
+            plan(elig=[(2,changed,11800)])
         with self.assertRaisesRegex(SourceContractError,"PARSER_FINANCIAL_TOTAL_MISMATCH"):
             plan(elig=[(2,ONE,11801)])
 
