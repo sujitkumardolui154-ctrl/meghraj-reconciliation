@@ -27,7 +27,10 @@ from db_r31_ft04_ingest_qa import (
 from sbi_payment_pg_bridge import _all_source_rows
 import sbi_payment_pg_bridge as ft04_pinned
 from db_r31_ft04_parser_parity import classify_exact_ft04_rows
+from db_r31_private_sol_master import load_approved_sol_file,SCHEMA
 from payment_evidence_upload import _parse
+from tempfile import TemporaryDirectory
+from hashlib import sha256
 
 def classify_payment_rows(payload,original_parser):
     return classify_exact_ft04_rows(payload,original_parser,ft04_pinned)
@@ -47,12 +50,25 @@ def xlsx(rows):
 
 
 def plan(payload, receipt, owner="synthetic-owner-001"):
+    # Every owner-facing branch result comes from a REAL private SHA-pinned
+    # master-file loader; only SYNTHETIC names and IDs are in CI.
+    document={"schema":SCHEMA,"branches":[{
+        "sol_id":"001505","official_branch_name":"SOUTHERN AVENUE",
+        "approved":True
+    }]}
+    raw=(json.dumps(document,sort_keys=True)+"\\n").encode()
+    with TemporaryDirectory() as directory:
+        source=Path(directory)/"private-sol-master.json"
+        source.write_bytes(raw)
+        source.chmod(0o600)
+        selected,source_digest=load_approved_sol_file(str(source),
+                                                      sha256(raw).hexdigest())
     return build_receipt_plan(
         payload,_parse,_all_source_rows,classify_payment_rows,
         owner_uid=owner,receipt_id=receipt,
         source_sheet_name="PAYMENT EVIDENCE",
-        approved_sol_by_key={"1505":"SOUTHERN AVENUE"},
-        master_sha256="b"*64,
+        approved_sol_by_key=selected,
+        master_sha256=source_digest,
         filename="synthetic-no-bank-data.xlsx",
     )
 
