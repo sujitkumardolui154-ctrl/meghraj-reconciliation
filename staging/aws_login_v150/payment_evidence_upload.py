@@ -311,6 +311,7 @@ def upload_evidence():
                 output.flush()
                 os.fsync(output.fileno())
             with closing(_connection(base)) as conn, conn:
+                from payment_received_ledger import append_receipt
                 conn.execute(
                     "INSERT INTO receipts "
                     "(id,owner_uid,filename,source_name,sha256,created_utc,"
@@ -321,11 +322,16 @@ def upload_evidence():
                      parsed["review_rows"], parsed["valid_credit_total"],
                      "REVIEW_REQUIRED" if parsed["review_rows"] else "STAGED_FOR_REVIEW"),
                 )
+                ledger = append_receipt(
+                    conn, owner_uid=owner, receipt_id=receipt_id,
+                    source_sha256=digest, source_bytes=payload,
+                    original_parsed=parsed, created_utc=_utc(),
+                )
         except Exception:
             (base / leaf).unlink(missing_ok=True)
             raise
         return jsonify(
-            **parsed, receipt_id=receipt_id,
+            **parsed, **ledger, receipt_id=receipt_id,
             source_sha256=digest,
             staging_status="REVIEW_REQUIRED" if parsed["review_rows"] else "STAGED_FOR_REVIEW",
             financial_writes=False,
@@ -336,6 +342,10 @@ def upload_evidence():
         return jsonify(error="Duplicate evidence workbook; no changes made"), 409
     except (OSError, sqlite3.Error):
         return jsonify(error="Private payment staging storage unavailable"), 503
+    except Exception:
+        # A missing or changed private master cannot create a partial receipt.
+        # Fixed code only; do not disclose file paths, bank rows or keys.
+        return jsonify(error="Payment ledger or private SOL master configuration invalid"), 503
 
 
 @payment_evidence.get("/api/payment-evidence/uploads")
