@@ -83,3 +83,54 @@
 
 This file is a development receipt, **not** production approval or evidence
 that a live AWS instance was changed.
+
+## 25 Nov continuation — exact approved PDF staging gate
+
+The owner-approved PDF, original logo and updated private vendor ZIP were
+independently checked by SHA-256 from local private artifacts. All three
+matched the hashes pinned in the approved template document. The ZIP's
+existing manifest pins an older reference-preview PDF; it **does not itself
+prove** that the corrected and approved PDF was supplied at staging.
+
+The new `--approved-pdf` argument and
+`scripts/sbi_invoice_gst_private_qa_gate.py` therefore require the
+**separately pinned corrected PDF hash** before advancing to signed-in private
+QA. This is a fail-closed readiness decision and cannot authorize public
+production activation.
+
+Run on the isolated AWS operator machine after private approved sources and
+dedicated QA database are provisioned:
+
+```bash
+set -euo pipefail
+# DSN is injected from an existing private secret manager or operator session.
+# Do not put it into a repository, script, issue, or shell history.
+python scripts/sbi_invoice_gst_aws_staging_readiness.py \
+  --master /private/SBI_SOL_Branch_Master_FINAL.xlsx \
+  --vendor-bundle /private/Meghraj_Invoice_Private_Assets_With_Full_Header_20261124.zip \
+  --approved-pdf /private/Meghraj_Express_MXP18430_Corrected_Full_Header_Invoice.pdf \
+  --qa-db --check-public-ingress \
+  --output /private/sbi-invoice-private-qa-preflight.json
+
+python scripts/sbi_invoice_gst_private_qa_gate.py \
+  --preflight-json /private/sbi-invoice-private-qa-preflight.json \
+  --assert-ready
+```
+
+A nonzero exit **must stop staging progression**, not be bypassed. A successful
+private QA prerequisite check only authorizes **the next authenticated QA
+exercise**, not live traffic or invoice finalization in production. Authenticated
+Firebase user/CSRF verification, Caddy routing, DB backup/restore and PDF parity
+remain separate required checks.
+
+### Read-only source discovery
+- The master workbook was located in the connected Drive account, not in
+  the public GitHub repository.
+- The legacy February 2026 native `.xls` workbook was also located in Drive
+  and retained as a private comparison source. The exact approved reference is
+  the corrected six-page PDF.
+- The master workbook declares `WORKING REVIEW — NOT FINAL`; use only
+  independently approved row-level customer/address/SOL evidence for import.
+- No AWS server console/terminal credential is available to this workstream;
+  therefore no actual AWS PostgreSQL write, Caddy change, authenticated session
+  test or public deployment is claimed.
