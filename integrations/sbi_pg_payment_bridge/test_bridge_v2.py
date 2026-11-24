@@ -123,6 +123,36 @@ class OutboxTests(unittest.TestCase):
     def test_staging_target_is_enforced(self):
         with patch.dict(os.environ,{'PGDATABASE':'sbi_reconciliation_main'}):
             with self.assertRaises(RuntimeError):queue_delivery(b'test12345678','qa')
+    def test_stage_refuses_second_owner_even_for_distinct_workbook(self):
+        first = make_excel([('FIRST', '001505', '118.00')])
+        second = make_excel([('SECOND', '001505', '119.00')])
+        queue_delivery(first, 'qa-first')
+        with self.assertRaisesRegex(ValueError, 'STAGING_MULTI_OWNER_REQUIRES_OWNER_SCOPED_PG_SCHEMA'):
+            queue_delivery(second, 'qa-second')
+        with _connect() as db:
+            owners = db.execute('SELECT DISTINCT owner_uid FROM delivery_queue').fetchall()
+        self.assertEqual(owners, [('qa-first',)])
+
+    def test_stage_refuses_cross_owner_identical_file(self):
+        data = make_excel([('SAME', '001505', '118.00')])
+        queue_delivery(data, 'qa-first')
+        with self.assertRaisesRegex(ValueError, 'STAGING_MULTI_OWNER_REQUIRES_OWNER_SCOPED_PG_SCHEMA'):
+            queue_delivery(data, 'qa-second')
+
+    def test_numeric_sol_source_requires_review(self):
+        data = make_excel([('DEPOSIT', '001505', '118.00')])
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            contents = {name: archive.read(name) for name in archive.namelist()}
+        contents['xl/worksheets/sheet1.xml'] = contents['xl/worksheets/sheet1.xml'].replace(
+            b'<c r="B2" t="inlineStr"><is><t>001505</t></is></c>',
+            b'<c r="B2"><v>1505</v></c>'
+        )
+        stream = io.BytesIO()
+        with zipfile.ZipFile(stream, 'w') as archive:
+            for name, raw in contents.items():
+                archive.writestr(name, raw)
+        self.assertEqual(_all_source_rows(stream.getvalue())[0][2], 'SOL_ID_NOT_EXCEL_TEXT')
+
     def test_review_is_retained(self):
         data=make_excel([('BAD','0123','0')]);uid='qa2'
         digest=queue_delivery(data,uid)
