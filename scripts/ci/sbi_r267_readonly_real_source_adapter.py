@@ -9,7 +9,7 @@ Source bytes/financial values may be private; never upload outputs to CI.
 from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date,datetime,timedelta
-from decimal import Decimal,InvalidOperation
+from decimal import Decimal,InvalidOperation,ROUND_HALF_UP
 from hashlib import sha256
 import re
 
@@ -95,7 +95,7 @@ def _money(raw):
         return None
     try:
         n=Decimal(str(raw))
-        return (str(n.quantize(CENT)) if n.is_finite() else None)
+        return (str(n.quantize(CENT,rounding=ROUND_HALF_UP)) if n.is_finite() else None)
     except (InvalidOperation,ValueError):
         return None
 
