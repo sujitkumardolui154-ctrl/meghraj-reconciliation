@@ -85,13 +85,20 @@ jobs:
             -e POSTGRES_DB=sbi_ft04g_clean_0e858f93 \
             -e POSTGRES_PASSWORD=SYNTHETIC_CI_ONLY_DB_PASS_20261125 \
             postgres:16-alpine
-          for attempt in $(seq 1 45); do
+          # The postgres official image briefly starts an init-only UNIX
+          # postmaster, then stops it. Checking its local socket too early
+          # gives a false READY immediately before "shutting down".
+          ready=0
+          for attempt in $(seq 1 60); do
             if docker exec sbi-r31-ft04-synthetic-pg \
-                pg_isready -U postgres -d sbi_ft04g_clean_0e858f93 >/dev/null 2>&1; then
+                pg_isready -h 127.0.0.1 -p 5432 -U postgres \
+                  -d sbi_ft04g_clean_0e858f93 >/dev/null 2>&1; then
+              ready=1
               break
             fi
             sleep 1
           done
+          [[ "$ready" == 1 ]] || { echo "DB_R31_QA_POSTGRES_NOT_TCP_READY"; exit 1; }
           docker exec sbi-r31-ft04-synthetic-pg \
             psql -X -qAt -v ON_ERROR_STOP=1 -U postgres -d postgres -c \
             "SELECT datname FROM pg_database WHERE datname='sbi_reconciliation_main'" |
