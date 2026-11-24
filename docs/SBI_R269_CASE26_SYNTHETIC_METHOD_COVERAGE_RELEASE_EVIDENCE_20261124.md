@@ -31,7 +31,7 @@ This is not complete Master v2.51 / Matrix v2.39 financial settlement. Full real
 
 ## QA contract
 
-The existing combined workflow covers 1,004 prior synthetic/disposable QA tests; Case 2.6 adds 62 method and release-gate adversarial tests, **1,066 expected** pending exact-head GitHub Actions confirmation. Tests intentionally cover falsified authority, malformed source, cross-SOL identities, period conflicts, protected prior settlement markers, TDS rounding, DNM provisional refusal, waterfall order, independent cash conservation and replay determinism.
+The existing combined workflow covers 1,004 prior synthetic/disposable QA tests; Case 2.6 adds 63 method and release-gate adversarial tests, **1,067 expected** pending exact-head GitHub Actions confirmation. Tests intentionally cover falsified authority, malformed source, cross-SOL identities, period conflicts, protected prior settlement markers, TDS rounding, DNM provisional refusal, waterfall order, independent cash conservation and replay determinism.
 
 **The implementation must remain fail-closed**: `FINANCIAL_APPLY=LOCKED`, `PAYMNENT!M=NOT_ASSIGNED`, zero real financial allocations/writes, no production `main` merge and no AWS/GCP traffic changes.
 
