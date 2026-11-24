@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import os
+import re
 import selectors
 import subprocess
 import time
@@ -27,19 +28,42 @@ SOURCE=ROOT/"r31_8_combined_security_incontainer.py"
 # stdout. Emit only exact-prefixed QA receipt lines while the isolated test
 # executes. The inner script uses python3 -u; the old capture_output=True
 # buffered ALL results for up to 120 s, falsely appearing to hang.
-PASS_PREFIX="DB_R31_8_"
 STOP_PREFIX="STOP=DB_R31_8_"
+ALLOWED_QA_KEYS=frozenset({
+    "DB_R31_8_SESSION_COOKIE_SECURE_FLAGS",
+    "DB_R31_8_AUTHENTICATED_FOREIGN_RECEIPT_GET_SYNC",
+    "DB_R31_8_FORGED_OWNER_HEADER_AND_QUERY_IGNORED",
+    "DB_R31_8_OWNER_FILTERED_PG_SOL_DETAILS_PARITY",
+    "DB_R31_8_SYNTHETIC_FOREIGN_RECEIPT_CLEANUP",
+    "DB_R31_8_ANONYMOUS_FINANCIAL_SOURCE_API_DENIED",
+    "DB_R31_8_FORGED_FIREBASE_COOKIE_DENIED",
+    "DB_R31_8_REAL_FIREBASE_SESSION",
+    "DB_R31_8_SIGNED_SESSION_CSRF_NEGATIVE_CASES",
+    "DB_R31_8_REPORT_DB_ROLE_LEAST_PRIVILEGE",
+    "DB_R31_8_OWNER_SCOPED_SOURCE_READS",
+    "DB_R31_8_PRODUCTION_RLS",
+    "DB_R31_8_SECOND_REAL_FIREBASE_OWNER",
+    "DB_R31_8_PRIVATE_HTTPS_EXTERNAL_E2E",
+    "DB_R31_8_MASTER_V251_FINANCIAL_ALLOCATION",
+    "DB_R31_8_PRODUCTION_FINANCIAL_WRITES",
+    "DB_R31_8_RELEASE_STATUS",
+})
 
 
 def accepted_qa_line(line: str) -> bool:
-    if len(line)>512 or any(ord(ch)<32 and ch!="\\t" for ch in line):
+    # Never display raw stdout just because it happens to begin DB_R31_8_.
+    # Prevent dynamic/raw traceback values from being relayed to the chat.
+    if len(line)>200 or any(ord(ch)<32 for ch in line):
         return False
-    return (line.startswith(PASS_PREFIX)
-            or line.startswith(STOP_PREFIX)
-            or line in (
-                "=== DB-R31.8 PRIVATE COMBINED SECURITY QA ===",
-                "=== DB-R31.8 PRIVATE COMBINED QA COMPLETE ===",
-            ))
+    if line in ("=== DB-R31.8 PRIVATE COMBINED SECURITY QA ===",
+                "=== DB-R31.8 PRIVATE COMBINED QA COMPLETE ==="):
+        return True
+    if re.fullmatch(r"STOP=DB_R31_8_[A-Z0-9_]{1,100}",line):
+        return True
+    if "=" not in line:
+        return False
+    key,value=line.split("=",1)
+    return key in ALLOWED_QA_KEYS and re.fullmatch(r"[A-Z0-9_]{1,100}",value) is not None
 
 
 def run_streamed_qa(source: str, token: str, *, timeout: int=180):
