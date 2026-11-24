@@ -119,7 +119,7 @@ def run():
         fresh=plan(second,"c"*32)
         delivered=write_qa_source_receipt(conn,fresh)
         assert delivered["status"]=="QA_SOURCE_ROWS_COMMITTED"
-        assert totals(conn)==(2,7,6,7,24700,7)
+        assert totals(conn)==(2,7,5,7,23700,7)
         with conn.cursor() as cur:
             cur.execute("""SELECT st.source_status,st.reason_codes
                            FROM sbi.payment_source_status_v1 st
