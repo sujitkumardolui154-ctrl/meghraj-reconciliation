@@ -12,7 +12,7 @@ from pathlib import Path
 import subprocess
 
 from r31_real_firebase_qa_acceptance import (
-    STAGE, preflight, firebase_api_key,
+    STAGE, docker, preflight, firebase_api_key,
     obtain_firebase_test_id_token, blocked,
 )
 
@@ -25,6 +25,11 @@ def main():
         blocked("8_SECURITY_HARNESS_NOT_VERIFIED")
     # The already passed DB-R31.7 private stage/image/PG identity guard.
     preflight()
+    # Read existing Caddy configuration, never edit it or publish the stage.
+    caddy=docker("exec","aws_lightsail-caddy-1","cat","/etc/caddy/Caddyfile")
+    if "sbi-r31-auth-private-qa" in caddy or "sbi-r31-auth-qa" in caddy:
+        blocked("8_CADDY_PRIVATE_QA_ROUTE_DETECTED")
+    print("DB_R31_8_PUBLIC_CADDY_QA_ROUTE=ABSENT",flush=True)
     token=obtain_firebase_test_id_token(firebase_api_key())
     if not token:
         blocked("8_FIREBASE_ID_TOKEN_NOT_AVAILABLE")
