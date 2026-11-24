@@ -387,6 +387,28 @@ def receipt_preview(receipt_id):
         if hashlib.sha256(contents).hexdigest() != row["sha256"]:
             return jsonify(error="Stored evidence digest changed"), 503
         parsed = _parse(contents)
+        # Later receipt views read the saved branch decision and source-row
+        # status from the isolated payment ledger, never rematch an invoice.
+        from payment_received_ledger import ensure_payment_schema, TABLE
+        with closing(_connection(base)) as conn:
+            ensure_payment_schema(conn)
+            saved = conn.execute(
+                f"SELECT excel_row,description,sol_id_text,official_branch_name,"
+                f"credit_amount,review_reasons_json,source_status FROM {TABLE} "
+                "WHERE owner_uid=? AND receipt_id=? ORDER BY excel_row LIMIT 50",
+                (str(g.dil_user.uid),receipt_id),
+            ).fetchall()
+        if saved:
+            parsed["payment_rows_recorded"] = row["source_rows"]
+            parsed["payment_preview"] = [{
+                "excel_row":p["excel_row"],
+                "description":p["description"],
+                "sol_id":p["sol_id_text"],
+                "branch_name":p["official_branch_name"] or "PENDING_SOL_MASTER",
+                "credit_amount":p["credit_amount"],
+                "review_flags":json.loads(p["review_reasons_json"]),
+                "ledger_status":p["source_status"],
+            } for p in saved]
         return jsonify({**_metadata(row), **parsed})
     except ValueError:
         return jsonify(error="Stored evidence workbook invalid"), 503
