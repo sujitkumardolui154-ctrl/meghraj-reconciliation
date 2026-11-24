@@ -57,9 +57,18 @@ cd ~/sbi-r31-7-dedicated-audit
 
 # Verify requirements before any Docker creation. Both names must be ABSENT.
 sudo docker image inspect postgres:16-alpine --format '{{.Id}}'
-sudo docker container inspect sbi-r31-7-dedicated-pg --format '{{.Id}}' 2>/dev/null && echo 'STOP=DEDICATED_CONTAINER_ALREADY_EXISTS' || true
-sudo docker network inspect sbi-r31-7-dedicated-internal --format '{{.Id}}' 2>/dev/null && echo 'STOP=DEDICATED_NETWORK_ALREADY_EXISTS' || true
-test ! -e /home/ubuntu/sbi-db-management/db-r31-7-dedicated || echo 'STOP=DEDICATED_QA_DIRECTORY_ALREADY_EXISTS'
+if sudo docker container inspect sbi-r31-7-dedicated-pg >/dev/null 2>&1; then
+  echo 'STOP=DEDICATED_CONTAINER_ALREADY_EXISTS'; exit 1
+fi
+if sudo docker network inspect sbi-r31-7-dedicated-internal >/dev/null 2>&1; then
+  echo 'STOP=DEDICATED_NETWORK_ALREADY_EXISTS'; exit 1
+fi
+if test -e /home/ubuntu/sbi-db-management/db-r31-7-dedicated; then
+  echo 'STOP=DEDICATED_QA_DIRECTORY_ALREADY_EXISTS'; exit 1
+fi
+if test ! -w /home/ubuntu/sbi-db-management; then
+  echo 'STOP=PRIVATE_PARENT_NOT_WRITABLE'; exit 1
+fi
 
 # Only if all reviewed preflight conditions are met:
 PYTHONDONTWRITEBYTECODE=1 python3 -B database/stage31/db_r31_7_dedicated_isolated.py
