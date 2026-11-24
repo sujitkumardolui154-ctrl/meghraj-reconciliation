@@ -72,6 +72,20 @@ jobs:
           bash staging/aws_calculation_prescreen/host_stage.sh status "$SHA"
           echo "R30_DISPOSABLE_DOCKER_STAGE=PASS"
           echo "R30_AWS_ACTUAL_HOST_DEPLOY=NOT_PERFORMED"
+      - name: Re-deploy same pinned SHA and verify previous-image rollback backup lifecycle
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          SHA="$(git rev-parse HEAD)"
+          secret="$(cat "$RUNNER_TEMP/r30-env-path")"
+          sudo env SBI_R30_SECRET_FILE="$secret" \
+            SBI_R30_STAGE_SCOPE=PRIVATE_LOOPBACK_ONLY \
+            bash staging/aws_calculation_prescreen/host_stage.sh stage "$SHA"
+          bash staging/aws_calculation_prescreen/host_stage.sh status "$SHA"
+          if sudo docker image inspect "sbi-calc-prescreen:rollback-$SHA" >/dev/null 2>&1; then
+            echo "R30_OLD_IMAGE_BACKUP_TAG_NOT_DISPOSED"; exit 1
+          fi
+          echo "R30_REPEAT_DEPLOY_AND_BACKUP_CLEANUP=PASS"
       - name: Assert localhost only, read-only filesystem and no financial writer surface
         shell: bash
         run: |
