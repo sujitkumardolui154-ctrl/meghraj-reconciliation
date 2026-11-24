@@ -1,8 +1,11 @@
-name: SBI R26.9 Case 2.3 Integrated Master Matrix Method QA (Finance Locked)
+name: SBI R26.9 Cases 2.1-2.4 Combined Ledger and Status Review QA (Finance Locked)
 on:
   push:
     branches:
-      - review/sbi-r269-case23-master-matrix-integrated-adjudication-20261124
+      - review/sbi-r269-case24-combined-integration-qa-20261124
+  pull_request:
+    branches:
+      - feature/sbi-payment-reconciliation-readiness-gate-20261120
   workflow_dispatch:
 permissions:
   contents: read
@@ -879,6 +882,52 @@ jobs:
           print("R21_REAL_AWS_STAGING_DATABASE=NOT_TESTED")
           print("R21_SIGNED_FINANCE_RELEASE=NOT_RECEIVED")
           print("R21_FINANCIAL_APPLY=LOCKED")
+          PY
+      - name: R26.9 Case 2.4 integrated status classification and anti-write proof
+        run: |
+          set -Eeuo pipefail
+          python -m py_compile scripts/ci/sbi_r269_case24_financial_status_shadow.py \
+            scripts/ci/sbi_r269_case24_case23_review_handoff.py \
+            tests/test_sbi_r269_case24_financial_status_shadow.py \
+            tests/test_sbi_r269_case24_case23_review_handoff.py
+          python -m unittest discover -s tests -p 'test_sbi_r269_case24*.py' -v
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+          sys.path.insert(0,str(Path("scripts/ci").resolve()))
+          from sbi_r269_case24_financial_status_shadow import StatusEvidence, classify_shadow
+          e=StatusEvidence("SYN-CASE24-UPLOAD",2,"100.00")
+          r=classify_shadow(e)
+          assert r["shadow_status"]=="REVIEW_REQUIRED"
+          assert r["final_column_m_status"] is None
+          assert not r["write_column_m"]
+          assert r["financial_apply_locked"]
+          assert r["real_database_writes"]==0
+          assert not r["full_v251_v239_certified"]
+          receipt={
+              "stage":"R269_CASE24_COMBINED_DEV_ONLY",
+              "prior_case21_case22_case23_suites_run_in_workflow":True,
+              "case24_individual_and_handoff_tests_run":True,
+              "one_fresh_workbook_scope_only":True,
+              "source_bank_a_to_l_untouched":True,
+              "matrix_cash_review_is_not_paid":True,
+              "final_payment_status_assigned":False,
+              "real_financial_allocations":0,
+              "real_financial_database_writes":0,
+              "case24_review_only":True,
+              "full_master_v251_matrix_v239_certified":False,
+              "production_release_authorized":False,
+              "financial_apply_locked":True,
+              "external_live_evidence_not_used":True,
+          }
+          Path("r20-artifacts/r269_case24_combined_status_review_receipt.json").write_text(
+              json.dumps(receipt,indent=2,sort_keys=True)+"\\n")
+          print("R269_CASE24_COMBINED_REVIEW=PASS_SYNTHETIC_ONLY")
+          print("R269_CASE24_ORIGINAL_PAYMENT_A_TO_L=UNTOUCHED")
+          print("R269_CASE24_COLUMN_M=NOT_ASSIGNED")
+          print("R269_CASE24_FULL_V251_V239_CERTIFIED=NO")
+          print("R269_CASE24_PRODUCTION_WRITES=NONE")
+          print("R269_CASE24_FINANCIAL_APPLY=LOCKED")
           PY
       - uses: actions/upload-artifact@v4
         with:
