@@ -29,9 +29,13 @@ jobs:
             staging/aws_login_v150/payment_received_reports.py \
             staging/aws_login_v150/payment_evidence_upload.py \
             staging/aws_login_v150/app.py \
-            tests/test_sbi_r31_payment_received_ledger_sol_reports.py
+            tests/test_sbi_r31_payment_received_ledger_sol_reports.py \
+            staging/aws_login_v150/prepare_private_sol_master.py \
+            tests/test_sbi_r31_private_sol_master_converter.py
       - name: R31 source-preserving payment DB, branch auto mapping and SOL report tests
         run: python -m unittest discover -s tests -p 'test_sbi_r31_payment_received_ledger_sol_reports.py' -v
+      - name: R31 private SOL master conversion and conflict suppression QA
+        run: python -m unittest discover -s tests -p 'test_sbi_r31_private_sol_master_converter.py' -v
       - name: Existing fixed-header payment upload contract regression
         run: python -m unittest discover -s tests -p 'test_sbi_payment_evidence_upload.py' -v
       - name: Existing login and Database Update UI regressions
