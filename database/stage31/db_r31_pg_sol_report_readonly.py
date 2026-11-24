@@ -41,13 +41,18 @@ WITH source AS (
 SELECT
  sol_id,
  CASE
-   WHEN count(*) FILTER (
-          WHERE official_branch_name IS NULL
+   WHEN count(payment_id)>0
+     AND count(*) FILTER (
+          WHERE payment_id IS NOT NULL AND (
+                official_branch_name IS NULL
              OR length(trim(official_branch_name))=0
-             OR sol_master_sha256 IS NULL) = 0
-     AND count(DISTINCT official_branch_name)=1
-     AND count(DISTINCT sol_master_sha256)=1
+             OR sol_master_sha256 IS NULL)) = 0
+     AND count(DISTINCT official_branch_name)
+          FILTER (WHERE payment_id IS NOT NULL)=1
+     AND count(DISTINCT sol_master_sha256)
+          FILTER (WHERE payment_id IS NOT NULL)=1
    THEN max(official_branch_name)
+          FILTER (WHERE payment_id IS NOT NULL)
    ELSE 'PENDING_SOL_MASTER_REVIEW'
  END AS branch_name,
  count(*)::bigint AS payment_rows,
