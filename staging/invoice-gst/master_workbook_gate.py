@@ -198,3 +198,29 @@ def safe_audit_summary(audit):
             "source_status","declared_production_status",
             "automatic_database_write")
     return {k:audit[k] for k in keys}
+
+if __name__ == "__main__":
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--source-xlsx", required=True)
+    parser.add_argument("--expected-sha256", required=True)
+    parser.add_argument("--candidate-output", required=True,
+                        help="PRIVATE destination, do not commit to GitHub")
+    parser.add_argument("--audit-output",
+                        help="Optional PRIVATE machine-readable counts, no client rows")
+    args = parser.parse_args()
+    result = export_private_canonical_csv(
+        args.source_xlsx,
+        args.candidate_output,
+        expected_source_sha=args.expected_sha256
+    )
+    if args.audit_output:
+        Path(args.audit_output).write_text(
+            json.dumps(result, indent=2) + "\n", encoding="utf-8"
+        )
+    print("CANONICAL_CANDIDATES_EXPORTED=", result["canonical_candidate_rows_exported"])
+    print("SUPPLEMENTAL_REVIEW_ROWS_EXCLUDED=", result["supplemental_review_rows_excluded"])
+    print("STATUS=", result["source_status"])
+    print("DATABASE_WRITES=NONE")
