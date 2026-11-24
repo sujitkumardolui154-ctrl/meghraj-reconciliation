@@ -90,8 +90,8 @@ def run():
         candidate=plan(first,"a"*32)
         assert len(candidate.rows)==5
         assert [r.status for r in candidate.rows]==[
-            STATUS_PASS,STATUS_MASTER,STATUS_BAD,STATUS_DUP,STATUS_DUP]
-        assert candidate.accepted_credit_paise==14000
+            STATUS_PASS,STATUS_MASTER,STATUS_BAD,STATUS_DUP,STATUS_BAD]
+        assert candidate.accepted_credit_paise==13000
         result=write_qa_source_receipt(conn,candidate)
         assert result["status"]=="QA_SOURCE_ROWS_COMMITTED"
         assert result["production_writes"] is False
