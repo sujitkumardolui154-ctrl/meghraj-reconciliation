@@ -420,3 +420,39 @@ def _authorize_credit_note_report():
 
 
 app.register_blueprint(create_credit_note_blueprint(_authorize_credit_note_report))
+
+
+# SBI Invoice + GST module (opt-in, isolated PostgreSQL registry).
+# Firebase sessions and existing financial/report gateways remain unchanged.
+from dashboard_sessions import csrf_valid as _invoice_csrf_valid
+from invoice_gst_feature import create_invoice_gst_blueprint
+
+
+def _invoice_creator_authorized():
+    user = getattr(g, "dil_user", None)
+    identity = getattr(g, "dil_identity", None)
+    if user is None or not isinstance(identity, dict):
+        return False
+    if getattr(user, "disabled", True) or getattr(user, "uid", None) != identity.get("uid"):
+        return False
+    claims = getattr(user, "custom_claims", None) or {}
+    return claims.get("dil_dashboard") is True and claims.get("sbi_invoice_creator") is True
+
+
+@app.get("/invoice_gst_ui.js")
+def invoice_gst_ui_script():
+    result = send_from_directory(".", "invoice_gst_ui.js", mimetype="application/javascript")
+    result.headers["Cache-Control"] = "no-store"
+    result.headers["X-Content-Type-Options"] = "nosniff"
+    return result
+
+
+app.register_blueprint(
+    create_invoice_gst_blueprint(
+        can_read=lambda: can_view_report(
+            getattr(g, "dil_user", None), getattr(g, "dil_identity", None)
+        ),
+        can_create=_invoice_creator_authorized,
+        csrf_valid=_invoice_csrf_valid,
+    )
+)
