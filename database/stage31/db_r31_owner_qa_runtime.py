@@ -15,7 +15,10 @@ import hashlib
 import json
 import zipfile
 
-import psycopg
+try:
+    import psycopg
+except ImportError:
+    import psycopg2 as psycopg
 from openpyxl import Workbook, load_workbook
 import payment_evidence_upload as original
 
