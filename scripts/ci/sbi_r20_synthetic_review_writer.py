@@ -9,6 +9,7 @@ M status SUSPENSE. Original A:L, A:AH and all other tabs are immutable.
 from __future__ import annotations
 from collections import Counter
 from hashlib import sha256
+from decimal import Decimal
 import io
 
 from openpyxl import load_workbook
@@ -83,7 +84,7 @@ def create_locked_synthetic_review_xlsx(
                 decision = "NO_EXACT_MXP_REFERENCE"
             else:
                 decision = "CONTRADICTORY_REFERENCE_OR_UNAVAILABLE_INVOICE"
-            if source.credit.startswith("-"):
+            if Decimal(source.credit) <= 0:
                 decision = "NONPOSITIVE_CREDIT_REVIEW"
             decisions[decision] += 1
 
@@ -122,7 +123,7 @@ def create_locked_synthetic_review_xlsx(
     if structural["payment_status_counts_structure_only"].get("Duplicate Payment", 0):
         _refuse("UNAUTHORIZED_DUPLICATE_STATUS")
     if (structural["payment_status_counts_structure_only"].get("SUSPENSE", 0)
-            != sum(1 for item in pay.values() if item.credit and float(item.credit) > 0)):
+            != sum(1 for item in pay.values() if item.credit and Decimal(item.credit) > 0)):
         _refuse("POSITIVE_SOURCE_PAYMENT_STATUS_COVERAGE_MISSING")
 
     return out, {
