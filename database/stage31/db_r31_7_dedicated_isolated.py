@@ -90,6 +90,9 @@ def source_preflight():
             "LOCAL_DISPOSABLE_POSTGRES_IMAGE_REQUIRED")
     require(not PRIVATE.exists() and not PRIVATE.is_symlink(),
             "DEDICATED_PRIVATE_QA_DIRECTORY_EXISTS_REVIEW")
+    require(PRIVATE.parent.is_dir() and not PRIVATE.parent.is_symlink()
+            and os.access(PRIVATE.parent,os.W_OK|os.X_OK),
+            "DEDICATED_PRIVATE_QA_PARENT_NOT_WRITABLE_OR_SAFE")
     app=qa.inspect(qa.APP)
     require(app["State"]["Status"]=="running" and
             isinstance(app.get("Image"),str) and
