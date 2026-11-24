@@ -178,7 +178,18 @@ def build_receipt_plan(payload, original_parser, extract_all,
     for row_number, (entry, paise) in good.items():
         require(all(type(entry.get(field)) is str for field in SOURCE_FIELDS),
                 "FT04_ACCEPTED_FIELD_TYPE_INVALID")
-        fingerprints[(entry["Description"], entry["SOL ID"], paise)] += 1
+    # The existing approved parser may exclude the *second* repeated row,
+    # leaving the first apparently accepted. Inspect ALL original source
+    # records so the first candidate is also held from automatic matching.
+    for _, original, _ in raw_rows:
+        if type(original) is dict and set(original) == set(SOURCE_FIELDS):
+            try:
+                exact = Decimal(str(original["Credit Amount"])) * 100
+                if exact.is_finite() and exact > 0 and exact == exact.to_integral_value():
+                    fingerprints[(original["Description"],original["SOL ID"],
+                                  int(exact))] += 1
+            except (InvalidOperation,ValueError,TypeError):
+                pass
 
     planned = []
     for number, entry, row_error in raw_rows:
