@@ -30,6 +30,7 @@ SOURCE=ROOT/"r31_8_combined_security_incontainer.py"
 # buffered ALL results until process completion, falsely appearing to hang.
 STOP_PREFIX="STOP=DB_R31_8_"
 ALLOWED_QA_KEYS=frozenset({
+    "DB_R31_8_CURRENT_CHECK",
     "DB_R31_8_SESSION_COOKIE_SECURE_FLAGS",
     "DB_R31_8_AUTHENTICATED_FOREIGN_RECEIPT_GET_SYNC",
     "DB_R31_8_FORGED_OWNER_HEADER_AND_QUERY_IGNORED",
