@@ -37,3 +37,7 @@ New fixed minimal staging sheet headers are exactly `Description`, `SOL ID`, `Cr
 ## Evidence status
 
 Stage 31.1 source code prepared in GitHub. Execution status pending the owner's AWS Lightsail terminal output. Do not label Stage 31 integration PASS or LIVE until all applicable gates above have passed.
+
+## Database Management R31 payment requirements handoff (24 Nov 2026)
+
+Owner's R31 follow-on requirements are now published in [`DBMGMT_R31_CENTRAL_PAYMENT_LEDGER_AND_SOL_REPORT_HANDOFF_20261124.md`](DBMGMT_R31_CENTRAL_PAYMENT_LEDGER_AND_SOL_REPORT_HANDOFF_20261124.md). They instruct this **existing central PostgreSQL** workstream to integrate approved three-column payment uploads, per-row exclusion, SOL-to-official-branch mapping, fresh-invoice engine input and SOL-wise source/matched/not-calculated reports. Reuse Stage 31 / FT-04 relationships; do not promote R31's SQLite payment ledger into a second authoritative business database. This is a requirements handoff only; no database migration, live AWS release or financial writer activation.
