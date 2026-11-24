@@ -81,7 +81,6 @@ def apply_only_isolated_qa(dsn, archive, reviewer):
             **{key: profile[key] for key in REQUIRED_FIELDS},
             "logo_image": logo, "logo_mime": profile["logo_mime"],
         }
-        columns = list(expected)
         existing = conn.execute(
             """SELECT * FROM sbi_invoice_gst.vendor_profiles
                WHERE vendor_key='MEGHRAJ_EXPRESS' FOR UPDATE"""
@@ -112,7 +111,7 @@ def apply_only_isolated_qa(dsn, archive, reviewer):
                 head_office, head_phone, website, verified_by, verified_at)
                VALUES ('MEGHRAJ_EXPRESS',%s,%s,%s,TRUE,
                        %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,now())
-               ON CONFLICT (vendor_key) DO NOTHING""",
+               """,
             (profile["legal_name"], logo, profile["logo_mime"],
              profile["declaration_text"], profile["bank_instructions"],
              profile["pan"], profile["gstin"], profile["vendor_id"],
