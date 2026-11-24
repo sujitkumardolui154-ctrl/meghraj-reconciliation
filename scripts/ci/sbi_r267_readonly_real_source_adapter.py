@@ -140,7 +140,8 @@ def read_private_snapshots(
                     raise FinancialReviewRefusal("OFFICIAL_MASTER_HEADER_MISMATCH")
                 continue
             code=_raw(row,4);name=_raw(row,2)
-            if (not isinstance(code,str) or not SOL_RE.fullmatch(code)
+            if (_type(row,4) not in ("s","inlineStr","str")
+                or not isinstance(code,str) or not SOL_RE.fullmatch(code)
                 or not isinstance(name,str) or not name.strip()):
                 invalid_master+=1
                 holds.append(("MASTER",rowno,"MASTER_SOL_OR_OFFICIAL_NAME_INVALID"))
