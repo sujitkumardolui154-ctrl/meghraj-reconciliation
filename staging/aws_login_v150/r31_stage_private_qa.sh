@@ -10,6 +10,9 @@ ROOT="$(cd -- "$(dirname -- "$0")/../.." && pwd -P)"
 [[ "$(git -C "$ROOT" rev-parse HEAD)" == "$SHA" ]] || {
  echo 'STOP=UNPINNED_GIT_TREE';exit 2;
 }
+[[ -z "$(git -C "$ROOT" status --porcelain --untracked-files=all)" ]] || {
+ echo 'STOP=GIT_WORKTREE_NOT_CLEAN';exit 2;
+}
 git -C "$ROOT" show "$SHA:staging/aws_login_v150/r31_stage_private_qa.sh" |
  cmp -s - "$0" || { echo 'STOP=DEPLOY_SCRIPT_NOT_PINNED';exit 2; }
 exec 9>/run/lock/sbi-r31-private-qa.lock
@@ -120,7 +123,8 @@ else
  docker network connect "$QANET" "$STAGE"
  echo 'DB_R31_PRIVATE_STAGE_CONTAINER_CREATED=PASS'
 fi
-[[ "$(docker inspect -f '{{json .HostConfig.PortBindings}}' "$STAGE")" == 'null' ]] || {
+PORT_BINDINGS="$(docker inspect -f '{{json .HostConfig.PortBindings}}' "$STAGE")"
+[[ "$PORT_BINDINGS" == 'null' || "$PORT_BINDINGS" == '{}' ]] || {
  echo 'STOP=STAGING_CONTAINER_PUBLISHED_PORT';exit 2;
 }
 # Give the single non-root Gunicorn server time to become healthy.
