@@ -113,7 +113,9 @@ def render_invoice_pdf(invoice, vendor_profile, lines):
         key: _require(vendor_profile, key)
         for key in ("legal_name", "declaration_text", "bank_instructions",
                     "pan", "gstin", "vendor_id", "service_type", "sac_code",
-                    "footer_text", "authorized_signature_label")
+                    "footer_text", "authorized_signature_label",
+                    "registered_office", "registered_phone", "registered_email",
+                    "head_office", "head_phone", "website")
     }
     if legal["legal_name"].upper() != "MEGHRAJ EXPRESS":
         raise TemplateVerificationError("VENDOR_IDENTITY_UNVERIFIED")
@@ -152,12 +154,44 @@ def render_invoice_pdf(invoice, vendor_profile, lines):
     )
     story = []
     ratio = logo_size[0] / logo_size[1]
-    display_width = min(210, ratio * 70)
-    story.append(Image(BytesIO(logo_png), width=display_width,
-                       height=display_width / ratio, hAlign="LEFT"))
-    story.append(Spacer(1, 9))
-    story.append(Paragraph("TAX INVOICE", styles["h"]))
-    story.append(Spacer(1, 9))
+    display_width = min(190, ratio * 68)
+    logo = Image(BytesIO(logo_png), width=display_width,
+                 height=display_width / ratio, hAlign="LEFT")
+    office_html = (
+        '<font color="#AD574B"><b>Regd. Off. :</b></font> ' + _plain(legal["registered_office"]) +
+        '<br/><font color="#367A9B"><b>Phone :</b></font> ' + _plain(legal["registered_phone"]) +
+        ', &nbsp; <b>E-mail :</b> ' + _plain(legal["registered_email"]) +
+        '<br/><font color="#AD574B"><b>Head Off. :</b></font> ' + _plain(legal["head_office"]) +
+        '<br/><font color="#367A9B"><b>Ph. :</b></font> ' + _plain(legal["head_phone"]) +
+        ', &nbsp; <b>web :</b> ' + _plain(legal["website"]) +
+        '<br/><font color="#367A9B"><b>GSTIN : ' + _plain(legal["gstin"]) + '</b></font>'
+    )
+    office_style = ParagraphStyle(
+        "inv_office", fontName="Helvetica", fontSize=7.0, leading=10.2
+    )
+    header = Table(
+        [[logo, Paragraph(office_html, office_style)]],
+        colWidths=[194, 315]
+    )
+    header.setStyle(TableStyle([
+        ("VALIGN", (0,0),(-1,-1), "MIDDLE"),
+        ("LEFTPADDING", (0,0),(-1,-1), 0),
+        ("RIGHTPADDING", (0,0),(-1,-1), 0),
+        ("TOPPADDING", (0,0),(-1,-1), 0),
+        ("BOTTOMPADDING", (0,0),(-1,-1), 4),
+        ("LINEBELOW", (0,0),(-1,-1), 1.0, colors.black),
+    ]))
+    story.append(header)
+    title_box = Table(
+        [[Paragraph("TAX INVOICE", styles["h"])]], colWidths=[509]
+    )
+    title_box.setStyle(TableStyle([
+        ("BOX", (0,0),(-1,-1), 0.9, colors.black),
+        ("TOPPADDING", (0,0),(-1,-1), 3),
+        ("BOTTOMPADDING", (0,0),(-1,-1), 3),
+    ]))
+    story.append(title_box)
+    story.append(Spacer(1, 8))
 
     date_text = lambda v: v.strftime("%d/%m/%Y") if hasattr(v, "strftime") else (
         str(v)[8:10] + "/" + str(v)[5:7] + "/" + str(v)[:4])
@@ -194,7 +228,7 @@ def render_invoice_pdf(invoice, vendor_profile, lines):
     month_name = invoice["service_month"].split()[0][:3]
     service_short = month_name + "-" + invoice["service_month_key"][2:4]
     tax_table = Table([
-        ["Invoice Month","Bill Ammount","CGST 9 %","SGST 9%","Total",
+        ["Invoice Month","Bill Amount","CGST 9 %","SGST 9%","Total",
          "Total With Round Off"],
         [service_short,
          f"{expected:,.2f}", f"{_money(invoice['cgst']):,.2f}",
@@ -202,8 +236,7 @@ def render_invoice_pdf(invoice, vendor_profile, lines):
          f"{_money(invoice['total']):,.2f}", ""]
     ], colWidths=[84,90,74,74,90,97], rowHeights=[29,29])
     tax_table.setStyle(TableStyle([
-        ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#E8EFF6")),
-        ("GRID",(0,0),(-1,-1),0.4,colors.HexColor("#91A6BD")),
+        ("GRID",(0,0),(-1,-1),0.8,colors.black),
         ("VALIGN",(0,0),(-1,-1),"MIDDLE"),
         ("LEFTPADDING",(0,0),(-1,-1),6),
         ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),
