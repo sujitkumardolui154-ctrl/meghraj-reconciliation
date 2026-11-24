@@ -1,0 +1,21 @@
+name: DB-R31.9 combined security gate offline contract
+
+on:
+  push:
+    branches:
+      - feature/sbi-r31-9-combined-rls-two-owner-https-gate-20261125
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-security-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify R31.9 syntax and fail-closed source contracts
+        run: python -m unittest discover -s staging/aws_login_v150 -p 'test_r31_9_combined_gate.py' -v
