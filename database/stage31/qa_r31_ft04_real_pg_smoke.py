@@ -28,6 +28,7 @@ from sbi_payment_pg_bridge import _all_source_rows
 import sbi_payment_pg_bridge as ft04_pinned
 from db_r31_ft04_parser_parity import classify_exact_ft04_rows
 from db_r31_private_sol_master import load_approved_sol_file,SCHEMA
+from db_r31_pg_sol_report_readonly import sol_summary,payment_details
 from payment_evidence_upload import _parse
 from tempfile import TemporaryDirectory
 from hashlib import sha256
@@ -157,6 +158,40 @@ def run():
             assert cur.fetchone()[0]==0
         print("DB_R31_FT04_QA_CROSS_RECEIPT_DUPLICATE_HELD=PASS")
         print("DB_R31_FT04_QA_READONLY_VIEW_SOURCE_ROW_PARITY=PASS")
+        # Independent dedicated QA report role: SELECT on the versioned
+        # source-only view, NO direct financial table SELECT or DML.
+        reporter=psycopg.connect(os.environ["SBI_R31_REPORT_DSN"],autocommit=True)
+        try:
+            report=sol_summary(reporter,trusted_owner_uid="synthetic-owner-001")
+            sol={str(x["sol_id"]):x for x in report["records"]}
+            assert set(sol)=={"1505","99922"}
+            assert sol["1505"]["payment_rows"]==6
+            assert sol["1505"]["valid_payment_rows"]==4
+            assert sol["1505"]["credit_paise"]==21700
+            assert sol["1505"]["excluded"]==2
+            assert sol["1505"]["held_for_review"]==2
+            assert sol["1505"]["not_calculated"]==4
+            assert sol["1505"]["branch_name"]=="SOUTHERN AVENUE"
+            assert sol["99922"]["payment_rows"]==1
+            assert sol["99922"]["credit_paise"]==2000
+            assert sol["99922"]["branch_name"]=="PENDING_SOL_MASTER_REVIEW"
+            assert report["page_totals"]["payment_rows"]==7
+            assert report["page_totals"]["credit_paise"]==23700
+            assert report["page_totals"]["matched"] is None
+            detail=payment_details(reporter,trusted_owner_uid="synthetic-owner-001")
+            assert len(detail["records"])==7
+            assert len(payment_details(reporter,trusted_owner_uid="different-owner")["records"])==0
+            with reporter.cursor() as cur:
+                cur.execute("""SELECT has_table_privilege(
+                    current_user,'sbi.payments','INSERT'),
+                  has_table_privilege(current_user,'sbi.payments','UPDATE'),
+                  has_table_privilege(current_user,'sbi.payments','DELETE')""")
+                assert tuple(cur.fetchone())==(False,False,False)
+            print("DB_R31_QA_READONLY_CANONICAL_SOL_TALLY=PASS")
+            print("DB_R31_QA_READONLY_REPORT_OWNER_ISOLATION=PASS")
+            print("DB_R31_QA_READONLY_ROLE_FINANCE_DML=DENIED")
+        finally:
+            reporter.close()
         print("DB_R31_FT04_QA_FINANCIAL_ALLOCATIONS=0")
         print("DB_R31_FT04_QA_PRODUCTION_DATABASE_WRITES=0")
         print("DB_R31_FT04_QA_RELEASE_STATUS=ISOLATED_DOCKER_ONLY")
