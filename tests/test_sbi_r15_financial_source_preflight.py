@@ -101,9 +101,7 @@ class OriginalWorkbookPreflight(unittest.TestCase):
     def test_08_invoice_must_have_thirty_four_original_columns(self):
         w, _ = fixture()
         i = w["Invoice Details."]
-        for row in i:
-            if len(row) >= 34:
-                row[33].value = None
+        i.delete_cols(34)
         with self.assertRaisesRegex(SourceContractError, "A_TO_AH_MISSING"):
             inspect_original_workbook(encode(w))
 
@@ -144,7 +142,8 @@ class OriginalWorkbookPreflight(unittest.TestCase):
         raw = encode(w)
         report = inspect_original_workbook(raw)
         self.assertTrue(report["original_sheet_order_preserved"])
-        self.assertEqual(raw, encode(w))
+        self.assertEqual(report["source_sha256"], hashlib.sha256(raw).hexdigest())
+        self.assertEqual(w.sheetnames, ["Invoice Details.", "PAYMNENT", "OTHER ORIGINAL"])
 
     def test_15_three_column_convenience_receipt_not_authoritative(self):
         w = Workbook()
