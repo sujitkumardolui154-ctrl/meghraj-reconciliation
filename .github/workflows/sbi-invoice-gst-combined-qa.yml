@@ -8,6 +8,7 @@ on:
       - 'dashboard_source/index.html'
       - 'dashboard_source/requirements.txt'
       - 'staging/invoice-gst/**'
+      - 'scripts/sbi_invoice_gst_aws_staging_readiness.py'
       - 'tests/test_invoice_gst_combined.py'
       - 'tests/test_invoice_gst_private_*.py'
       - 'tests/test_invoice_gst_master_workbook_gate.py'
@@ -50,7 +51,7 @@ jobs:
         run: python -m pip install 'Flask>=3.1,<4' 'psycopg[binary]>=3.2,<4' 'openpyxl>=3.1,<4' 'Pillow>=11,<13' 'reportlab>=4.2,<5' 'pypdf>=5,<7'
       - name: Python and JS syntax checks
         run: |
-          python -m py_compile dashboard_source/invoice_gst_core.py dashboard_source/invoice_gst_feature.py dashboard_source/invoice_gst_pdf.py dashboard_source/production_gateway.py
+          python -m py_compile dashboard_source/invoice_gst_core.py dashboard_source/invoice_gst_feature.py dashboard_source/invoice_gst_pdf.py dashboard_source/production_gateway.py staging/invoice-gst/master_workbook_gate.py scripts/sbi_invoice_gst_aws_staging_readiness.py
           node --check dashboard_source/invoice_gst_ui.js
       - name: Combined invoice and real isolated Postgres test
         run: python -m unittest discover -s tests -p 'test_invoice_gst_combined.py' -v
@@ -61,6 +62,17 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_invoice_gst_master_workbook_gate.py' -v
       - name: Existing GST contract regression
         run: python -m unittest discover -s staging/mxp-gst/tests -p 'test_*.py' -v
+      - name: Safe AWS staging preflight default remains read-only
+        run: |
+          python scripts/sbi_invoice_gst_aws_staging_readiness.py > /tmp/invoice-staging-preflight.json
+          python - <<'PY'
+          import json
+          data = json.load(open("/tmp/invoice-staging-preflight.json"))
+          assert data["authenticated_aws_staging_test"] == "NOT_PERFORMED"
+          assert data["isolated_qa_database"]["status"] == "NOT_CONNECTED_NOT_TESTED"
+          assert data["reconciliation_financial_writes"] is False
+          print("AWS_STAGING_PREFLIGHT_UNAUTHENTICATED_SAFE_MODE=PASS")
+          PY
       - name: Release safety assertions
         run: |
           python - <<'PY'
