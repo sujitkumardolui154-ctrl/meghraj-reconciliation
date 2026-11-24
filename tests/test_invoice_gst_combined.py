@@ -442,6 +442,26 @@ class IsolatedPostgresCombinedTests(unittest.TestCase):
         self.assertEqual(row["bank_instructions"], "QA BANK")
         self.assertEqual(row["legal_name"], "MEGHRAJ EXPRESS")
 
+    def test_12_isolated_aws_preflight_requires_unique_verified_sol(self):
+        from importlib.util import module_from_spec, spec_from_file_location
+        source = ROOT / "scripts/sbi_invoice_gst_aws_staging_readiness.py"
+        spec = spec_from_file_location("qa_staging_preflight", source)
+        preflight = module_from_spec(spec)
+        spec.loader.exec_module(preflight)
+        previous = os.environ.get("SBI_INVOICE_GST_TEST_DSN")
+        os.environ["SBI_INVOICE_GST_TEST_DSN"] = self.dsn
+        try:
+            snapshot = preflight.database_review()
+            self.assertEqual(snapshot["status"], "STAGING_SCHEMA_PRESENT")
+            self.assertTrue(snapshot["private_vendor_profile_present"])
+            self.assertEqual(snapshot["verified_branch_records"], 1)
+            self.assertFalse(snapshot["production_write"])
+        finally:
+            if previous is None:
+                os.environ.pop("SBI_INVOICE_GST_TEST_DSN", None)
+            else:
+                os.environ["SBI_INVOICE_GST_TEST_DSN"] = previous
+
     def test_05_fy_conflict_and_review(self):
         response = self.client.get("/api/invoice-gst/gst.xlsx?month=2026-02&fy=2026-2027")
         self.assertEqual(response.status_code, 422)
