@@ -13,7 +13,7 @@ from db_r31_source_report_contract import (
     query_args, csv_export,
 )
 
-QA_REPORT_ROLE = "sbi_ft04q_report"
+QA_REPORT_ROLE = "sbi_r31_ownerqa_report"
 
 
 def _assert_report_role(cur) -> None:
