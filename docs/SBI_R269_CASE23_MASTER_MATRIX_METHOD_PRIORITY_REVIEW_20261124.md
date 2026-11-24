@@ -27,6 +27,6 @@ File: `scripts/ci/sbi_r269_case23_master_matrix_adjudicator.py`.
 - **Case 2.5–2.6** will need per-edge forensic evidence, separate accounting reference oracle, signed same-upload simulation and all method coverage.
 
 ## QA acceptance and status
-62 synthetic adversarial tests cover source hash and row binding, method ordering, partial/GST/SBISA/cross-SOL, contested invoice groups, DNM holding, fraudulent Matrix status/amounts, old-history isolation and source protection. The combined CI repeats the previous 865 tests plus 62 new; the GitHub workflow result must actually pass. Scope passes are NOT production certification.
+66 synthetic adversarial tests cover source hash and row binding, method ordering, partial/GST/SBISA/cross-SOL, contested invoice groups, DNM holding, fraudulent Matrix status/amounts, old-history isolation and source protection. The combined CI repeats the previous 865 tests plus 66 new; the GitHub workflow result must actually pass. Scope passes are NOT production certification.
 
 **`R269_CASE23_DEVELOPMENT_SCOPED_ONLY`; `FINANCIAL_APPLY=LOCKED`; `REAL_DB_WRITES=0`; full Master v2.51 / Matrix v2.39 NOT certified.**
