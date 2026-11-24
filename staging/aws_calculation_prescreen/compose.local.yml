@@ -2,9 +2,12 @@
 # Credentials must be injected via environment/secrets by an authorized operator.
 services:
   sbi-calc-prescreen-staging:
+    image: "sbi-calc-prescreen:${SBI_CALC_RELEASE_SHA:-unreleased}"
     build:
       context: ../..
       dockerfile: staging/aws_calculation_prescreen/Dockerfile
+      args:
+        SBI_SOURCE_SHA: "${SBI_CALC_RELEASE_SHA:-UNVERIFIED}"
     read_only: true
     user: "10001:10001"
     security_opt:
