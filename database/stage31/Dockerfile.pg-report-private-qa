@@ -1,0 +1,15 @@
+# Build on exact reviewed R31 AWS-login image, never a running production container.
+# This overlay adds ONLY owner-filtered read-only PG reports.
+ARG BASE_IMAGE=sbi-r31-login-pinned:unreviewed
+FROM ${BASE_IMAGE}
+USER root
+RUN python -m pip install --no-cache-dir 'psycopg[binary]>=3.2,<4'
+COPY database/stage31/db_r31_pg_report_private_wsgi.py /app/
+COPY database/stage31/db_r31_pg_sol_report_readonly.py /app/
+COPY database/stage31/db_r31_source_report_contract.py /app/
+COPY database/stage31/db_r31_pg_report_staging_wsgi.py /app/
+RUN chmod 0644 /app/db_r31_pg_report_private_wsgi.py /app/db_r31_pg_sol_report_readonly.py /app/db_r31_source_report_contract.py /app/db_r31_pg_report_staging_wsgi.py
+ENV SBI_R31_PG_REPORT_STAGING_ENABLED=false SBI_FINANCIAL_APPLY=LOCKED PYTHONDONTWRITEBYTECODE=1
+USER 10001:10001
+EXPOSE 8080
+CMD ["gunicorn","--bind","0.0.0.0:8080","--workers","1","--threads","4","db_r31_pg_report_staging_wsgi:app"]
