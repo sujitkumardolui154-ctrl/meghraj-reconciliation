@@ -201,13 +201,29 @@ def main():
 
     # A made-up cookie must not be trusted, even if presented under the
     # original __Host session-cookie name. Do not use a real user's cookie.
-    with app.test_client() as forged_client:
-        domain="sbi-preview.13-232-241-221.sslip.io"
-        forged_client.set_cookie(SESSION_COOKIE,"not-a-firebase-session-cookie",
-                                 domain=domain,secure=True,httponly=True)
-        denied=forged_client.get("/api/r31-private-qa/sol-report",
-                                 base_url=SITE_ORIGIN)
-        http_status(denied,401,"FORGED_SESSION_COOKIE_DENIAL")
+    # An unhandled exception in this specific test previously appeared only
+    # as generic host-level RUNTIME_ERROR, hiding the failed security gate.
+    print("DB_R31_8_CURRENT_CHECK=FORGED_FIREBASE_SESSION_COOKIE",flush=True)
+    try:
+        with app.test_client() as forged_client:
+            domain="sbi-preview.13-232-241-221.sslip.io"
+            forged_client.set_cookie(SESSION_COOKIE,"not-a-firebase-session-cookie",
+                                     domain=domain,secure=True,httponly=True)
+            denied=forged_client.get("/api/r31-private-qa/sol-report",
+                                     base_url=SITE_ORIGIN)
+            http_status(denied,401,"FORGED_SESSION_COOKIE_DENIAL")
+    except Exception as exc:
+        # Never include the exception message, stack or session-cookie data.
+        # Precise safe error taxonomy is sufficient to differentiate a client
+        # test-harness mismatch from a Firebase middleware/server failure.
+        allowed={
+            "TypeError","AttributeError","ValueError","KeyError",
+            "RuntimeError","AssertionError","OSError","LookupError",
+        }
+        category=type(exc).__name__
+        stop("FORGED_COOKIE_EXCEPTION_"+(
+            category.upper() if category in allowed else "OTHER"
+        ))
     print("DB_R31_8_FORGED_FIREBASE_COOKIE_DENIED=PASS",flush=True)
 
     with app.test_client() as client:
