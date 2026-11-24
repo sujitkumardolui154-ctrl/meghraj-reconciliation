@@ -42,6 +42,30 @@ class VerifiedPrivateMasterIntake(unittest.TestCase):
             self.assertEqual(result["status"],"READY_FOR_PRIVATE_QA_IMPORT")
             self.assertEqual(result["rows"][0]["sol_id"],"03970")
 
+    def test_partial_approved_subset_excludes_review_rows(self):
+        with tempfile.TemporaryDirectory() as folder:
+            data = self.write(Path(folder))
+            # Append a second, unmatched branch; only the independently
+            # approved first branch may be admitted in reviewed-subset mode.
+            original = data[0].read_text()
+            data[0].write_text(original + "QA UNVERIFIED BRANCH,00002,\\n")
+            master_digest = hashlib.sha256(data[0].read_bytes()).hexdigest()
+            default = loader.verified_private_inputs(
+                data[0],data[1],master_sha=master_digest,evidence_sha=data[3]
+            )
+            self.assertEqual(default["status"],"REVIEW_REQUIRED")
+            self.assertEqual(default["rows"],[])
+            limited = loader.verified_private_inputs(
+                data[0],data[1],master_sha=master_digest,
+                evidence_sha=data[3],reviewed_subset_only=True
+            )
+            self.assertEqual(limited["status"],
+                             "READY_VERIFIED_SUBSET_FOR_ISOLATED_QA")
+            self.assertEqual(limited["ready"],1)
+            self.assertEqual(len(limited["review"]),1)
+            self.assertEqual(len(limited["rows"]),1)
+            self.assertEqual(limited["rows"][0]["sol_id"],"03970")
+
     def test_tampered_source_denied(self):
         with tempfile.TemporaryDirectory() as folder:
             data=self.write(Path(folder))
