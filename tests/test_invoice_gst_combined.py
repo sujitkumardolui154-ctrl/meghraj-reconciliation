@@ -153,6 +153,8 @@ class IsolatedPostgresCombinedTests(unittest.TestCase):
             conn.execute("DROP SCHEMA IF EXISTS sbi_invoice_gst CASCADE")
             ddl = (ROOT / "staging/invoice-gst/001_isolated_invoice_schema.sql").read_text()
             conn.execute(ddl)
+            migration = (ROOT / "staging/invoice-gst/002_vendor_header_fields.sql").read_text()
+            conn.execute(migration)
             conn.execute(
                 """INSERT INTO sbi_invoice_gst.verified_branches
                    (branch_key,client_name,invoice_branch,invoice_generate_location,
@@ -169,11 +171,15 @@ class IsolatedPostgresCombinedTests(unittest.TestCase):
                    (vendor_key,legal_name,logo_image,logo_mime,exact_logo_verified,
                     declaration_text,bank_instructions,pan,gstin,vendor_id,
                     service_type,sac_code,footer_text,authorized_signature_label,
-                    verified_by,verified_at)
+                    registered_office,registered_phone,registered_email,
+                    head_office,head_phone,website,verified_by,verified_at)
                    VALUES ('MEGHRAJ_EXPRESS','MEGHRAJ EXPRESS',
                            %s,'image/png',TRUE,'QA DECLARATION','QA BANK','QA PAN',
                            'QA GSTIN','QA VENDOR ID','COURIER','QA SAC',
-                           'QA FOOTER','QA SIGNATURE','qa-reviewer',now())""",
+                           'QA FOOTER','QA SIGNATURE',
+                           'QA REGISTERED OFFICE, KOLKATA','033 00000000','qa@example.invalid',
+                           'QA HEAD OFFICE, KOLKATA','033 00000001','example.invalid',
+                           'qa-reviewer',now())""",
                 (cls.synthetic_logo,)
             )
         from flask import Flask, g
@@ -271,6 +277,12 @@ class IsolatedPostgresCombinedTests(unittest.TestCase):
         self.assertIn("TAX INVOICE", invoice_text)
         self.assertIn("MXP90001", invoice_text)
         self.assertIn("MEGHRAJ EXPRESS", invoice_text)
+        self.assertIn("Regd. Off.", invoice_text)
+        self.assertIn("QA REGISTERED OFFICE, KOLKATA", invoice_text)
+        self.assertIn("Head Off.", invoice_text)
+        self.assertIn("QA HEAD OFFICE, KOLKATA", invoice_text)
+        self.assertIn("qa@example.invalid", invoice_text)
+
         annexure_text = "\\n".join(p.extract_text() for p in doc.pages[1:])
         self.assertIn("QA-LR1", annexure_text)
         self.assertIn("QA-LR2", annexure_text)
