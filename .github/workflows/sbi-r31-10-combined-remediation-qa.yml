@@ -1,0 +1,26 @@
+name: R31.10 Combined Remediation Safety Gate
+
+on:
+  push:
+    branches:
+      - feature/sbi-r31-10-combined-remediation-20261125
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-code-and-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline QA of R31.10 all three security gates
+        run: python -m unittest discover -s staging/aws_login_v150 -p 'test_r31_10_combined_remediation.py' -v
+      - name: Python source compile
+        run: python -m py_compile staging/aws_login_v150/r31_10_combined_remediation.py
+      - name: No accidental production database / Caddy deployment
+        run: |
+          ! grep -E 'docker (run|build|network connect)|ALTER TABLE sbi\.|INSERT INTO sbi\.' staging/aws_login_v150/r31_10_combined_remediation.py staging/aws_login_v150/r31_10_shadow_rls.sql
