@@ -181,6 +181,7 @@ def append_receipt(conn, *, owner_uid, receipt_id, source_sha256,
     inserted=0
     sum_original=Decimal("0.00")
     seen=set()
+    preview=[]
     try:
         sheet=wb["PAYMENT EVIDENCE"] if "PAYMENT EVIDENCE" in wb else wb.active
         headers=tuple(sheet.cell(1,i).value for i in (1,2,3))
@@ -242,6 +243,16 @@ def append_receipt(conn, *, owner_uid, receipt_id, source_sha256,
             ))
             inserted+=1
             statuses[status]+=1
+            if len(preview)<50:
+                preview.append({
+                    "excel_row":excel_row,
+                    "description":desc,
+                    "sol_id":rawsol,
+                    "branch_name":branch or "PENDING_SOL_MASTER",
+                    "credit_amount":amount,
+                    "review_flags":sorted(set(reasons)),
+                    "ledger_status":status,
+                })
     finally:
         wb.close()
     insist(inserted==original_parsed["source_rows"],
@@ -257,6 +268,7 @@ def append_receipt(conn, *, owner_uid, receipt_id, source_sha256,
         "duplicate_candidate_review":statuses[STATUS_DUPLICATE],
         "excluded_invalid_source":statuses[STATUS_EXCLUDED],
         "payment_received_records_only":True,
+        "payment_preview":preview,
         "master_state":master_state,
         "original_file_unchanged":True,
         "financial_reconciliation_executed":False,
