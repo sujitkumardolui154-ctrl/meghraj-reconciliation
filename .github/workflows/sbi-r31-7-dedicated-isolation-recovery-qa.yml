@@ -60,8 +60,12 @@ jobs:
       - name: Create operator-only non-production directory in disposable CI runner
         run: |
           set -Eeuo pipefail
+          # GitHub-hosted runner does not necessarily have the AWS ubuntu
+          # home directory. This ONLY prepares the ephemeral Actions VM.
+          sudo -n install -d -o "$(id -un)" -g "$(id -gn)" -m 0755 /home/ubuntu
           sudo -n install -d -o "$(id -un)" -g "$(id -gn)" -m 0755 \
              /home/ubuntu/sbi-db-management
+          test -w /home/ubuntu/sbi-db-management
           test ! -e /home/ubuntu/sbi-db-management/db-r31-7-dedicated
           echo 'DB_R31_7_DISPOSABLE_CREDENTIAL_PARENT=PASS'
       - name: Actual isolated QA on dedicated single-member network
