@@ -334,6 +334,26 @@ class IsolatedPostgresCombinedTests(unittest.TestCase):
                        WHERE vendor_key='MEGHRAJ_EXPRESS'"""
                 )
 
+    def test_08_master_import_never_silently_overrides_identity_or_address(self):
+        # This test runs against the dedicated isolated invoice_qa database.
+        sys.path.insert(0, str(ROOT / "staging/invoice-gst"))
+        from load_private_branch_master import stage_approved_master_qa
+        valid = {**BRANCH, "verified_by": "qa-reviewer"}
+        altered_address = {**valid, "customer_address": "CONFLICTING QA ADDRESS"}
+        payload = {"status": "READY_FOR_PRIVATE_QA_IMPORT", "rows": [altered_address]}
+        with self.assertRaisesRegex(ValueError, "PREEXISTING_BRANCH_MASTER_CONFLICT"):
+            stage_approved_master_qa(self.dsn, payload)
+        same_sol_other_key = {**valid, "branch_key": "different-qa-branch"}
+        payload["rows"] = [same_sol_other_key]
+        with self.assertRaisesRegex(ValueError, "PREEXISTING_SOL_OWNERSHIP_CONFLICT"):
+            stage_approved_master_qa(self.dsn, payload)
+        with self.connect() as conn:
+            count = conn.execute(
+                """SELECT count(*) AS n FROM sbi_invoice_gst.verified_branches
+                   WHERE sol_id='03970'"""
+            ).fetchone()["n"]
+            self.assertEqual(count, 1)
+
     def test_05_fy_conflict_and_review(self):
         response = self.client.get("/api/invoice-gst/gst.xlsx?month=2026-02&fy=2026-2027")
         self.assertEqual(response.status_code, 422)
