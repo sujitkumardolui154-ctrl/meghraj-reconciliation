@@ -232,6 +232,37 @@ class TestR26IndependentFinancialOracle(unittest.TestCase):
         self.assertEqual(first,second)
         self.assertEqual(e.reservation,"100.00")
 
+    def test_43_independent_tds_crosschecks_existing_r17_hypotheses(self):
+        from sbi_r17_synthetic_financial_shadow import (
+            SyntheticInvoice, SyntheticPayment, exact_tds_hypotheses
+        )
+        r17_inv = SyntheticInvoice(
+            key="SYN-MXP-001", sol="0001", client="SYNTHETIC ALPHA",
+            taxable="1000.00", gross="1180.00", gst="180.00",
+            outstanding="1180.00", issued_at=date(2026,9,1),
+            service_periods=("2026-09",), original_s_marker=None,
+        )
+        for rate, credit in ((0,"1180.00"),(1,"1170.00"),(2,"1160.00"),(3,"1150.00")):
+            with self.subTest(rate=rate):
+                r17_pay = SyntheticPayment(
+                    key="SYN-PAY-001", sol="0001", client="SYNTHETIC ALPHA",
+                    credit=credit, booked_at=date(2026,9,15),
+                    narration_refs=("SYN-MXP-001",),
+                    service_periods=("2026-09",)
+                )
+                self.assertEqual(
+                    money_hypotheses(pay(credit=credit), inv()),
+                    exact_tds_hypotheses(r17_pay,r17_inv),
+                )
+
+    def test_44_global_capacity_does_not_assign_status(self):
+        a=global_reservation_review([pay()],[inv()],[edge()])
+        self.assertNotIn("SUSPENSE",repr(a))
+        self.assertNotIn("Duplicate Payment",repr(a))
+        self.assertIsNone(a["financial_status"])
+        self.assertEqual(a["real_payments_allocated"],0)
+
+
 
 if __name__ == "__main__":
     unittest.main()
