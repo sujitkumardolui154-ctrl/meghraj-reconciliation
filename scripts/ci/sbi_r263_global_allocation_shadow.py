@@ -291,7 +291,8 @@ def shadow_adjudicate(
             for e in candidate_edges
         ),
         "shadow_credit_balance": remaining_pay,
-        "shadow_invoice_balance": remaining_inv,
+        "shadow_invoice_cash_coverage_gap": remaining_inv,
+        "tds_withheld_not_recognized_as_cash_or_invoice_settlement": True,
         "dnm_provisional_edges_held": dnm_held,
         "global_gate_checked": gate_count == 1,
         "original_source_records_changed": False,
