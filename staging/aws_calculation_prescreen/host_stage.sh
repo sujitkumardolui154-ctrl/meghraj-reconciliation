@@ -13,6 +13,8 @@ MODE="${1:-}"
 RELEASE_SHA="${2:-}"
 SECRET_FILE="${SBI_R30_SECRET_FILE:-/etc/sbi-calc-prescreen/stage.env}"
 OLD_REF=""
+OLD_IMAGE_ID=""
+ROLLBACK_REF=""
 SWAPPED=0
 
 refuse() { echo "R30_REFUSED:$1" >&2; exit 2; }
@@ -20,7 +22,7 @@ require_sha() { [[ "$1" =~ ^[0-9a-f]{40}$ ]] || refuse "REVIEWED_SHA_REQUIRED"; 
 require_repo() {
   require_sha "$RELEASE_SHA"
   [[ -f "$COMPOSE" ]] || refuse "R29_COMPOSE_MISSING"
-  [[ "$(git -C "$ROOT" rev-parse HEAD)" == "$RELEASE_SHA" ]] || refuse "SOURCE_SHA_MISMATCH"
+  [[ "$(git -c "safe.directory=$ROOT" -C "$ROOT" rev-parse HEAD)" == "$RELEASE_SHA" ]] || refuse "SOURCE_SHA_MISMATCH"
   command -v docker >/dev/null || refuse "DOCKER_NOT_AVAILABLE"
   docker compose version >/dev/null || refuse "DOCKER_COMPOSE_NOT_AVAILABLE"
   command -v curl >/dev/null || refuse "CURL_NOT_AVAILABLE"
@@ -96,7 +98,8 @@ rollback() {
     if [[ -n "$OLD_REF" ]]; then
       local rollback_sha="${OLD_REF#sbi-calc-prescreen:}"
       if [[ "$rollback_sha" =~ ^[0-9a-f]{40}$ ]] &&
-          docker image inspect "$OLD_REF" >/dev/null 2>&1; then
+          docker image inspect "$ROLLBACK_REF" >/dev/null 2>&1; then
+        docker tag "$ROLLBACK_REF" "$OLD_REF" || result=1
         RELEASE_SHA="$rollback_sha"
         compose up --detach --no-build --force-recreate "$SERVICE" || result=1
         verify_live || result=1
@@ -131,6 +134,7 @@ case "$MODE" in
     old_container="$(compose ps -q "$SERVICE")"
     if [[ -n "$old_container" ]]; then
       OLD_REF="$(docker inspect --format '{{.Config.Image}}' "$old_container")"
+      OLD_IMAGE_ID="$(docker inspect --format '{{.Image}}' "$old_container")"
       [[ "$OLD_REF" =~ ^sbi-calc-prescreen:[0-9a-f]{40}$ ]] ||
         refuse "UNKNOWN_EXISTING_STAGING_IMAGE"
       verify_live || refuse "EXISTING_STAGING_NOT_HEALTHY"
@@ -145,6 +149,10 @@ case "$MODE" in
       --security-opt no-new-privileges --user 10001:10001 \
       "sbi-calc-prescreen:$RELEASE_SHA" python -c \
       'from app import app; c=app.test_client(); assert c.get("/healthz").status_code==200; assert c.get("/readyz").status_code==503; assert c.post("/database/update").status_code==403'
+    if [[ -n "$OLD_REF" ]]; then
+      ROLLBACK_REF="sbi-calc-prescreen:rollback-$RELEASE_SHA"
+      docker tag "$OLD_IMAGE_ID" "$ROLLBACK_REF"
+    fi
     SWAPPED=1
     trap rollback EXIT
     compose up --detach --no-build --force-recreate "$SERVICE"
@@ -156,6 +164,9 @@ case "$MODE" in
     [[ "$passed" == 1 ]] || refuse "POST_STAGE_PROBES_FAILED"
     SWAPPED=0
     trap - EXIT
+    if [[ -n "$ROLLBACK_REF" ]]; then
+      docker image rm "$ROLLBACK_REF" >/dev/null 2>&1 || true
+    fi
     echo "R30_PRIVATE_STAGING_DEPLOYMENT=PASS"
     echo "R30_RELEASE_SHA=$RELEASE_SHA"
     echo "R30_FULL_V251_V239_ENGINE=NOT_CONNECTED"
