@@ -100,6 +100,11 @@ jobs:
       - name: Prepare private QA-only credential directory (no credentials in repo)
         run: |
           set -Eeuo pipefail
+          # GitHub-hosted disposable runner may not provide a traversable
+          # /home/ubuntu home path. Prepare it here, never on AWS.
+          sudo -n install -d -m 0755 -o "$(id -un)" -g "$(id -gn)" /home/ubuntu
+          sudo -n install -d -m 0755 -o "$(id -un)" -g "$(id -gn)" \
+            /home/ubuntu/sbi-db-management
           sudo -n install -d -m 0700 -o "$(id -un)" -g "$(id -gn)" \
             /home/ubuntu/sbi-db-management/db-r31-ownerqa
           test "$(stat -c '%a' /home/ubuntu/sbi-db-management/db-r31-ownerqa)" = 700
