@@ -74,6 +74,35 @@ def apply_only_isolated_qa(dsn, archive, reviewer):
         database = conn.execute("SELECT current_database() AS db").fetchone()["db"]
         if database != "invoice_qa":
             raise ValueError("REFUSE_NON_ISOLATED_QA_DATABASE")
+        # Owner approval locks the exact historical vendor profile. An import
+        # may be repeated idempotently, but can never overwrite a different
+        # logo, GST number, bank instruction, legal declaration or header.
+        expected = {
+            **{key: profile[key] for key in REQUIRED_FIELDS},
+            "logo_image": logo, "logo_mime": profile["logo_mime"],
+        }
+        columns = list(expected)
+        existing = conn.execute(
+            """SELECT * FROM sbi_invoice_gst.vendor_profiles
+               WHERE vendor_key='MEGHRAJ_EXPRESS' FOR UPDATE"""
+        ).fetchone()
+        if existing:
+            if (
+                existing["exact_logo_verified"] is not True or
+                existing["verified_at"] is None or
+                any(
+                    bytes(existing[key]) != value
+                    if key == "logo_image" else existing[key] != value
+                    for key, value in expected.items()
+                )
+            ):
+                raise ValueError("VENDOR_PROFILE_CONFLICT_NEW_OWNER_APPROVAL_REQUIRED")
+            return {
+                "status": "PRIVATE_VENDOR_QA_PROFILE_ALREADY_VERIFIED_UNCHANGED",
+                "logo_sha256": manifest["logo_sha256"],
+                "layout_certification": manifest["layout_certification"],
+                "production_write": False,
+            }
         conn.execute(
             """INSERT INTO sbi_invoice_gst.vendor_profiles
                (vendor_key, legal_name, logo_image, logo_mime, exact_logo_verified,
@@ -83,28 +112,7 @@ def apply_only_isolated_qa(dsn, archive, reviewer):
                 head_office, head_phone, website, verified_by, verified_at)
                VALUES ('MEGHRAJ_EXPRESS',%s,%s,%s,TRUE,
                        %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,now())
-               ON CONFLICT (vendor_key) DO UPDATE SET
-                 legal_name=EXCLUDED.legal_name,
-                 logo_image=EXCLUDED.logo_image,
-                 logo_mime=EXCLUDED.logo_mime,
-                 exact_logo_verified=EXCLUDED.exact_logo_verified,
-                 declaration_text=EXCLUDED.declaration_text,
-                 bank_instructions=EXCLUDED.bank_instructions,
-                 pan=EXCLUDED.pan,
-                 gstin=EXCLUDED.gstin,
-                 vendor_id=EXCLUDED.vendor_id,
-                 service_type=EXCLUDED.service_type,
-                 sac_code=EXCLUDED.sac_code,
-                 footer_text=EXCLUDED.footer_text,
-                 authorized_signature_label=EXCLUDED.authorized_signature_label,
-                 registered_office=EXCLUDED.registered_office,
-                 registered_phone=EXCLUDED.registered_phone,
-                 registered_email=EXCLUDED.registered_email,
-                 head_office=EXCLUDED.head_office,
-                 head_phone=EXCLUDED.head_phone,
-                 website=EXCLUDED.website,
-                 verified_by=EXCLUDED.verified_by,
-                 verified_at=EXCLUDED.verified_at""",
+               ON CONFLICT (vendor_key) DO NOTHING""",
             (profile["legal_name"], logo, profile["logo_mime"],
              profile["declaration_text"], profile["bank_instructions"],
              profile["pan"], profile["gstin"], profile["vendor_id"],
