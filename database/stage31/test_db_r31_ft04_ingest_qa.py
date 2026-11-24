@@ -337,6 +337,13 @@ class R31FT04IngestContract(unittest.TestCase):
         self.assertFalse(result["production_writes"])
         self.assertEqual(result["financial_allocations"],0)
 
+    def test_31_source_ingest_does_not_require_financial_update_privilege(self):
+        conn=FakeConnection()
+        write_qa_source_receipt(conn,plan())
+        sql="\n".join(s for s,_ in conn.fake.calls)
+        self.assertNotIn("FOR UPDATE",sql)
+        self.assertIn("pg_advisory_xact_lock",sql)
+
 
 if __name__=="__main__":
     unittest.main()
