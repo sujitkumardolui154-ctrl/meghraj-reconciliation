@@ -275,7 +275,7 @@ class R16IdentityShadowTests(unittest.TestCase):
         self.assertEqual(invoice_sheet["J1"].value, "Invoice No")
         self.assertEqual(invoice_sheet["M1"].value, "SGST")
         self.assertEqual(invoice_sheet["J2"].value, "MXP10001")
-        self.assertEqual(invoice_sheet["M2"].value, "UNMODIFIED_13")
+        self.assertIsNone(invoice_sheet["M2"].value)  # source SGST is untouched by identity tests
         report = scan(source=source)
         self.assertEqual(report["invoice_identity_counts"]["candidate_exact_sol_and_official_name_only"], 1)
 
