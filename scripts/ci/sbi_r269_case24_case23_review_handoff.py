@@ -119,7 +119,10 @@ def classify_case23_shadow(workbook, case23, *, evidence=(),
         # Bank's original K must never be overwritten by a fresh review.
         protected = bank.original_k is not None and str(bank.original_k).strip() != ""
         bad_allocation_proof = ev.allocation_finalized and bank.source_row not in edge_rows
-        blocked = (bank.source_row in row_holds or protected or bad_allocation_proof)
+        contradictory_unmatched = ev.certified_no_match and bank.source_row in edge_rows
+        contradictory_duplicate = ev.independently_proven_duplicate and bank.source_row in edge_rows
+        blocked = (bank.source_row in row_holds or protected or bad_allocation_proof
+                   or contradictory_unmatched or contradictory_duplicate)
         ev = replace(ev,
             protected_prior_status=ev.protected_prior_status or protected,
             competing_invoice_or_bank_hold=ev.competing_invoice_or_bank_hold or blocked)
