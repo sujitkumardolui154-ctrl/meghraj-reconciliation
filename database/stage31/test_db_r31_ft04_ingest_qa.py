@@ -266,8 +266,8 @@ class R31FT04IngestContract(unittest.TestCase):
 
     def test_23_replay_exact_source_and_status_is_idempotent(self):
         p=plan()
-        prior=[(r.excel_row,r.row_sha256,r.credit_paise,r.status)
-               for r in p.rows]
+        prior=[(r.excel_row,r.row_sha256,r.credit_paise,r.status,
+                list(r.reasons)) for r in p.rows]
         conn=FakeConnection(existing=[("qa-batch",OWNER,RECEIPT)],
                             replay=prior)
         result=write_qa_source_receipt(conn,p)
@@ -277,12 +277,12 @@ class R31FT04IngestContract(unittest.TestCase):
 
     def test_24_replay_conflicting_status_fails_without_updates(self):
         p=plan()
-        prior=[(r.excel_row,r.row_sha256,r.credit_paise,r.status)
-               for r in p.rows]
-        prior[0]=(prior[0][0],prior[0][1],prior[0][2],STATUS_MASTER)
+        prior=[(r.excel_row,r.row_sha256,r.credit_paise,r.status,
+                list(r.reasons)) for r in p.rows]
+        prior[0]=(prior[0][0],prior[0][1],prior[0][2],STATUS_MASTER,prior[0][4])
         conn=FakeConnection(existing=[("qa-batch",OWNER,RECEIPT)],
                             replay=prior)
-        self.denied("PREVIOUS_SOURCE_RECEIPT_DIFFERS",
+        self.denied("PREVIOUS_SOURCE_RECEIPT_STATUS_OR_REASONS_DIFFER",
                     write_qa_source_receipt,conn,p)
         self.assertTrue(conn.rolled_back)
 
@@ -343,6 +343,44 @@ class R31FT04IngestContract(unittest.TestCase):
         sql="\n".join(s for s,_ in conn.fake.calls)
         self.assertNotIn("FOR UPDATE",sql)
         self.assertIn("pg_advisory_xact_lock",sql)
+
+    def test_32_cross_receipt_duplicate_hold_replay_is_idempotent(self):
+        p=plan()
+        prior=[(r.excel_row,r.row_sha256,r.credit_paise,r.status,
+                list(r.reasons)) for r in p.rows]
+        first=list(prior[0])
+        first[3]=STATUS_DUP
+        first[4]=["CROSS_RECEIPT_DUPLICATE_CANDIDATE"]
+        prior[0]=tuple(first)
+        conn=FakeConnection(existing=[("qa-batch",OWNER,RECEIPT)],
+                            replay=prior)
+        result=write_qa_source_receipt(conn,p)
+        self.assertEqual(result["status"],"QA_ALREADY_RECORDED")
+        self.assertTrue(conn.committed)
+        self.assertEqual(len(conn.fake.insert_paise),0)
+
+    def test_33_unknown_holding_reason_cannot_bypass_replay_guard(self):
+        p=plan()
+        prior=[(r.excel_row,r.row_sha256,r.credit_paise,r.status,
+                list(r.reasons)) for r in p.rows]
+        prior[0]=(p.rows[0].excel_row,p.rows[0].row_sha256,
+                   p.rows[0].credit_paise,STATUS_DUP,["UNVERIFIED_REVIEW"])
+        conn=FakeConnection(existing=[("qa-batch",OWNER,RECEIPT)],
+                            replay=prior)
+        self.denied("PREVIOUS_SOURCE_RECEIPT_STATUS_OR_REASONS_DIFFER",
+                    write_qa_source_receipt,conn,p)
+        self.assertEqual(len(conn.fake.insert_paise),0)
+
+    def test_34_replayed_credit_mismatch_still_fails(self):
+        p=plan()
+        prior=[(r.excel_row,r.row_sha256,r.credit_paise,r.status,
+                list(r.reasons)) for r in p.rows]
+        prior[0]=(p.rows[0].excel_row,p.rows[0].row_sha256,999999,
+                   p.rows[0].status,list(p.rows[0].reasons))
+        conn=FakeConnection(existing=[("qa-batch",OWNER,RECEIPT)],
+                            replay=prior)
+        self.denied("PREVIOUS_SOURCE_RECEIPT_DIFFERS",
+                    write_qa_source_receipt,conn,p)
 
 
 if __name__=="__main__":

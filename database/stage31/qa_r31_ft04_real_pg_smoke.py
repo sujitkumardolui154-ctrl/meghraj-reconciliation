@@ -156,6 +156,10 @@ def run():
             cur.execute("""SELECT count(*) FROM sbi.payment_received_source_v1
                            WHERE owner_uid=%s""",("different-owner",))
             assert cur.fetchone()[0]==0
+        replay_new=write_qa_source_receipt(conn,fresh)
+        assert replay_new["status"]=="QA_ALREADY_RECORDED"
+        assert totals(conn)==(2,7,5,7,23700,7)
+        print("DB_R31_FT04_QA_CROSS_RECEIPT_DUPLICATE_REPLAY=PASS")
         print("DB_R31_FT04_QA_CROSS_RECEIPT_DUPLICATE_HELD=PASS")
         print("DB_R31_FT04_QA_READONLY_VIEW_SOURCE_ROW_PARITY=PASS")
         # Independent dedicated QA report role: SELECT on the versioned

@@ -234,10 +234,17 @@ def build_receipt_plan(payload, original_parser, extract_all,
 
 
 def _existing_matches(cur, batch_id, plan):
-    """Replayed receipt is idempotent only if *every* stored row agrees."""
+    """Replayed receipt idempotency: exact source plus approved review status.
+
+    The same valid payment can become HOLD_DUPLICATE_CANDIDATE during its
+    first insert because an *earlier* receipt already contains the same
+    narration/SOL/credit. Its original source parser plan was PASS; replay
+    must recognize the derived, recorded cross-receipt HOLD exactly, without
+    re-inserting credit or permitting an unrelated status change.
+    """
     cur.execute("""
       SELECT r.source_row_number, r.row_sha256, p.credit_paise,
-             st.source_status
+             st.source_status, st.reason_codes
         FROM sbi.payment_source_rows r
         LEFT JOIN sbi.payments p ON p.source_row_id=r.id
         LEFT JOIN sbi.payment_source_status_v1 st ON st.source_row_id=r.id
@@ -245,10 +252,32 @@ def _existing_matches(cur, batch_id, plan):
        ORDER BY r.source_row_number
     """, (batch_id,))
     actual = cur.fetchall()
-    expected = [(x.excel_row, x.row_sha256, x.credit_paise, x.status)
-                for x in plan.rows]
-    require([tuple(x) for x in actual] == expected,
+    require(len(actual) == len(plan.rows),
+            "PREVIOUS_SOURCE_RECEIPT_ROW_COUNT_CHANGED")
+    for stored,expected in zip(actual,plan.rows):
+        number,digest,amount,status,reasons=tuple(stored)
+        require((number,digest,amount)==(
+            expected.excel_row,expected.row_sha256,expected.credit_paise),
             "PREVIOUS_SOURCE_RECEIPT_DIFFERS")
+        if type(reasons) is str:
+            try:
+                reasons=json.loads(reasons)
+            except (TypeError,ValueError):
+                raise IngestReviewRequired(
+                    "PREVIOUS_REVIEW_REASONS_INVALID") from None
+        require(type(reasons) is list and
+                all(type(v) is str and _REASON.fullmatch(v) for v in reasons),
+                "PREVIOUS_REVIEW_REASONS_INVALID")
+        exact=(status==expected.status and
+               sorted(reasons)==sorted(expected.reasons))
+        derived_cross_receipt=(
+            expected.status==STATUS_PASS and
+            expected.reasons==() and
+            status==STATUS_DUP and
+            reasons==["CROSS_RECEIPT_DUPLICATE_CANDIDATE"]
+        )
+        require(exact or derived_cross_receipt,
+                "PREVIOUS_SOURCE_RECEIPT_STATUS_OR_REASONS_DIFFER")
     return True
 
 
