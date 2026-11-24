@@ -57,6 +57,18 @@ jobs:
           set -Eeuo pipefail
           python -m py_compile scripts/ci/sbi_r20_ephemeral_postgres_qa.py
           python -m unittest discover -s tests -p 'test_sbi_r20_ephemeral_postgres_qa.py' -v
+      - name: Checkout pinned R14 offline auth source (NO real Firebase sign-in)
+        uses: actions/checkout@v5
+        with:
+          ref: 50053049c571b5e8a03132dc97d9f65002d2edd5
+          path: r14-offline-source
+          persist-credentials: false
+      - name: Run R14 offline-only session source refusal checks
+        run: |
+          set -Eeuo pipefail
+          python -m unittest discover -s r14-offline-source/tests -p 'test_sbi_r14_real_app_session_readonly.py' -v
+          echo 'R14_OFFLINE_SOURCE_GUARDS=PASS'
+          echo 'R14_REAL_FIREBASE_TO_FLASK=NOT_EXECUTED'
       - name: Confirm combined fail-closed release boundaries and prepare handover proof
         run: |
           set -Eeuo pipefail
@@ -89,6 +101,23 @@ jobs:
           }
           Path("r20-artifacts/same_day_handover_release_gates.json").write_text(
             json.dumps(expected,indent=2,sort_keys=True)+"\n")
+          import sys
+          from hashlib import sha256
+          sys.path.insert(0, str(Path("scripts/ci").resolve()))
+          from sbi_r19_combined_synthetic_rehearsal import build_synthetic_fixture
+          from sbi_r20_synthetic_review_writer import create_locked_synthetic_review_xlsx
+          source, master = build_synthetic_fixture()
+          demonstration_xlsx, serializer_result = create_locked_synthetic_review_xlsx(
+              source, master,
+              expected_source_sha256=sha256(source).hexdigest(),
+              expected_master_sha256=sha256(master).hexdigest(),
+          )
+          assert serializer_result["all_payment_statuses_locked_suspense"]
+          assert not serializer_result["v251_certified"]
+          Path("r20-artifacts/SBI_R20_SYNTHETIC_REVIEW_ONLY_NOT_RECONCILED.xlsx").write_bytes(
+              demonstration_xlsx)
+          Path("r20-artifacts/real_xlsx_serializer_synthetic_qa.json").write_text(
+              json.dumps(serializer_result,indent=2,sort_keys=True)+"\\n")
           print("R20_COMBINED_SYNTHETIC_HANDOVER=PASS")
           print("R20_REAL_BANK_SOURCE=NOT_IMPORTED")
           print("R20_LIVE_AUTH_AND_PRODUCTION_POSTGRES=NOT_TESTED")
