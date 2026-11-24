@@ -57,6 +57,11 @@ def verified_private_inputs(master_csv, additional_evidence_json, *, master_sha,
     branch_keys = [x["branch_key"] for x in ready_rows]
     if len(set(branch_keys)) != len(branch_keys):
         raise ValueError("DUPLICATE_PRIVATE_BRANCH_KEYS")
+    # Never silently approve two customer identities for the same SOL.
+    # A source/alias correction must be independently reviewed first.
+    sols = [x["sol_id"] for x in ready_rows]
+    if len(set(sols)) != len(sols):
+        raise ValueError("DUPLICATE_APPROVED_SOL_IDENTITY_CONFLICT")
     return {"status": ("READY_VERIFIED_SUBSET_FOR_ISOLATED_QA"
                        if errors else "READY_FOR_PRIVATE_QA_IMPORT"),
             "total":len(master),"ready":len(ready_rows),
@@ -75,16 +80,33 @@ def stage_approved_master_qa(dsn, validated):
         if name != "invoice_qa":
             raise ValueError("REFUSE_NON_ISOLATED_QA_DATABASE")
         for row in validated["rows"]:
-            # Existing branch records must never be silently overwritten.
+            # Prevent a different verified branch_key from claiming an existing SOL.
+            # Existing records are immutable by this intake; corrections are manual.
+            existing_by_sol = conn.execute(
+                """SELECT branch_key FROM sbi_invoice_gst.verified_branches
+                   WHERE sol_id=%s AND verified=TRUE LIMIT 2""",
+                (row["sol_id"],),
+            ).fetchall()
+            if any(x["branch_key"] != row["branch_key"] for x in existing_by_sol):
+                raise ValueError("PREEXISTING_SOL_OWNERSHIP_CONFLICT")
             existing = conn.execute(
-                """SELECT branch_key,sol_id,client_name,gstin
-                   FROM sbi_invoice_gst.verified_branches WHERE branch_key=%s""",
+                """SELECT branch_key, sol_id, client_name, gstin, client_class,
+                          invoice_branch, invoice_generate_location,
+                          original_branch_name, recipient_title,
+                          customer_address, state_code, verified
+                   FROM sbi_invoice_gst.verified_branches
+                   WHERE branch_key=%s""",
                 (row["branch_key"],),
             ).fetchone()
             if existing:
-                if (existing["sol_id"],existing["client_name"],existing["gstin"]) != (
-                    row["sol_id"],row["client_name"],row["gstin"]
-                ):
+                matching_fields = (
+                    "sol_id", "client_name", "gstin", "client_class",
+                    "invoice_branch", "invoice_generate_location",
+                    "original_branch_name", "recipient_title",
+                    "customer_address", "state_code"
+                )
+                if (existing["verified"] is not True or
+                    any(existing[key] != row[key] for key in matching_fields)):
                     raise ValueError("PREEXISTING_BRANCH_MASTER_CONFLICT")
                 continue
             conn.execute(
