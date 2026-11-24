@@ -6,11 +6,13 @@
   const branch = $("ig-branch");
   const preview = $("ig-preview");
   const finalize = $("ig-finalize");
+  const pdfButton = $("ig-pdf");
   const notice = $("ig-message");
   const gstButton = $("ig-gst-download");
   const gstNotice = $("ig-gst-message");
   if (!branch || !preview || !finalize || !gstButton) return;
   let approvedPreview = null;
+  let lastFinalized = null;
   let busy = false;
   $("ig-form").addEventListener("submit", event => event.preventDefault());
 
@@ -19,6 +21,7 @@
     preview.disabled = status;
     finalize.disabled = status || !approvedPreview;
     gstButton.disabled = status;
+    pdfButton.disabled = status || !lastFinalized;
   }
 
   async function api(path, options = {}) {
@@ -112,7 +115,9 @@
   for (const id of ["ig-branch", "ig-number", "ig-from", "ig-to", "ig-date", "ig-annexure"]) {
     $(id).addEventListener("input", () => {
       approvedPreview = null;
+      lastFinalized = null;
       finalize.disabled = true;
+      pdfButton.disabled = true;
     });
   }
 
@@ -150,11 +155,43 @@
         throw new Error("Invoice changed since preview. Preview again.");
       const data = await submit("finalize", values);
       approvedPreview = null;
+      lastFinalized = data.invoice_no;
       notice.textContent = "FINALIZED & DATABASE RECORDED: " + data.invoice_no +
         "\nShipments: " + data.shipment_count + " | Total: Rs " + data.total +
         "\nReconciliation was NOT executed. A second finalization is blocked.";
     } catch (error) {
       approvedPreview = null;
+      notice.textContent = error.message;
+    } finally {
+      whenBusy(false);
+    }
+  });
+
+  pdfButton.addEventListener("click", async () => {
+    if (busy || !lastFinalized) return;
+    whenBusy(true);
+    try {
+      const response = await fetch("/api/invoice-gst/invoices/" +
+        encodeURIComponent(lastFinalized) + ".pdf", {
+          credentials: "same-origin", cache: "no-store", redirect: "error"
+        });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "PDF document not available.");
+      }
+      if (!(response.headers.get("Content-Type") || "").includes("application/pdf"))
+        throw new Error("Unexpected PDF response type.");
+      const blob = await response.blob();
+      const magic = new TextDecoder().decode(await blob.slice(0,5).arrayBuffer());
+      if (magic !== "%PDF-") throw new Error("Invalid PDF file signature.");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Meghraj-" + lastFinalized + ".pdf";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      notice.textContent = "Finalized invoice PDF downloaded: " + lastFinalized;
+    } catch (error) {
       notice.textContent = error.message;
     } finally {
       whenBusy(false);
