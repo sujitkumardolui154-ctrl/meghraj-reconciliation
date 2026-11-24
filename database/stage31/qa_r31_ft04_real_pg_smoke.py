@@ -17,6 +17,7 @@ r31=Path(os.environ["SBI_R31_APP_PINNED_DIR"])/"staging/aws_login_v150"
 sys.path.insert(0,str(root/"database/stage31"))
 sys.path.insert(0,str(ft04))
 sys.path.insert(0,str(r31))
+sys.path.insert(0,str(Path(os.environ["SBI_R31_APP_PINNED_DIR"])/"dashboard_source"))
 
 from db_r31_ft04_ingest_qa import (
     build_receipt_plan,write_qa_source_receipt,
