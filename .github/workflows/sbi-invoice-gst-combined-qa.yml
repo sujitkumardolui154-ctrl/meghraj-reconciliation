@@ -9,9 +9,11 @@ on:
       - 'dashboard_source/requirements.txt'
       - 'staging/invoice-gst/**'
       - 'scripts/sbi_invoice_gst_aws_staging_readiness.py'
+      - 'scripts/sbi_invoice_gst_private_qa_gate.py'
       - 'tests/test_invoice_gst_combined.py'
       - 'tests/test_invoice_gst_private_*.py'
       - 'tests/test_invoice_gst_master_workbook_gate.py'
+      - 'tests/test_invoice_gst_private_qa_gate.py'
       - '.github/workflows/sbi-invoice-gst-combined-qa.yml'
   workflow_dispatch:
 
@@ -60,6 +62,16 @@ jobs:
           python -m unittest discover -s tests -p 'test_invoice_gst_private_*.py' -v
       - name: Four-tab original SBI master workbook source QA
         run: python -m unittest discover -s tests -p 'test_invoice_gst_master_workbook_gate.py' -v
+      - name: Private staging readiness go no-go safeguards
+        run: |
+          python -m unittest discover -s tests -p 'test_invoice_gst_private_qa_gate.py' -v
+          python scripts/sbi_invoice_gst_aws_staging_readiness.py > /tmp/invoice-staging-readiness.json
+          if python scripts/sbi_invoice_gst_private_qa_gate.py --preflight-json /tmp/invoice-staging-readiness.json --assert-ready; then
+            echo "ERROR: Dry-run with no private source and DB must not be release-ready"
+            exit 1
+          else
+            echo "PRIVATE_QA_PREREQUISITES_MISSING_FAIL_CLOSED=PASS"
+          fi
       - name: Existing GST contract regression
         run: python -m unittest discover -s staging/mxp-gst/tests -p 'test_*.py' -v
       - name: Safe AWS staging preflight default remains read-only
