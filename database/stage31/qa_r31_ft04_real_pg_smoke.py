@@ -23,8 +23,13 @@ from db_r31_ft04_ingest_qa import (
     QA_DB,QA_ROLE,STATUS_PASS,STATUS_MASTER,STATUS_DUP,STATUS_BAD,
     IngestReviewRequired,
 )
-from sbi_payment_pg_bridge import _all_source_rows,classify_payment_rows
+from sbi_payment_pg_bridge import _all_source_rows
+import sbi_payment_pg_bridge as ft04_pinned
+from db_r31_ft04_parser_parity import classify_exact_ft04_rows
 from payment_evidence_upload import _parse
+
+def classify_payment_rows(payload,original_parser):
+    return classify_exact_ft04_rows(payload,original_parser,ft04_pinned)
 
 
 def xlsx(rows):
