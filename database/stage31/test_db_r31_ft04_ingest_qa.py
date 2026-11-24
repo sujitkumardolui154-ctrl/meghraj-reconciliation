@@ -279,7 +279,7 @@ class R31FT04IngestContract(unittest.TestCase):
         p=plan()
         prior=[(r.excel_row,r.row_sha256,r.credit_paise,r.status,
                 list(r.reasons)) for r in p.rows]
-        prior[0]=(prior[0][0],prior[0][1],prior[0][2],STATUS_MASTER)
+        prior[0]=(prior[0][0],prior[0][1],prior[0][2],STATUS_MASTER,prior[0][4])
         conn=FakeConnection(existing=[("qa-batch",OWNER,RECEIPT)],
                             replay=prior)
         self.denied("PREVIOUS_SOURCE_RECEIPT_STATUS_OR_REASONS_DIFFER",
