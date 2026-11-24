@@ -144,6 +144,12 @@ def create_invoice_gst_blueprint(can_read, can_create, csrf_valid,
                              AND length(logo_image) > 0
                              AND verified_by IS NOT NULL
                              AND verified_at IS NOT NULL
+                             AND registered_office IS NOT NULL AND length(registered_office)>0
+                             AND registered_phone IS NOT NULL AND length(registered_phone)>0
+                             AND registered_email IS NOT NULL AND length(registered_email)>0
+                             AND head_office IS NOT NULL AND length(head_office)>0
+                             AND head_phone IS NOT NULL AND length(head_phone)>0
+                             AND website IS NOT NULL AND length(website)>0
                            LIMIT 1"""
                     )
                     if cur.fetchone() is None:
@@ -269,7 +275,9 @@ def create_invoice_gst_blueprint(can_read, can_create, csrf_valid,
                               exact_logo_verified, declaration_text,
                               bank_instructions, pan, gstin, vendor_id,
                               service_type, sac_code, footer_text,
-                              authorized_signature_label, verified_by, verified_at
+                              authorized_signature_label, verified_by, verified_at,
+                              registered_office, registered_phone, registered_email,
+                              head_office, head_phone, website
                        FROM sbi_invoice_gst.vendor_profiles
                        WHERE vendor_key = 'MEGHRAJ_EXPRESS'""",
                 )
