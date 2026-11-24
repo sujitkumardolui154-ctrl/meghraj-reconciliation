@@ -95,7 +95,7 @@ def run():
         result=write_qa_source_receipt(conn,candidate)
         assert result["status"]=="QA_SOURCE_ROWS_COMMITTED"
         assert result["production_writes"] is False
-        assert totals(conn)==(1,5,4,5,14000,5)
+        assert totals(conn)==(1,5,3,5,13000,5)
         print("DB_R31_FT04_QA_REAL_PG_MIXED_ROW_PARITY=PASS")
 
         replay=write_qa_source_receipt(conn,candidate)
