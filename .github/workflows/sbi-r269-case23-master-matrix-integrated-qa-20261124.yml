@@ -1,8 +1,8 @@
-name: SBI R26.9 Cases 2.1-2.5 Combined Forensic Ledger QA (Finance Locked)
+name: SBI R26.9 Cases 2.1-2.6 Combined Method and Finance Gate QA (Locked)
 on:
   push:
     branches:
-      - review/sbi-r269-case25-forensic-oracle-20261124
+      - review/sbi-r269-case26-method-coverage-release-gates-20261124
   pull_request:
     branches:
       - feature/sbi-payment-reconciliation-readiness-gate-20261120
@@ -996,6 +996,62 @@ jobs:
           print("R269_CASE25_PAYMNENT_COLUMN_M=NOT_ASSIGNED")
           print("R269_CASE25_FINANCIAL_APPLY=LOCKED")
           print("R269_CASE25_PRODUCTION_WRITES=NONE")
+          PY
+      - name: R26.9 Case 2.6 synthetic complete-method rehearsal and external release refusal
+        run: |
+          set -Eeuo pipefail
+          python -m py_compile \
+            scripts/ci/sbi_r269_case26_method_coverage_rehearsal.py \
+            scripts/ci/sbi_r269_case26_external_release_gate.py \
+            tests/test_sbi_r269_case26_method_coverage_release_gate.py
+          python -m unittest discover -s tests -p 'test_sbi_r269_case26*.py' -v
+          python - <<'PY'
+          import json,sys
+          from pathlib import Path
+          sys.path.insert(0,str(Path("scripts/ci").resolve()))
+          sys.path.insert(0,str(Path("tests").resolve()))
+          from test_sbi_r269_case26_method_coverage_release_gate import run
+          from sbi_r269_case26_external_release_gate import review_release_readiness,GATES
+          shadow=run()
+          release=review_release_readiness(shadow)
+          assert shadow["cash_reserved"]=="1160.00"
+          assert shadow["invoice_cash_coverage_gap_not_receivable"]=="20.00"
+          assert shadow["method_oracle_cash_conserved"] and shadow["one_upload_option_b"]
+          assert not shadow["full_matching_method_coverage_certified"]
+          assert shadow["real_bank_allocations"]==0
+          assert shadow["real_database_writes"]==0
+          assert shadow["final_payment_status"] is None
+          assert release["verified_external_evidence_gate_count"]==0
+          assert len(GATES)==12
+          assert not release["real_payment_status_assignment_authorized"]
+          assert not release["full_v251_v239_financial_certification"]
+          assert not release["production_release_authorized"]
+          assert release["financial_apply_locked"]
+          receipt={
+              "case26_stage":shadow["stage"],
+              "method_simulation":"SYNTHETIC_ONLY",
+              "target_existing_test_count":1004,
+              "target_new_case26_test_count":63,
+              "independent_cash_shadow_conserved":True,
+              "external_release_gates":len(GATES),
+              "verified_real_external_gates":0,
+              "all_real_financial_evidence_certified":False,
+              "actual_v218_financial_writer":False,
+              "final_paymnent_column_m_assigned":False,
+              "signed_owner_finance_release":False,
+              "real_bank_allocations":0,
+              "real_database_writes":0,
+              "production_release_authorized":False,
+              "financial_apply_locked":True,
+          }
+          Path("r20-artifacts/r269_case26_method_release_gate_synthetic_receipt.json").write_text(
+              json.dumps(receipt,sort_keys=True,indent=2)+"\\n")
+          print("R269_CASE26_SYNTHETIC_METHOD_QA=PASS")
+          print("R269_CASE26_EXTERNAL_EVIDENCE_GATES=12_BLOCKED")
+          print("R269_CASE26_REAL_FINANCIAL_RELEASE=BLOCKED")
+          print("R269_CASE26_PAYMNENT_COLUMN_M=NOT_ASSIGNED")
+          print("R269_CASE26_FINANCIAL_APPLY=LOCKED")
+          print("R269_CASE26_PRODUCTION_WRITES=NONE")
           PY
       - uses: actions/upload-artifact@v4
         with:
