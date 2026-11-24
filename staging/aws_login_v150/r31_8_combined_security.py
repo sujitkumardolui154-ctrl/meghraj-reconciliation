@@ -26,8 +26,8 @@ SOURCE=ROOT/"r31_8_combined_security_incontainer.py"
 
 # No Firebase token, password, complete email or user UID may be sent to
 # stdout. Emit only exact-prefixed QA receipt lines while the isolated test
-# executes. The inner script uses python3 -u; the old capture_output=True
-# buffered ALL results for up to 120 s, falsely appearing to hang.
+# executes. The inner script uses python3 -u; the former batched subprocess capture
+# buffered ALL results until process completion, falsely appearing to hang.
 STOP_PREFIX="STOP=DB_R31_8_"
 ALLOWED_QA_KEYS=frozenset({
     "DB_R31_8_SESSION_COOKIE_SECURE_FLAGS",
