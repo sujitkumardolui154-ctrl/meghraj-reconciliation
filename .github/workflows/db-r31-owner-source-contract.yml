@@ -1,0 +1,35 @@
+name: DB-R31 owner source/report contracts
+
+on:
+  push:
+    branches:
+      - feature/sbi-db-r31-owner-source-adapter-20261125
+  pull_request:
+    branches:
+      - sbi-central-postgresql-main-20261121
+    paths:
+      - 'database/stage31/db_r31_owner_source_adapter.py'
+      - 'database/stage31/db_r31_owner_report_adapter.py'
+      - 'database/stage31/test_db_r31_owner_source_adapter.py'
+      - 'database/stage31/test_db_r31_owner_report_adapter.py'
+      - '.github/workflows/db-r31-owner-source-contract.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  owner-source-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: database/stage31
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Safe source-only unit checks
+        run: |
+          python3 -m unittest -q             test_db_r31_owner_source_adapter             test_db_r31_owner_report_adapter
+      - name: No database or deployment effects
+        run: echo 'DB_R31_CI_SCOPE=OFFLINE_UNIT_ONLY_NO_PRODUCTION_ACCESS'
