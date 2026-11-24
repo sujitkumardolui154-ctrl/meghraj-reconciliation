@@ -2,7 +2,11 @@
 from __future__ import annotations
 
 import csv
-from io import StringIO
+from io import StringIO, BytesIO
+from openpyxl import Workbook
+from payment_evidence_upload import _parse
+from r31_stage_blueprint import _extract_original_source
+from r31_db_r31_owner_source_adapter import build_plan, exact_paise
 import os
 from pathlib import Path
 import stat
@@ -131,6 +135,45 @@ class R31StagingSecurityTests(TestCase):
         with app.test_client() as c:
             res=c.get("/auth/me")
         self.assertEqual(res.status_code,401)
+
+    def test_existing_excel_parser_to_stage_plan_with_inr_notation(self):
+        wb=Workbook()
+        ws=wb.active
+        ws.title="PAYMENT EVIDENCE"
+        ws.append(["Description","SOL ID","Credit Amount"])
+        ws.append(["QA TEST","001505","₹1,234.50"])
+        ws.append(["QA INVALID","001505","0"])
+        data=BytesIO()
+        wb.save(data)
+        source=data.getvalue()
+        parsed=_parse(source)
+        self.assertEqual((parsed["source_rows"],parsed["valid_rows"],parsed["review_rows"]),(2,1,1))
+        name,raw,eligible,review=_extract_original_source(source,parsed)
+        self.assertEqual(name,"PAYMENT EVIDENCE")
+        self.assertEqual(eligible[0][2],123450)
+        self.assertEqual(raw[0][1]["SOL ID"],"001505")
+        plan=build_plan(
+            trusted_owner="qa-user",trusted_receipt_id="a"*32,
+            original_file_name="source.XLSX",source_sheet_name=name,
+            raw_file=source,all_source_rows=raw,
+            parser_eligible_rows=eligible,parser_review_rows=review,
+            approved_master_lookup=None,
+        )
+        self.assertEqual([x.amount_paise for x in plan.rows],[123450,None])
+        self.assertEqual(plan.rows[0].status,"HOLD_SOL_MASTER")
+
+    def test_numerical_credit_input_matches_source_parser(self):
+        wb=Workbook()
+        ws=wb.active
+        ws.title="PAYMENT EVIDENCE"
+        ws.append(["Description","SOL ID","Credit Amount"])
+        ws.append(["QA NUMERIC","001505",118])
+        data=BytesIO()
+        wb.save(data)
+        parsed=_parse(data.getvalue())
+        _,raw,eligible,review=_extract_original_source(data.getvalue(),parsed)
+        self.assertEqual((eligible[0][2],len(review)),(11800,0))
+        self.assertEqual(raw[0][1]["Credit Amount"],"118")
 
 if __name__=="__main__":
     import unittest
