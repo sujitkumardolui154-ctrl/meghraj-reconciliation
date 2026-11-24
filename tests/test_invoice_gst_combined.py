@@ -45,6 +45,14 @@ SOURCE = {
 }
 
 
+class PdfContractTests(unittest.TestCase):
+    def test_rupees_words_match_the_source_invoice(self):
+        from invoice_gst_pdf import money_in_words
+        self.assertEqual(
+            money_in_words("4532.38"),
+            "Rupees Four Thousand Five Hundred Thirty Two and Thirty Eight Paisas Only",
+        )
+
 class ContractTests(unittest.TestCase):
     def test_original_sample_amounts_and_month_independence(self):
         value = build_invoice(SOURCE, BRANCH)
@@ -134,6 +142,10 @@ class IsolatedPostgresCombinedTests(unittest.TestCase):
         def connect():
             return psycopg.connect(cls.dsn, row_factory=dict_row)
         cls.connect = staticmethod(connect)
+        from PIL import Image
+        logo = BytesIO()
+        Image.new("RGB", (306, 105), (230, 240, 250)).save(logo, "PNG")
+        cls.synthetic_logo = logo.getvalue()
         with connect() as conn:
             name = conn.execute("SELECT current_database() AS db").fetchone()["db"]
             if name != "invoice_qa":
@@ -162,7 +174,7 @@ class IsolatedPostgresCombinedTests(unittest.TestCase):
                            %s,'image/png',TRUE,'QA DECLARATION','QA BANK','QA PAN',
                            'QA GSTIN','QA VENDOR ID','COURIER','QA SAC',
                            'QA FOOTER','QA SIGNATURE','qa-reviewer',now())""",
-                (b"PNG-SYNTHETIC-NOT-REAL-IMAGE",)
+                (cls.synthetic_logo,)
             )
         from flask import Flask, g
         from invoice_gst_feature import create_invoice_gst_blueprint
@@ -245,6 +257,41 @@ class IsolatedPostgresCombinedTests(unittest.TestCase):
             self.assertEqual(response.status_code, 503)
         finally:
             os.environ["SBI_INVOICE_GST_ENABLED"] = "1"
+
+    def test_06_native_pdf_uses_logo_vendor_and_annexure(self):
+        from pypdf import PdfReader
+        result = self.client.get("/api/invoice-gst/invoices/MXP90001.pdf")
+        self.assertEqual(result.status_code, 200,
+                         result.get_json() if result.is_json else "")
+        self.assertEqual(result.mimetype, "application/pdf")
+        self.assertTrue(result.data.startswith(b"%PDF-"))
+        doc = PdfReader(BytesIO(result.data))
+        self.assertGreaterEqual(len(doc.pages), 2)
+        invoice_text = doc.pages[0].extract_text()
+        self.assertIn("TAX INVOICE", invoice_text)
+        self.assertIn("MXP90001", invoice_text)
+        self.assertIn("MEGHRAJ EXPRESS", invoice_text)
+        annexure_text = "\\n".join(p.extract_text() for p in doc.pages[1:])
+        self.assertIn("QA-LR1", annexure_text)
+        self.assertIn("QA-LR2", annexure_text)
+
+    def test_07_unapproved_logo_denied(self):
+        with self.connect() as conn:
+            conn.execute(
+                """UPDATE sbi_invoice_gst.vendor_profiles
+                   SET exact_logo_verified=FALSE
+                   WHERE vendor_key='MEGHRAJ_EXPRESS'"""
+            )
+        try:
+            response = self.client.get("/api/invoice-gst/invoices/MXP90001.pdf")
+            self.assertEqual(response.status_code, 409)
+        finally:
+            with self.connect() as conn:
+                conn.execute(
+                    """UPDATE sbi_invoice_gst.vendor_profiles
+                       SET exact_logo_verified=TRUE
+                       WHERE vendor_key='MEGHRAJ_EXPRESS'"""
+                )
 
     def test_05_fy_conflict_and_review(self):
         response = self.client.get("/api/invoice-gst/gst.xlsx?month=2026-02&fy=2026-2027")
