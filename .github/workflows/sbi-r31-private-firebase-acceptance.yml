@@ -1,0 +1,35 @@
+name: SBI DB-R31 real Firebase private acceptance preflight (offline)
+
+on:
+  push:
+    branches:
+      - feature/sbi-r31-firebase-private-acceptance-20261125
+  pull_request:
+    branches:
+      - feature/sbi-r31-authenticated-staging-20261125
+
+permissions:
+  contents: read
+
+jobs:
+  private-firebase-acceptance-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install offline Flask and Excel requirements
+        run: |
+          python3 -m pip install -r staging/aws_login_v150/requirements.txt
+          python3 -m pip install 'psycopg[binary]>=3.2,<4'
+      - name: Compile operator and in-container smoke code
+        run: |
+          python3 -m py_compile             staging/aws_login_v150/r31_real_firebase_qa_acceptance.py             staging/aws_login_v150/r31_firebase_private_incontainer_smoke.py             staging/aws_login_v150/r31_currency.py             staging/aws_login_v150/r31_stage_blueprint.py
+      - name: Parser, INR and auth acceptance contract regression
+        env:
+          PYTHONPATH: staging/aws_login_v150:dashboard_source:staging/railway_public
+        run: |
+          python3 -m unittest -q             test_r31_private_staging             test_r31_firebase_private_acceptance
+      - name: Verify no live Firebase login or financial writes were performed
+        run: echo 'DB_R31_CI_SCOPE=OFFLINE_NO_FIREBASE_LOGIN_OR_POSTGRES'
