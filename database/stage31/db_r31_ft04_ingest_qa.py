@@ -285,7 +285,6 @@ def write_qa_source_receipt(conn, plan):
                 FROM sbi.import_batches
                WHERE source_system='excel' AND source_kind='payment'
                  AND source_sha256=%s
-               FOR UPDATE
             """, (plan.file_sha256,))
             existing = cur.fetchall()
             require(len(existing) <= 1, "GLOBAL_SOURCE_SHA_MULTIPLE_BATCHES")
