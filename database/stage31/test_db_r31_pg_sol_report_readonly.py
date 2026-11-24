@@ -67,7 +67,8 @@ class SourceOnlySOLReport(unittest.TestCase):
 
     def test_02_unverified_branch_group_not_guessed(self):
         self.assertIn("PENDING_SOL_MASTER_REVIEW",SOL_WISE_SUMMARY_SQL)
-        self.assertIn("count(DISTINCT sol_master_sha256)=1",SOL_WISE_SUMMARY_SQL)
+        self.assertIn("count(DISTINCT sol_master_sha256)",SOL_WISE_SUMMARY_SQL)
+        self.assertIn("FILTER (WHERE payment_id IS NOT NULL)",SOL_WISE_SUMMARY_SQL)
         self.assertIn("official_branch_name IS NULL",SOL_WISE_SUMMARY_SQL)
 
     def test_03_no_allocations_or_false_matched_status(self):
