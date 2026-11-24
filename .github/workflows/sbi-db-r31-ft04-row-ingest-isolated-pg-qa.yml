@@ -1,0 +1,136 @@
+name: SBI DB-R31 FT-04 Owner-Scoped Row Ingest (Isolated QA Only)
+on:
+  push:
+    branches:
+      - integration/sbi-db-r31-ft04-row-ingest-20261125
+  pull_request:
+    branches:
+      - sbi-central-postgresql-main-20261121
+permissions:
+  contents: read
+jobs:
+  source-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python bytecode and 30 synthetic source/transaction contracts
+        run: |
+          set -Eeuo pipefail
+          python -m py_compile database/stage31/db_r31_ft04_ingest_qa.py \
+            database/stage31/test_db_r31_ft04_ingest_qa.py \
+            database/stage31/qa_r31_ft04_real_pg_smoke.py
+          python -m unittest discover -s database/stage31 \
+            -p 'test_db_r31_ft04_ingest_qa.py' -v
+          python -m unittest discover -s database/stage31 \
+            -p 'test_db_r31_source_reporting.py' -v
+          python -m unittest discover -s database/stage31 \
+            -p 'test_db_r31_catalog_contract.py' -v
+      - name: No production database target or settlement capability
+        run: |
+          set -Eeuo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          s=Path("database/stage31/db_r31_ft04_ingest_qa.py").read_text()
+          assert 'QA_DB = "sbi_ft04g_clean_0e858f93"' in s
+          assert 'QA_ROLE = "sbi_ft04q_ingest"' in s
+          assert 'QA_ONLY_DATABASE_AND_ROLE_REQUIRED' in s
+          assert 'with conn.transaction():' in s
+          assert 'INSERT INTO sbi.payment_source_rows' in s
+          assert 'INSERT INTO sbi.payment_source_status_v1' in s
+          assert 'EXCLUDED_INVALID_SOURCE' in s
+          for denied in ('UPDATE sbi.payments','DELETE FROM sbi.payments',
+                         'INSERT INTO sbi.allocations','UPDATE sbi.invoices'):
+              assert denied not in s,denied
+          print("DB_R31_FT04_SOURCE_INGEST_FINANCE_LOCK=PASS")
+          PY
+  docker-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: fdf4b684f524d5acb8470b01c1bec9ec30bf4001
+          path: ft04-pinned-source
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ec5f175aad8c3d7897333e48374b00ba0f174328
+          path: r31-pinned-app
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install actual R31 Flask payment parser and PostgreSQL QA driver
+        run: |
+          python -m pip install -r r31-pinned-app/staging/aws_login_v150/requirements.txt
+          python -m pip install 'psycopg[binary]>=3.2,<4'
+      - name: Start isolated synthetic PostgreSQL 16 (localhost, disposable)
+        run: |
+          set -Eeuo pipefail
+          docker run --detach --name sbi-r31-ft04-synthetic-pg \
+            --publish 127.0.0.1:15432:5432 \
+            -e POSTGRES_DB=sbi_ft04g_clean_0e858f93 \
+            -e POSTGRES_PASSWORD=SYNTHETIC_CI_ONLY_DB_PASS_20261125 \
+            postgres:16-alpine
+          for attempt in $(seq 1 45); do
+            if docker exec sbi-r31-ft04-synthetic-pg \
+                pg_isready -U postgres -d sbi_ft04g_clean_0e858f93 >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+          docker exec sbi-r31-ft04-synthetic-pg \
+            psql -X -qAt -v ON_ERROR_STOP=1 -U postgres -d postgres -c \
+            "SELECT datname FROM pg_database WHERE datname='sbi_reconciliation_main'" |
+            (! grep -q .)
+          echo 'DB_R31_PRODUCTION_DB_IN_QA=ABSENT'
+      - name: Apply QA-only source baseline and existing guarded R31 reversible migration
+        run: |
+          set -Eeuo pipefail
+          for source in \
+              database/stage31/db_r31_ft04_qa_seed.sql \
+              database/stage31/db_r31_additive_qa_up.sql; do
+            docker exec -i sbi-r31-ft04-synthetic-pg \
+              psql -X -v ON_ERROR_STOP=1 -U postgres \
+              -d sbi_ft04g_clean_0e858f93 < "$source"
+          done
+          docker exec sbi-r31-ft04-synthetic-pg psql -X -v ON_ERROR_STOP=1 \
+            -U postgres -d sbi_ft04g_clean_0e858f93 -c \
+            "CREATE ROLE sbi_ft04q_ingest LOGIN PASSWORD 'SYNTHETIC_CI_ONLY_ROLE_PASS_20261125'"
+          docker exec sbi-r31-ft04-synthetic-pg psql -X -v ON_ERROR_STOP=1 \
+            -U postgres -d sbi_ft04g_clean_0e858f93 -c \
+            "GRANT USAGE ON SCHEMA sbi TO sbi_ft04q_ingest;
+             GRANT SELECT, INSERT ON
+               sbi.import_batches, sbi.payment_source_rows,
+               sbi.payments, sbi.payment_source_status_v1
+               TO sbi_ft04q_ingest;
+             GRANT SELECT ON sbi.payment_received_source_v1 TO sbi_ft04q_ingest;"
+          echo 'DB_R31_QA_SCHEMA_AND_INSERT_ONLY_ROLE=PASS'
+      - name: Real isolated PostgreSQL source persistence, mixed rows, owner replay, reports
+        env:
+          SBI_R31_CI_MODE: SYNTHETIC_DOCKER_ONLY
+          SBI_R31_FT04_PINNED_DIR: ft04-pinned-source
+          SBI_R31_APP_PINNED_DIR: r31-pinned-app
+          PGDATABASE: sbi_ft04g_clean_0e858f93
+          PGUSER: sbi_ft04q_ingest
+          SBI_R31_QA_DSN: host=127.0.0.1 port=15432 dbname=sbi_ft04g_clean_0e858f93 user=sbi_ft04q_ingest password=SYNTHETIC_CI_ONLY_ROLE_PASS_20261125
+        run: |
+          set -Eeuo pipefail
+          python database/stage31/qa_r31_ft04_real_pg_smoke.py
+          echo 'DB_R31_MAIN_WRITES=NONE'
+          echo 'DB_R31_FULL_V251_V239_ENGINE=NOT_CONNECTED'
+          echo 'DB_R31_AWS_LIVE_STAGE=NOT_PERFORMED'
+      - name: Ensure isolated synthetic container is removed
+        if: always()
+        run: |
+          docker rm -f sbi-r31-ft04-synthetic-pg >/dev/null 2>&1 || true
+          echo 'DB_R31_EPHEMERAL_POSTGRESQL_DESTROYED=YES'
