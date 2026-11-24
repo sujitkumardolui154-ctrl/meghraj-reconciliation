@@ -208,3 +208,23 @@ def verify_xlsx_output_structure(
             original.close()
         if written is not None:
             written.close()
+
+
+def verify_53_header_contract(actual_headers, contract_headers):
+    """Exact-order report header parity only, without report calculations."""
+    if not isinstance(contract_headers, (tuple, list)) or len(contract_headers) != 53:
+        refuse("APPROVED_53_HEADER_CONTRACT_REQUIRED")
+    if not isinstance(actual_headers, (tuple, list)) or len(actual_headers) != 53:
+        refuse("REPORT_53_HEADER_COUNT_MISMATCH")
+    if list(actual_headers) != list(contract_headers):
+        refuse("REPORT_53_HEADER_ORDER_OR_DUPLICATE_MISMATCH")
+    if contract_headers[0] != contract_headers[7] or contract_headers[6] != contract_headers[10]:
+        refuse("REPORT_APPROVED_DUPLICATE_HEADERS_MISSING")
+    return {
+        "stage": "R18_53_COLUMN_HEADER_PARITY_ONLY",
+        "header_count": 53,
+        "duplicate_header_positions_preserved": True,
+        "report_financial_amount_parity_verified": False,
+        "v251_writer_certified": False,
+        "financial_apply_locked": True,
+    }
