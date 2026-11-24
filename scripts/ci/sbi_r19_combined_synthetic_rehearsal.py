@@ -274,6 +274,14 @@ def combined_synthetic_run(source_bytes, master_bytes, *, expected_source_sha256
         expected_source_sha256=expected_source_sha256,
         expected_master_sha256=expected_master_sha256,
     )
+    # A shadow financial review MUST NOT bypass the prior master gate.
+    # Protected invoice rows are deliberately excluded from the eligible count.
+    if (r16["master_ambiguous_sol_keys"] or r16["master_invalid_identity_rows"]
+            or r16["invoice_duplicate_id_groups"]
+            or r16["invoice_identity_counts"].get(
+                "candidate_exact_sol_and_official_name_only", 0
+            ) != 1):
+        refuse("MASTER_IDENTITY_GATE_NOT_PASSED")
     r17_summary = Counter()
     reviewed = {}
     for bank in payments.values():
