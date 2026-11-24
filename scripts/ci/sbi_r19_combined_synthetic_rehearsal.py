@@ -206,7 +206,8 @@ def build_synthetic_fixture():
             (6, sol), (7, "SYNTHETIC ALPHA"), (8, 0),
             (9, Decimal(credit)), (10, 1000), (11, prior),
         ):
-            p.cell(idx, col, value)
+            if value != "":
+                p.cell(idx, col, value)
     p["J2"] = "=SUM(I2:I3)"
     p["I2"].number_format = '#,##0.00'
     for col in range(1, 35):
