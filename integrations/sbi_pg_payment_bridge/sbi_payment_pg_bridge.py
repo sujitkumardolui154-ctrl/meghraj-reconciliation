@@ -11,6 +11,7 @@ permitted by the enforced target guard. No reconciliation/allocations run here.
 from __future__ import annotations
 
 import hashlib
+import copy
 import io
 import json
 import os
@@ -22,7 +23,7 @@ from decimal import Decimal, InvalidOperation
 from functools import wraps
 from xml.etree import ElementTree as ET
 
-from flask import jsonify, request
+from flask import g, jsonify, request
 
 QA_DATABASE = "sbi_ft04g_clean_0e858f93"
 QA_HOST = "sbi-synthetic-postgres-38-31"
@@ -216,14 +217,168 @@ def _existing(cur, digest: str, expected: list[tuple[int, dict[str, str], int]])
     return True
 
 
-def persist_payment(payload: bytes, original_parser) -> str:
-    """Commit a new batch or verify identical source row evidence, never update."""
+def _single_row_xlsx(payload: bytes, row_number: int) -> bytes:
+    """Re-ask the app's *own* parser for a specific original Excel row.
+
+    This isolates only the named data row while retaining workbook relationships,
+    shared strings, styles and original raw cell payload. It never executes formulas.
+    """
+    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+        sheet = _safe_sheet_path(archive)
+        root = ET.fromstring(archive.read(sheet))
+        sheet_data = root.find("x:sheetData", NS)
+        if sheet_data is None:
+            raise ContractError("No source worksheet data")
+        originals = list(sheet_data.findall("x:row", NS))
+        header = next((r for r in originals if r.get("r") == "1"), None)
+        source = next((r for r in originals if r.get("r") == str(row_number)), None)
+        if header is None or source is None:
+            raise ContractError("Missing source row or header")
+        new_header = copy.deepcopy(header)
+        new_source = copy.deepcopy(source)
+        new_source.set("r", "2")
+        for cell in new_source.findall("x:c", NS):
+            address = cell.get("r", "")
+            m = re.fullmatch(r"([A-Z]+)[0-9]+", address)
+            if not m:
+                raise ContractError("Invalid worksheet cell coordinate")
+            cell.set("r", m.group(1) + "2")
+        for child in originals:
+            sheet_data.remove(child)
+        sheet_data.extend((new_header, new_source))
+        dimension = root.find("x:dimension", NS)
+        if dimension is not None:
+            dimension.set("ref", "A1:C2")
+        rewritten = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+        output = io.BytesIO()
+        with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as out:
+            for info in archive.infolist():
+                out.writestr(info, rewritten if info.filename == sheet else archive.read(info))
+        return output.getvalue()
+
+
+def _all_source_rows(payload: bytes) -> list[tuple[int, dict[str, str], str | None]]:
+    """Preserve source row positions; mark local invalid cells for review.
+
+    Malformed workbook layout is a file-level error, not a license to guess rows.
+    """
+    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+        if len(archive.infolist()) > 10000 or sum(z.file_size for z in archive.infolist()) > 128 * 1024 * 1024:
+            raise ContractError("Unsupported XLSX archive size")
+        sheet = _safe_sheet_path(archive)
+        strings = []
+        if "xl/sharedStrings.xml" in archive.namelist():
+            root = ET.fromstring(archive.read("xl/sharedStrings.xml"))
+            strings = ["".join((t.text or "") for t in x.findall(".//x:t", NS)) for x in root.findall("x:si", NS)]
+        root = ET.fromstring(archive.read(sheet))
+        rows = []
+        last = 0
+        found_header = False
+        for element in root.findall(".//x:sheetData/x:row", NS):
+            try:
+                number = int(element.get("r", "0"))
+            except ValueError as e:
+                raise ContractError("Invalid row number") from e
+            if number <= last or number < 1:
+                raise ContractError("Invalid row ordering")
+            last = number
+            cells = ["", "", ""]
+            seen = set()
+            reason = None
+            for cell in element.findall("x:c", NS):
+                addr = cell.get("r", "")
+                match = re.fullmatch(r"([A-Z]+)([0-9]+)", addr)
+                if not match or int(match.group(2)) != number or addr in seen:
+                    raise ContractError("Ambiguous source cell coordinate")
+                seen.add(addr)
+                index = 0
+                for char in match.group(1):
+                    index = index * 26 + ord(char) - 64
+                try:
+                    value = _cell_value(cell, strings)
+                except ContractError:
+                    value = ""
+                    reason = "INVALID_SOURCE_CELL"
+                if index > 3:
+                    if value.strip():
+                        raise ContractError("Unexpected data outside approved columns")
+                else:
+                    cells[index - 1] = value
+            if number == 1:
+                if tuple(cells) != COLS or reason:
+                    raise ContractError("Approved header mismatch")
+                found_header = True
+                continue
+            if any(x.strip() for x in cells) or reason:
+                if not found_header:
+                    raise ContractError("Missing original header")
+                rows.append((number, dict(zip(COLS, cells)), reason))
+            if len(rows) > MAX_ROWS:
+                raise ContractError("Too many source rows")
+        if not found_header or not rows:
+            raise ContractError("No source payment rows")
+        return rows
+
+
+def classify_payment_rows(payload: bytes, original_parser):
+    """Select rows using original parser evidence, not an invented rulebook.
+
+    If the original parser provides only aggregate counts, isolate each row into
+    a one-row original-format workbook and run that same parser. A mismatch in
+    source count, accepted count, review count or accepted amount fails closed.
+    """
     parsed = original_parser(payload)
-    rows = payment_rows(payload)
-    # We don't guess which source records failed the existing application's
-    # validation. Partial imports need a row-level approval mapping first.
-    if parsed.get("review_rows") or parsed.get("valid_rows") != len(rows):
-        raise ContractError("Existing parser marked some rows for review; no PostgreSQL write")
+    candidates = _all_source_rows(payload)
+    if parsed.get("source_rows") != len(candidates):
+        raise ContractError("Original parser/source row count mismatch")
+    eligible = []
+    review = []
+    partial = bool(parsed.get("review_rows"))
+    if partial and len(candidates) > 2000:
+        raise ContractError("Row-by-row review exceeds safe staging bound")
+    for number, row, local_error in candidates:
+        amount = None
+        if not local_error and row["Description"].strip():
+            try:
+                amount = _credit_paise(row["Credit Amount"])
+            except ContractError:
+                local_error = "INVALID_CREDIT_AMOUNT"
+        else:
+            local_error = local_error or "MISSING_DESCRIPTION"
+        if amount is not None and partial:
+            try:
+                one = original_parser(_single_row_xlsx(payload, number))
+                one_amount = Decimal(str(one.get("valid_credit_total", ""))) * 100
+                confirmed = (one.get("source_rows") == 1
+                             and one.get("valid_rows") == 1
+                             and one.get("review_rows") == 0
+                             and one_amount.is_finite()
+                             and one_amount == amount)
+            except (ValueError, TypeError, InvalidOperation, KeyError):
+                confirmed = False
+            if not confirmed:
+                local_error = "ORIGINAL_PARSER_ROW_REVIEW"
+        if local_error or amount is None:
+            review.append({"source_row": number, "reason": local_error or "ORIGINAL_PARSER_ROW_REVIEW"})
+        else:
+            eligible.append((number, row, amount))
+    if (len(eligible) != parsed.get("valid_rows")
+        or len(review) != parsed.get("review_rows")):
+        raise ContractError("Row eligibility differs from original parser")
+    try:
+        reported = Decimal(str(parsed.get("valid_credit_total", ""))) * 100
+    except (ValueError, TypeError, InvalidOperation) as e:
+        raise ContractError("Original parser total missing") from e
+    if not reported.is_finite() or reported != sum(v for _, _, v in eligible):
+        raise ContractError("Accepted-source financial total disagrees with original parser")
+    return eligible, review
+
+
+def persist_payment(payload: bytes, original_parser) -> str:
+    """Append eligible rows only; retain flagged source-row evidence in outbox."""
+    rows, _ = classify_payment_rows(payload, original_parser)
+    if not rows:
+        return "NO_ELIGIBLE_ROWS"
     digest = _sha(payload)
     conn = _db_connect()
     try:
@@ -253,7 +408,6 @@ def persist_payment(payload: bytes, original_parser) -> str:
     finally:
         conn.close()
 
-
 def attach(app):
     """Replace just the registered POST view in a *staging* Flask app."""
     if os.environ.get("SBI_PG_PAYMENT_BRIDGE_ENABLED") != "staging-only":
@@ -272,8 +426,8 @@ def attach(app):
 
     @wraps(original_view)
     def wrapped(*args, **kwargs):
-        # This executes the original Flask authentication, CSRF, parsing, SQLite
-        # receipt and duplicate logic. The bridge never circumvents them.
+        # Original Flask before_request authentication and original CSRF remain
+        # authoritative. No data is queued for an unapproved upload response.
         response = app.make_response(original_view(*args, **kwargs))
         if response.status_code not in (200, 201, 409):
             return response
@@ -286,22 +440,25 @@ def attach(app):
         uploaded = request.files.get("file")
         if uploaded is None:
             return response
+        from sbi_pg_outbox import queue_delivery, process_queued
         try:
+            if not hasattr(g, "dil_user") or not hasattr(g.dil_user, "uid"):
+                raise RuntimeError("Authenticated upload identity unavailable")
             uploaded.stream.seek(0)
             payload = uploaded.stream.read(MAX_BYTES + 1)
-            state = persist_payment(payload, original_module._parse)
+            if len(payload) > MAX_BYTES:
+                raise ContractError("File too large")
+            queue_delivery(payload, str(g.dil_user.uid))
+            state = process_queued(_sha(payload), str(g.dil_user.uid),
+                                   lambda data: persist_payment(data, original_module._parse),
+                                   lambda data: classify_payment_rows(data, original_module._parse)[1])
         except ContractError:
-            # Receipt is already durably staged in SQLite: leave it for owner
-            # review; do not pretend any database record was reconciled.
             return jsonify(error="PG_STAGE_SOURCE_REVIEW", postgres_ingested=False), 422
         except Exception:
-            app.logger.exception("Staging PostgreSQL delivery failed; original SQLite receipt retained")
+            app.logger.exception("Stage outbox needs recovery; original SQLite receipt retained")
             return jsonify(error="PG_STAGE_SYNC_PENDING", postgres_ingested=False), 503
-        if response.status_code == 409:
-            # Preserve the original HTTP duplicate semantics.
-            response.headers["X-QA-Postgres-Status"] = state
-            return response
         response.headers["X-QA-Postgres-Status"] = state
+        # Existing duplicate receipt keeps its exact original HTTP 409.
         return response
 
     wrapped._sbi_pg_bridge = True
