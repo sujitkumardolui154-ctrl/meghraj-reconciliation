@@ -134,15 +134,21 @@ def writer():
 
     first=[]
     for plan in plans:
-        with connection() as conn:
+        conn=connection()
+        try:
             first.append(persist_qa_source(conn,plan))
+        finally:
+            conn.close()
     if any(s not in ("SOURCE_COMMITTED_NOT_RECONCILED","ALREADY_RECORDED")
            for s in first):
         raise RuntimeError("R31_COMMIT_NOT_CONFIRMED")
     replay=[]
     for plan in plans:
-        with connection() as conn:
+        conn=connection()
+        try:
             replay.append(persist_qa_source(conn,plan))
+        finally:
+            conn.close()
     if replay!=["ALREADY_RECORDED","ALREADY_RECORDED"]:
         raise RuntimeError("R31_OWNER_IDEMPOTENT_REPLAY_FAILED")
     with connection() as conn:
@@ -182,8 +188,11 @@ def writer():
 
 def reader():
     for uid,receipt in ((OWNER_A,RECEIPT_A),(OWNER_B,RECEIPT_B)):
-        with connection() as conn:
+        conn=connection()
+        try:
             groups=sol_summary(conn,SimpleNamespace(uid=uid))
+        finally:
+            conn.close()
         if len(groups)!=1:
             raise RuntimeError("R31_OWNER_REPORT_GROUP_COUNT_WRONG")
         g=groups[0]
@@ -200,8 +209,11 @@ def reader():
                 raise RuntimeError("R31_REPORT_VALUE_MISMATCH_"+k)
         if g.get("verified_matched_payment_rows") is not None:
             raise RuntimeError("R31_FALSE_MATCHED_AMOUNT")
-        with connection() as conn:
+        conn=connection()
+        try:
             details=payment_details(conn,SimpleNamespace(uid=uid))
+        finally:
+            conn.close()
         if len(details)!=2 or {r["source_receipt_id"] for r in details}!={receipt}:
             raise RuntimeError("R31_CROSS_OWNER_DETAIL_DATA_LEAK_OR_GAP")
         if not any(
@@ -209,8 +221,11 @@ def reader():
             and r["credit_paise"] is None for r in details
         ):
             raise RuntimeError("R31_SOURCE_INVALID_MISSING_IN_REPORT")
-        with connection() as conn:
+        conn=connection()
+        try:
             csv_data=payment_details_csv(conn,SimpleNamespace(uid=uid))
+        finally:
+            conn.close()
         if not csv_data.startswith(b"\xef\xbb\xbf") or b"001505" not in csv_data:
             raise RuntimeError("R31_CSV_EXPORT_FAILED")
     print("DB_R31_OWNER_FILTERED_SQL_AND_CSV_PARITY=PASS",flush=True)
