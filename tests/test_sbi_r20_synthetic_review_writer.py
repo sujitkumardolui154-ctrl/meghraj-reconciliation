@@ -119,7 +119,7 @@ class R20ActualSyntheticXlsxTests(unittest.TestCase):
     def test_12_non_synthetic_real_invoice_refused(self):
         src,m=build_synthetic_fixture()
         w=load_workbook(io.BytesIO(src))
-        w["Invoice Details."]["M2"]="MXP19970"
+        w["Invoice Details."]["J2"]="MXP19970"
         bad=workbook_bytes(w);w.close()
         with self.assertRaisesRegex(ValueError,"NON_SYNTHETIC_INVOICE_ROW_REFUSED"):
             generate(bad,m)
