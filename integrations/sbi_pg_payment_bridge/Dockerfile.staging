@@ -1,0 +1,8 @@
+# Use the immutable live image only as a read-only build base in staging.
+ARG BASE_IMAGE=sbi-ft04-base:20261124
+FROM ${BASE_IMAGE}
+COPY sbi_payment_pg_bridge.py /app/sbi_payment_pg_bridge.py
+COPY sbi_pg_outbox.py /app/sbi_pg_outbox.py
+COPY outbox_worker.py /app/outbox_worker.py
+COPY staging_wsgi.py /app/staging_wsgi.py
+ENV PYTHONDONTWRITEBYTECODE=1
