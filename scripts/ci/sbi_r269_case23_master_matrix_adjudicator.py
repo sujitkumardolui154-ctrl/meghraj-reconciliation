@@ -257,6 +257,16 @@ def connect_master_matrix_review(
     provisional=[]
     for source_row,invoice_no,credit,method,tds_rate in result["candidate_rows"]:
         if method=="DNM01_PROVISIONAL_NO_RESERVATION":
+            # Even provisional recommendations must bind to the exact source.
+            # They never reserve money or claim final bank settlement.
+            if source_row not in scoped_bank or invoice_no not in master_ix:
+                raise MasterMatrixRefusal("PROVISIONAL_DNM_OUTSIDE_VERIFIED_SOURCE")
+            if money(credit)!=money(scoped_bank[source_row].credit):
+                raise MasterMatrixRefusal("PROVISIONAL_DNM_CREDIT_SOURCE_MISMATCH")
+            if source_row in holds or master_ix[invoice_no].source_row in quarantined:
+                raise MasterMatrixRefusal("PROVISIONAL_DNM_WITH_SOURCE_HOLD")
+            if refs(payment_ix[source_row].description):
+                raise MasterMatrixRefusal("PROVISIONAL_DNM_CONTRADICTORY_MXP_REF")
             provisional.append((workbook.upload_id,source_row,invoice_no,
                                 "DNM_REVIEW_ONLY_NEVER_RESERVE"))
         elif method not in MATRIX_TO_MASTER:
