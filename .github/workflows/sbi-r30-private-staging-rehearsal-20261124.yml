@@ -28,7 +28,9 @@ jobs:
             scripts/ci/sbi_r28_owner_deployment_and_row_exclusion_policy.py
           SHA="$(git rev-parse HEAD)"
           bash staging/aws_calculation_prescreen/host_stage.sh preflight "$SHA"
-          if bash staging/aws_calculation_prescreen/host_stage.sh preflight "0\${SHA:1}" ; then
+          BAD="0${SHA:1}"
+          [[ "${SHA:0:1}" == "0" ]] && BAD="1${SHA:1}"
+          if bash staging/aws_calculation_prescreen/host_stage.sh preflight "$BAD" ; then
             echo "R30_BAD_SHA_INCORRECTLY_ACCEPTED"; exit 1
           fi
       - name: Create ephemeral root-owned SYNTHETIC staging credentials
