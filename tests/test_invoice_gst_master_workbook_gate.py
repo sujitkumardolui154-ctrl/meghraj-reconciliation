@@ -64,6 +64,32 @@ class PrivateMasterWorkbookGateTests(unittest.TestCase):
             self.assertNotIn("candidates", public)
             self.assertNotIn("issues", public)
 
+    def test_verified_source_digest_private_canonical_export_only(self):
+        import csv
+        import hashlib
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "SBI_SOL_Branch_Master_FINAL.xlsx"
+            make_source(source)
+            digest = hashlib.sha256(source.read_bytes()).hexdigest()
+            export = Path(directory) / "private_canonical.csv"
+            result = gate.export_private_canonical_csv(
+                source, export, expected_source_sha=digest
+            )
+            self.assertEqual(result["canonical_candidate_rows_exported"],2)
+            self.assertEqual(result["supplemental_review_rows_excluded"],1)
+            with export.open(encoding="utf-8",newline="") as stream:
+                records=list(csv.DictReader(stream))
+            self.assertEqual(len(records),2)
+            self.assertEqual(records[0]["SOL ID"],"00001")
+            self.assertNotIn("SUPPLEMENTAL UNVERIFIED",
+                             str(records))
+            with self.assertRaisesRegex(gate.MasterReviewError,
+                                         "SOURCE_WORKBOOK_DIGEST_MISMATCH"):
+                gate.export_private_canonical_csv(
+                    source, Path(directory)/"wrong.csv",
+                    expected_source_sha="0"*64
+                )
+
     def test_canonical_count_mismatch_fails_closed(self):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "SBI_SOL_Branch_Master_FINAL.xlsx"
