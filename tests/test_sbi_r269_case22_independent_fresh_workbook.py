@@ -392,5 +392,31 @@ class FreshWorkbookIndependentLedgerQA(unittest.TestCase):
         self.assertIsNone(x["financial_status"])
 
 
+    def test_59_all_shadow_edge_receipts_contain_upload_scope(self):
+        a=run(wb=workbook(A))
+        b=run(wb=workbook(B))
+        self.assertEqual(a["scoped_shadow_edges"][0][0],A)
+        self.assertEqual(b["scoped_shadow_edges"][0][0],B)
+        self.assertNotEqual(a["scoped_shadow_edges"],b["scoped_shadow_edges"])
+
+    def test_60_all_bank_balance_rows_contain_upload_scope(self):
+        a=run(wb=workbook(A))
+        b=run(wb=workbook(B))
+        self.assertEqual(a["scoped_shadow_bank_rows"][0][0],A)
+        self.assertEqual(b["scoped_shadow_bank_rows"][0][0],B)
+
+    def test_61_all_invoice_cash_gap_rows_contain_upload_scope(self):
+        a=run(wb=workbook(A))
+        b=run(wb=workbook(B))
+        self.assertEqual(a["scoped_shadow_invoice_cash_rows"][0][0],A)
+        self.assertEqual(b["scoped_shadow_invoice_cash_rows"][0][0],B)
+
+    def test_62_no_scope_rows_derived_from_older_upload(self):
+        a=run(wb=workbook(A))
+        self.assertTrue(all(row[0]==A for row in a["scoped_shadow_edges"]))
+        self.assertTrue(all(row[0]==A for row in a["scoped_shadow_bank_rows"]))
+        self.assertTrue(all(row[0]==A for row in a["scoped_shadow_invoice_cash_rows"]))
+
+
 if __name__ == "__main__":
     unittest.main()
