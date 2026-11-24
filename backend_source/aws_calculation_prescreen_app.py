@@ -61,8 +61,8 @@ def authorized():
     auth=request.authorization
     if (auth is None
             or str(auth.type).casefold()!="basic"
-            or not hmac.compare_digest(str(auth.username or ""),username)
-            or not hmac.compare_digest(str(auth.password or ""),password)):
+            or not hmac.compare_digest(str(auth.username or "").encode("utf-8"),username.encode("utf-8"))
+            or not hmac.compare_digest(str(auth.password or "").encode("utf-8"),password.encode("utf-8"))):
         response,status=error("AUTH_REQUIRED",401)
         response.headers["WWW-Authenticate"]='Basic realm="SBI isolated calculation preview"'
         return response,status
