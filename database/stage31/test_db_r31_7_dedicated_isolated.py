@@ -50,7 +50,6 @@ class ProfileIsolationTests(unittest.TestCase):
         with mock.patch.object(qa,"inspect",inspect),\
              mock.patch.object(qa,"docker",docker),\
              mock.patch.object(qa,"db_exists",side_effect=lambda db:db==qa.SOURCE),\
-             mock.patch.object(qa.QA_SQL,"is_file",return_value=True),\
              mock.patch.object(qa.Path,"is_file",return_value=True):
             return qa.validate_safety()
 
