@@ -187,6 +187,9 @@ def rehearse_methods(
            "RELATIONSHIP_PAIR_SCHEMA_INVALID")
     official={(sol,normalized(name)) for sol,name in master_pairs}
     cross_pairs=set(relationships)
+    dnm_banks={s.bank_key for s in steps if type(s) is MethodStep and s.method==DNM}
+    demand(not any(type(s) is MethodStep and s.method!=DNM and s.bank_key in dnm_banks
+                   for s in steps), "DNM_PROVISIONAL_AND_RESERVED_SAME_BANK")
     ordered=[]
     pending_dnm=[]
     seen=set()
