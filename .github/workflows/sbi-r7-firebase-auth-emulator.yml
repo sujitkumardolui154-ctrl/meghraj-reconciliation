@@ -1,0 +1,75 @@
+name: SBI R7 Firebase Auth Emulator & Payment Evidence QA (no AWS)
+on:
+  push:
+    branches:
+      - review/sbi-r7-firebase-emulator-payment-evidence-20261123
+  pull_request:
+    branches:
+      - feature/sbi-payment-reconciliation-readiness-gate-20261120
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  firebase-auth-emulator-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GCLOUD_PROJECT: demo-sbi-r7
+      CI: "true"
+    steps:
+      - name: Checkout source (read-only token)
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Configure Node for disposable emulator
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Configure Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Ensure no Google credentials are mounted
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test "$GCLOUD_PROJECT" = "demo-sbi-r7"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('scripts/ci/sbi-r7-firebase.json')
+          c=json.loads(p.read_text())
+          assert c['emulators']['auth'] == {'host':'127.0.0.1','port':9099}
+          assert c['emulators']['ui']['enabled'] is False
+          print('R7_AUTH_EMULATOR_LOOPBACK_CONFIGURATION=PASS')
+          PY
+      - name: Install isolated Flask and Excel dependencies
+        run: python -m pip install -r staging/aws_login_v150/requirements.txt
+      - name: Retain prior R4 mocked Firebase and payment regressions
+        run: |
+          python -m unittest discover -s tests -p 'test_sbi_payment_evidence_upload.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_reconciliation_readiness.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_r4_readonly_flask_http.py' -v
+      - name: R7 Auth Emulator issues real local tokens and session cookies
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          npx --yes firebase-tools@14.22.0 emulators:exec \
+            --project demo-sbi-r7 \
+            --config scripts/ci/sbi-r7-firebase.json \
+            --only auth \
+            --non-interactive \
+            'python -m unittest discover -s tests -p "test_sbi_r7_firebase_auth_emulator.py" -v'
+          echo 'R7_EMULATOR_TESTS_EXECUTED_WITHOUT_PRODUCTION_CREDENTIALS=PASS'
+      - name: Verify financial locks remained in original source
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          grep -Fq 'def disabled_financial_api(route)' staging/aws_login_v150/app.py
+          grep -Fq '2026-11-23T00:00:00+05:30' staging/aws_login_v150/reconciliation_review_adapter.py
+          grep -Fq 'id="dil-payment-reconcile" disabled' dashboard_source/index.html
+          echo 'R7_FINANCIAL_APPLY=LOCKED'
+          echo 'R7_REAL_PRODUCTION_FIREBASE_TEST=NOT_EXECUTED'
+          echo 'R7_AWS_DEPLOYMENT=NOT_EXECUTED'

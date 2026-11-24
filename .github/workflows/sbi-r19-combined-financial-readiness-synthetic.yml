@@ -1,0 +1,65 @@
+name: SBI R19 Combined Financial Readiness E2E Synthetic (Apply Locked)
+on:
+  push:
+    branches:
+      - review/sbi-r19-combined-isolated-source-to-output-20261124
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  combined-private-synthetic-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install only required synthetic Excel dependency
+        run: python -m pip install 'openpyxl>=3.1.5,<4'
+      - name: Re-run R15 R16 R17 R18 invariants on this exact source commit
+        env:
+          CI: 'true'
+          SBI_FINANCIAL_APPLY: LOCKED
+        run: |
+          set -Eeuo pipefail
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${FIREBASE_AUTH_EMULATOR_HOST:-}"
+          python -m unittest discover -s tests -p 'test_sbi_r15_financial_source_preflight.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_r16_master_identity_shadow.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_r17_synthetic_financial_shadow.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_r18_output_parity_gate.py' -v
+      - name: Execute combined R19 synthetic source-to-review-output workflow and fail-closed tests
+        env:
+          CI: 'true'
+          SBI_FINANCIAL_APPLY: LOCKED
+        run: |
+          set -Eeuo pipefail
+          python -m py_compile scripts/ci/sbi_r19_combined_synthetic_rehearsal.py
+          python -m unittest discover -s tests -p 'test_sbi_r19_combined_synthetic_rehearsal.py' -v
+          python scripts/ci/sbi_r19_combined_synthetic_rehearsal.py > /tmp/r19_safe_aggregates.json
+          python - <<'PY'
+          import json
+          with open('/tmp/r19_safe_aggregates.json') as f:
+              r=json.load(f)
+          assert r['stage']=='R19_SYNTHETIC_FULL_CHAIN_REHEARSAL_ONLY'
+          assert r['output_statuses_structure_only']=={'SUSPENSE':4}
+          assert r['financial_statuses_approved']==0
+          assert r['real_financial_allocations']==0
+          assert r['financial_apply_locked'] is True
+          assert r['engine_v251_certified'] is False
+          assert r['financial_database_connected'] is False
+          assert r['production_excel_writer_connected'] is False
+          assert r['real_firebase_app_session_tested'] is False
+          assert len(r['pending_real_release_gates']) >= 9
+          print('R19_SYNTHETIC_SOURCE_TO_REVIEW_EXCEL=PASS')
+          print('R19_REVIEW_ONLY_HYPOTHESES_NO_FINANCIAL_MATCH=PASS')
+          print('R19_PENDING_EXTERNAL_RELEASE_GATES=',len(r['pending_real_release_gates']))
+          print('R19_FINANCIAL_APPLY=LOCKED')
+          PY
+          echo 'R19_BANK_FINANCIAL_DATA=NOT_IMPORTED'
+          echo 'R19_PRODUCTION_MAIN_AWS_POSTGRES=UNCHANGED'
+          echo 'R19_REAL_FIREBASE_APP_LOGIN=NOT_PERFORMED'
+          echo 'R19_CERTIFIED_V251_AND_REAL_V218_WRITER=NOT_CONNECTED'

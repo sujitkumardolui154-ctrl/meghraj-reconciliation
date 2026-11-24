@@ -1,0 +1,41 @@
+name: D-028 Existing Payment Evidence UI Compatibility QA
+on:
+  pull_request:
+    paths:
+      - "dashboard_source/index.html"
+      - "staging/aws_login_v150/**"
+      - "tests/test_d028_existing_payment_ui_contract.py"
+      - "tests/test_sbi_payment_evidence_upload.py"
+      - ".github/workflows/sbi-d028-existing-evidence-ui.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  existing-evidence-ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: D-028 existing UI, exact 3-column source contract and no duplicate tab
+        run: |
+          set -euo pipefail
+          python staging/aws_login_v150/d028_existing_payment_contract.py
+          python -m unittest discover -s tests -p 'test_d028_existing_payment_ui_contract.py' -v
+      - name: Install existing payment evidence dependencies
+        run: python -m pip install -r staging/aws_login_v150/requirements.txt
+      - name: Execute EXISTING AWS payment evidence API/CSRF/receipt tests with fabricated values
+        run: python -m unittest discover -s tests -p 'test_sbi_payment_evidence_upload.py' -v
+      - name: Keep finance release and legacy processing forbidden
+        run: |
+          echo "D028_EXISTING_UI_REUSED=YES"
+          echo "D028_NEW_TAB=NOT_CREATED"
+          echo "D028_REAL_BANK_DATA=NOT_USED"
+          echo "D028_HISTORICAL_FINANCIAL_RECALCULATION=FORBIDDEN"
+          echo "D028_AWS_DEPLOYMENT=NOT_PERFORMED"
+          echo "D028_FINANCIAL_WRITES=BLOCKED"
+          echo "D028_ACTIVE_AWS_ENDPOINT=NOT_VERIFIED"

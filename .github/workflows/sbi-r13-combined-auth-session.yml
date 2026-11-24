@@ -1,0 +1,118 @@
+name: SBI R13 Combined R4-R12 Auth Session and Payment QA (GitHub only)
+on:
+  push:
+    branches:
+      - review/sbi-r13-combined-auth-session-offline-20261124
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sbi-r13-combined-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  combined-staging-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GCLOUD_PROJECT: demo-sbi-r7
+      CI: "true"
+    steps:
+      - name: Checkout repository without reusable write credentials
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check source and production-isolation constraints
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${FIREBASE_AUTH_EMULATOR_HOST:-}"
+          test -z "${SBI_R9_REAL_STAGING_PROBE:-}"
+          test -z "${SBI_R11_READONLY_FIREBASE:-}"
+          test -z "${SBI_R8_STAGING_MODE:-}"
+          grep -Fq 'sbi-r9-staging' scripts/ci/sbi_r11_firebase_keyless_readonly_probe.py
+          test "$GCLOUD_PROJECT" = demo-sbi-r7
+          grep -Fq 'project != "sbi-r9-staging"' scripts/ci/sbi_r9_real_staging_signed_token_probe.py
+          grep -Fq 'def disabled_financial_api(route)' staging/aws_login_v150/app.py
+          grep -Fq '2026-11-23T00:00:00+05:30' staging/aws_login_v150/reconciliation_review_adapter.py
+          grep -Fq 'id="dil-payment-reconcile" disabled' dashboard_source/index.html
+          bash -n scripts/ci/sbi_r8_staging_image_canary.sh
+          python -m py_compile scripts/ci/sbi_r9_real_staging_signed_token_probe.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          c = json.loads(Path("scripts/ci/sbi-r7-firebase.json").read_text())
+          if c["emulators"]["auth"] != {"host":"127.0.0.1","port":9099}:
+              raise SystemExit("R13_BLOCKED_EMULATOR_NOT_LOOPBACK")
+          if c["emulators"]["ui"]["enabled"] is not False:
+              raise SystemExit("R13_BLOCKED_EMULATOR_UI")
+          print("R13_SOURCE_AND_CREDENTIALS_GATES=PASS")
+          PY
+      - name: Install original read-only app dependencies once
+        run: python -m pip install -r staging/aws_login_v150/requirements.txt
+      - name: R9 real-project fail-closed preflight (23 offline tests)
+        run: python -m unittest discover -s tests -p 'test_sbi_r9_real_staging_probe_guards.py' -v
+      - name: R11 keyless real Firebase REST read-only security guards (14 mocked tests)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -z "${SBI_R11_READONLY_FIREBASE:-}"
+          python -m py_compile scripts/ci/sbi_r11_firebase_keyless_readonly_probe.py
+          python -m unittest discover -s tests -p 'test_sbi_r11_firebase_keyless_readonly.py' -v
+          echo 'R13_KEYLESS_READONLY_GUARDS=PASS'
+      - name: R8 separate staging/role/import/permissions (20 tests)
+        run: python -m unittest discover -s tests -p 'test_sbi_r8_staging_runtime.py' -v
+      - name: Read-only payment/upload/preflight/Flask regression (19 tests)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python -m unittest discover -s tests -p 'test_sbi_payment_evidence_upload.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_reconciliation_readiness.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_r4_readonly_flask_http.py' -v
+      - name: Firebase Auth Emulator login, claim, CSRF and evidence (13 tests)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${FIREBASE_AUTH_EMULATOR_HOST:-}"
+          npx --yes firebase-tools@14.22.0 emulators:exec \
+            --project demo-sbi-r7 \
+            --config scripts/ci/sbi-r7-firebase.json \
+            --only auth \
+            --non-interactive \
+            'python -m unittest discover -s tests -p "test_sbi_r7_firebase_auth_emulator.py" -v'
+          echo 'R13_EMULATED_ID_AND_SESSION_COOKIES=PASS'
+      - name: Build one networkless staging Docker candidate (no registry push)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker build -f staging/aws_login_v150/Dockerfile.r8_staging \
+            --build-arg SBI_SOURCE_SHA="$GITHUB_SHA" \
+            -t "sbi-r8-staging:$GITHUB_SHA" .
+          test "$(docker image inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "sbi-r8-staging:$GITHUB_SHA")" = "$GITHUB_SHA"
+          echo 'R13_SOURCE_VERIFIED_STAGING_DOCKER=PASS'
+      - name: One isolated container, deny/health/finance tests, automatic rollback
+        shell: bash
+        env:
+          R8_STAGING_IMAGE: sbi-r8-staging:${{ github.sha }}
+          R8_STAGING_SHA: ${{ github.sha }}
+        run: bash scripts/ci/sbi_r8_staging_image_canary.sh
+      - name: Always verify cleanup, never mark a failed test as successful
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if docker ps -a --filter 'name=^/sbi-r8-ci-' --format '{{.Names}}' | grep -q .; then
+            echo 'R13_TEMP_CONTAINER_CLEANUP=FAIL'
+            exit 1
+          fi
+          echo 'R13_TEMP_CONTAINER_CLEANUP=PASS'
+          echo 'R13_REAL_SIGNED_FIREBASE_IN_CI=NOT_TESTED'
+          echo 'R13_AWS=UNCHANGED'
+          echo 'R13_FINANCIAL_APPLY=LOCKED'

@@ -11,6 +11,9 @@ COPY dashboard_source/account.js dashboard_source/dil_floating_assistant.js /app
 COPY staging/aws_login_v150/app.py /app/app.py
 COPY staging/aws_login_v150/tower_readonly.py /app/tower_readonly.py
 COPY staging/aws_login_v150/project_workspace.py /app/project_workspace.py
+COPY staging/aws_login_v150/payment_evidence_upload.py /app/payment_evidence_upload.py
+COPY staging/aws_login_v150/reconciliation_readiness.py /app/reconciliation_readiness.py
+COPY staging/aws_login_v150/reconciliation_review_adapter.py /app/reconciliation_review_adapter.py
 COPY staging/aws_login_v150/workspace_ui.html /app/workspace_ui.html
 COPY staging/aws_login_v150/github_workstream_board.html /app/github_workstream_board.html
 COPY staging/aws_login_v150/tower_theme.css /app/tower_theme.css

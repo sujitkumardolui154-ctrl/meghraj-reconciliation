@@ -1,0 +1,49 @@
+name: SBI R9 Real Firebase Staging Probe Safety QA (offline only)
+on:
+  push:
+    branches:
+      - review/sbi-r9-real-firebase-staging-probe-preflight-20261123
+  pull_request:
+    branches:
+      - feature/sbi-payment-reconciliation-readiness-gate-20261120
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  r9-safety-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout development test source (read-only)
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install original application test dependencies
+        run: python -m pip install -r staging/aws_login_v150/requirements.txt
+      - name: Compile R9 opt-in test harness (DO NOT execute real test)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python -m py_compile scripts/ci/sbi_r9_real_staging_signed_token_probe.py
+          grep -Fq 'R9_REAL_FIREBASE_STAGING_QA_ONLY' scripts/ci/sbi_r9_real_staging_signed_token_probe.py
+          grep -Fq 'R9_REAL_STAGING_REFUSED:' scripts/ci/sbi_r9_real_staging_signed_token_probe.py
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          echo 'R9_OPT_IN_SIGNED_TOKEN_HARNESS_SYNTAX=PASS'
+      - name: Execute only 23 R9 offline fail-closed guard tests
+        run: python -m unittest discover -s tests -p 'test_sbi_r9_real_staging_probe_guards.py' -v
+      - name: Replay 20 staging process QA checks
+        run: python -m unittest discover -s tests -p 'test_sbi_r8_staging_runtime.py' -v
+      - name: Verify original financial lock and upload cutoff
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          grep -Fq 'def disabled_financial_api(route)' staging/aws_login_v150/app.py
+          grep -Fq '2026-11-23T00:00:00+05:30' staging/aws_login_v150/reconciliation_review_adapter.py
+          grep -Fq 'id="dil-payment-reconcile" disabled' dashboard_source/index.html
+          echo 'R9_REAL_FIREBASE_NETWORK_TEST=NOT_EXECUTED'
+          echo 'R9_PRODUCTION_FIREBASE=NOT_CONTACTED'
+          echo 'R9_AWS_DEPLOYMENT=NOT_EXECUTED'
+          echo 'R9_FINANCIAL_APPLY=LOCKED'
