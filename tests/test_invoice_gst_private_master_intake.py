@@ -66,6 +66,31 @@ class VerifiedPrivateMasterIntake(unittest.TestCase):
             self.assertEqual(len(limited["rows"]),1)
             self.assertEqual(limited["rows"][0]["sol_id"],"03970")
 
+    def test_two_approved_identities_cannot_claim_same_sol(self):
+        with tempfile.TemporaryDirectory() as folder:
+            master, evidence_path, _, _ = self.write(Path(folder))
+            master.write_text(
+                "Official Branch Name,SOL ID,Search Aliases\\n"
+                "QA VERIFIED KOLKATA BRANCH,03970,QA VK\\n"
+                "QA OTHER VERIFIED BRANCH,03970,QA OTHER\\n"
+            )
+            evidence = json.loads(evidence_path.read_text())
+            other = dict(evidence[0])
+            other.update({
+                "official_name": "QA OTHER VERIFIED BRANCH",
+                "branch_key": "qa-another-03970",
+            })
+            evidence_path.write_text(json.dumps(evidence + [other]))
+            digest = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+            with self.assertRaisesRegex(
+                ValueError, "DUPLICATE_APPROVED_SOL_IDENTITY_CONFLICT"
+            ):
+                loader.verified_private_inputs(
+                    master, evidence_path,
+                    master_sha=digest(master),
+                    evidence_sha=digest(evidence_path),
+                )
+
     def test_tampered_source_denied(self):
         with tempfile.TemporaryDirectory() as folder:
             data=self.write(Path(folder))
