@@ -76,13 +76,19 @@ def private_db_role_snapshot():
 
 
 def report_snapshot(user):
+    # psycopg 3 connection context closes on exit in the existing adapters;
+    # use one private restricted connection per read-only report.
     conn=_connect("report")
     try:
         summaries=sol_summary(conn,user,limit=1000,offset=0)
-        details=payment_details(conn,user,limit=1000,offset=0)
-        return summaries,details
     finally:
         conn.close()
+    conn=_connect("report")
+    try:
+        details=payment_details(conn,user,limit=1000,offset=0)
+    finally:
+        conn.close()
+    return summaries,details
 
 
 def private_cookie_assertions(client,csrf_response,session_response):
@@ -208,8 +214,6 @@ def main():
         http_status(identity,200,"FIREBASE_ME")
         # Never log user email/UID, but verify that original Firebase middleware
         # created a live authorized identity, then trust that owner exclusively.
-        with client.session_transaction() if False else client.application.app_context():
-            pass
         print("DB_R31_8_REAL_FIREBASE_SESSION=PASS",flush=True)
 
         for path in ("/api/r31-private-qa/sol-report",
