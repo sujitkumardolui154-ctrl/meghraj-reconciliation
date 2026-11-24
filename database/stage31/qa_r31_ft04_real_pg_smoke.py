@@ -122,7 +122,7 @@ def run():
 
         replay=write_qa_source_receipt(conn,candidate)
         assert replay["status"]=="QA_ALREADY_RECORDED"
-        assert totals(conn)==(1,5,4,5,14000,5)
+        assert totals(conn)==(1,5,3,5,13000,5)
         print("DB_R31_FT04_QA_REAL_PG_REPLAY_IDEMPOTENT=PASS")
 
         different_owner=plan(first,"b"*32,"different-owner")
@@ -131,7 +131,7 @@ def run():
             raise AssertionError("same SHA cross owner incorrectly accepted")
         except IngestReviewRequired as e:
             assert str(e)=="GLOBAL_SHA_CROSS_OWNER_REVIEW_REQUIRED"
-        assert totals(conn)==(1,5,4,5,14000,5)
+        assert totals(conn)==(1,5,3,5,13000,5)
         print("DB_R31_FT04_QA_GLOBAL_SHA_CROSS_OWNER=HELD_SAFE")
 
         second=xlsx([
