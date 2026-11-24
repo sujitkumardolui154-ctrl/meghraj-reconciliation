@@ -213,6 +213,18 @@ def run_independent_fresh_workbook(
         "scoped_matrix_plan_digest": expected_scoped_plan_digest,
         "bank_rows_in_this_upload":len(workbook.banks),
         "invoice_rows_in_this_upload":len(workbook.invoices),
+        # Every row exported to later review stages keeps its upload scope.
+        # Unscoped core output is retained only for backwards test parity.
+        "scoped_shadow_edges":tuple(
+            (workbook.upload_id,)+tuple(edge) for edge in ledger["shadow_edges"]
+        ),
+        "scoped_shadow_bank_rows":tuple(
+            (workbook.upload_id,)+tuple(row) for row in ledger["shadow_bank_rows"]
+        ),
+        "scoped_shadow_invoice_cash_rows":tuple(
+            (workbook.upload_id,)+tuple(row)
+            for row in ledger["shadow_invoice_cash_rows"]
+        ),
         "historical_workbooks_read":False,
         "previous_approved_allocations_imported":False,
         "previous_payment_statuses_imported":False,
