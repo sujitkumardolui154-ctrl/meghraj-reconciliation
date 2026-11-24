@@ -114,7 +114,7 @@ class OwnerSourceAdapterTests(unittest.TestCase):
 
     def test_old_global_sha_schema_rejected_even_with_correct_role(self):
         fake=FakeCursor([
-            ("sbi_ft04g_clean_0e858f93","sbi_ft04q_ingest",
+            ("sbi_r31_owner_qa_20261125","sbi_r31_ownerqa_ingest",
                 True,True,True,True,False,False),
             (0,0,1)
         ])
@@ -124,9 +124,9 @@ class OwnerSourceAdapterTests(unittest.TestCase):
 
     def test_production_or_wrong_role_rejected_before_schema_query(self):
         for identity in (
-            ("sbi_reconciliation_main","sbi_ft04q_ingest",
+            ("sbi_reconciliation_main","sbi_r31_ownerqa_ingest",
                 True,True,True,True,False,False),
-            ("sbi_ft04g_clean_0e858f93","sbi_pr129_report_login",
+            ("sbi_r31_owner_qa_20261125","sbi_pr129_report_login",
                 False,False,False,False,False,False)
         ):
             fake=FakeCursor([identity])
