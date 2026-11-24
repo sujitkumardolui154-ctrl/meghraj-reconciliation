@@ -6,6 +6,10 @@ from io import BytesIO
 from pathlib import Path
 import unittest
 import zipfile
+import json
+import urllib.error
+
+from r31_real_firebase_qa_acceptance import safe_firebase_signin_error
 
 from payment_evidence_upload import _parse
 from r31_firebase_private_incontainer_smoke import synthetic_excel
@@ -66,6 +70,35 @@ class GenuineAuthAcceptanceContracts(unittest.TestCase):
         self.assertIn('"Credit Received (INR)"',REMOTE)
         self.assertIn('REAL_FIREBASE_INR_118_00_REPORT_PARITY=PASS',REMOTE)
         self.assertIn('PRODUCTION_FINANCIAL_WRITES=NONE_BY_QA',REMOTE)
+
+    def test_known_firebase_http_400_error_is_classified_without_leaking(self):
+        body=json.dumps({"error":{"code":400,"message":"INVALID_LOGIN_CREDENTIALS",
+            "details":"NEVER_ECHO_PRIVATE_FIELDS"}}).encode("utf-8")
+        error=urllib.error.HTTPError(
+            "https://identitytoolkit.googleapis.com",400,
+            "Bad Request",{},BytesIO(body))
+        self.assertEqual(safe_firebase_signin_error(error),
+                         "INVALID_LOGIN_CREDENTIALS")
+
+    def test_unrecognized_or_malformed_firebase_error_is_generic(self):
+        for payload in (
+            b'{"error":{"message":"user-secret@example.invalid"}}',
+            b'not-json',
+            b'{"error":{"message":"INVALID_LOGIN_CREDENTIALS;token=secret"}}'
+        ):
+            error=urllib.error.HTTPError(
+                "https://identitytoolkit.googleapis.com",400,
+                "Bad Request",{},BytesIO(payload))
+            self.assertEqual(safe_firebase_signin_error(error),
+                             "REJECTED_HTTP_400")
+
+    def test_provider_disabled_is_distinct_from_bad_password(self):
+        payload=b'{"error":{"message":"OPERATION_NOT_ALLOWED"}}'
+        error=urllib.error.HTTPError(
+            "https://identitytoolkit.googleapis.com",400,
+            "Bad Request",{},BytesIO(payload))
+        self.assertEqual(safe_firebase_signin_error(error),
+                         "OPERATION_NOT_ALLOWED")
 
     def test_no_secrets_printed_and_no_user_creations(self):
         self.assertNotIn('print(token',REMOTE)
