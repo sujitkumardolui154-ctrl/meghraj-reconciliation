@@ -40,7 +40,8 @@ ALTER TABLE sbi.import_batches
 CREATE TABLE IF NOT EXISTS sbi.payment_source_status_v1 (
   source_row_id uuid PRIMARY KEY
     REFERENCES sbi.payment_source_rows(id) ON DELETE RESTRICT,
-  owner_uid text NOT NULL CHECK (length(owner_uid) BETWEEN 1 AND 200),
+  -- Owner is derived solely from the linked import batch, never copied into
+  -- a second mutable column that might disagree with the source owner.
   source_status text NOT NULL CHECK (
     source_status IN (
       'PENDING_RECONCILIATION',
@@ -63,8 +64,8 @@ CREATE TABLE IF NOT EXISTS sbi.payment_source_status_v1 (
   CHECK (official_branch_name IS NULL OR sol_master_sha256 IS NOT NULL)
 );
 CREATE INDEX IF NOT EXISTS ix_sbi_r31_source_status_owner
-  ON sbi.payment_source_status_v1(owner_uid,source_status);
-CREATE INDEX IF NOT EXISTS ix_sbi_r31_batch_owner_receipt
+  ON sbi.payment_source_status_v1(source_status);
+CREATE UNIQUE INDEX IF NOT EXISTS ix_sbi_r31_batch_owner_receipt
   ON sbi.import_batches(owner_uid,source_receipt_id)
   WHERE owner_uid IS NOT NULL AND source_receipt_id IS NOT NULL;
 
