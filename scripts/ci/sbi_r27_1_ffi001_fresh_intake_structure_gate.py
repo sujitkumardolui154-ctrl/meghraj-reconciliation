@@ -22,7 +22,7 @@ SHEETS=frozenset(("Invoice Details.","PAYMNENT"))
 NS="{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 REL_NS="{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
 PKG_REL="{http://schemas.openxmlformats.org/package/2006/relationships}"
-SHA=re.compile("[0-9a-f]{64}\\Z")
+SHA=re.compile("[0-9a-f]{64}$")
 MAX_SOURCE_BYTES=90*1024*1024
 MAX_UNCOMPRESSED=400*1024*1024
 MAX_MEMBERS=20000
@@ -80,7 +80,7 @@ def inspect_fresh_file_structure(source_bytes,request:FreshIntakeRequest, *,
             "FFI001_FRESH_CURRENT_RUN_USER_UPLOAD_REQUIRED")
     require(type(source_bytes) is bytes and 0<len(source_bytes)<=MAX_SOURCE_BYTES,
             "FRESH_XLSX_SOURCE_BYTES_REQUIRED")
-    require(source_bytes[:4]==b"PK\\x03\\x04",
+    require(source_bytes[:4]==bytes((80,75,3,4)),
             "INVALID_XLSX_CONTAINER_SIGNATURE")
     digest=sha256(source_bytes).hexdigest()
     if request.expected_original_file_sha256 is not None:
