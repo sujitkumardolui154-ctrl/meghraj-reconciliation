@@ -149,6 +149,47 @@ def inspect_private_workbook(path: str | Path):
         workbook.close()
 
 
+def export_private_canonical_csv(source_xlsx, destination_csv, *, expected_source_sha):
+    """Export only canonical SOL candidates to a local private 0600 CSV.
+
+    The source remains WORKING REVIEW and this export is not verified master
+    approval. It exists solely to feed the separate evidence-gated QA importer.
+    Do not put this CSV into GitHub.
+    """
+    import csv
+    import os
+    if not re.fullmatch(r"[a-f0-9]{64}", expected_source_sha or ""):
+        raise MasterReviewError("APPROVED_SOURCE_SHA_REQUIRED")
+    audit = inspect_private_workbook(source_xlsx)
+    if audit["source_sha256"] != expected_source_sha:
+        raise MasterReviewError("SOURCE_WORKBOOK_DIGEST_MISMATCH")
+    target = Path(destination_csv)
+    if target.suffix.lower() != ".csv" or target.exists():
+        raise MasterReviewError("PRIVATE_CSV_TARGET_MUST_BE_NEW")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
+    fd = os.open(target, flags, 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as stream:
+            writer = csv.DictWriter(
+                stream,
+                fieldnames=("Official Branch Name", "SOL ID", "Search Aliases")
+            )
+            writer.writeheader()
+            for row in audit["candidates"]:
+                writer.writerow({key: row[key] for key in writer.fieldnames})
+    except Exception:
+        target.unlink(missing_ok=True)
+        raise
+    return {
+        "source_sha256": audit["source_sha256"],
+        "canonical_candidate_rows_exported": len(audit["candidates"]),
+        "supplemental_review_rows_excluded": audit["supplemental_review_rows_excluded"],
+        "source_status": audit["source_status"],
+        "verified_customer_records_imported": 0,
+    }
+
+
 def safe_audit_summary(audit):
     """No branch addresses, names, aliases or SOL IDs leave private runtime."""
     keys = ("source_sha256","source_name","canonical_count",
