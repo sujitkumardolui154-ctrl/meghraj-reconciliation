@@ -1,0 +1,301 @@
+name: SBI R26.2 Controlled v2.51 Rebuild Synthetic QA (Finance Locked)
+on:
+  push:
+    branches:
+      - review/sbi-r262-v251-rebuild-scaffold-20261124
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  r262-v251-rebuild-development-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic-ci-only
+          POSTGRES_DB: sbi_r20_synthetic_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d sbi_r20_synthetic_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI: 'true'
+      SBI_FINANCIAL_APPLY: LOCKED
+      SBI_R20_DISPOSABLE_DSN: postgresql://postgres:synthetic-ci-only@127.0.0.1:5432/sbi_r20_synthetic_qa
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install Excel parser and PostgreSQL client for isolated tests
+        run: python -m pip install 'openpyxl>=3.1.5,<4' 'psycopg[binary]>=3.2,<4'
+      - name: Run all existing R15-R19 source, SOL, finance-shadow and XLSX tests
+        run: |
+          set -Eeuo pipefail
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${FIREBASE_AUTH_EMULATOR_HOST:-}"
+          python -m unittest discover -s tests -p 'test_sbi_r15_financial_source_preflight.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_r16_master_identity_shadow.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_r17_synthetic_financial_shadow.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_r18_output_parity_gate.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_r19_combined_synthetic_rehearsal.py' -v
+      - name: R24 enforce original invoice J and monetary K:N positions
+        run: |
+          set -Eeuo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import sys
+          sys.path.insert(0,str(Path("scripts/ci").resolve()))
+          from sbi_r16_master_identity_shadow import EXPECTED_INVOICE_HEADERS
+          from sbi_r19_combined_synthetic_rehearsal import EXPECTED_INVOICE_FIELDS, build_synthetic_fixture
+          from openpyxl import load_workbook
+          import io
+          assert EXPECTED_INVOICE_HEADERS[10]=="Invoice No"
+          assert EXPECTED_INVOICE_HEADERS[13]=="SGST"
+          assert EXPECTED_INVOICE_FIELDS[10]=="Invoice No"
+          assert EXPECTED_INVOICE_FIELDS[11]=="Taxable Amount"
+          assert EXPECTED_INVOICE_FIELDS[12]=="CGST"
+          assert EXPECTED_INVOICE_FIELDS[13]=="SGST"
+          assert EXPECTED_INVOICE_FIELDS[14]=="Total Bill Amount"
+          source,_=build_synthetic_fixture()
+          wb=load_workbook(io.BytesIO(source),read_only=True,data_only=False)
+          try:
+              inv=wb["Invoice Details."]
+              assert inv["J1"].value=="Invoice No"
+              assert inv["K1"].value=="Taxable Amount"
+              assert inv["L1"].value=="CGST"
+              assert inv["M1"].value=="SGST"
+              assert inv["N1"].value=="Total Bill Amount"
+              assert inv["J2"].value=="SYN-MXP-001"
+              assert inv["M2"].value==90
+              assert inv["N2"].value==1180
+          finally:
+              wb.close()
+          print("R24_APPROVED_ORIGINAL_INVOICE_J_THROUGH_N=PASS")
+          print("R24_SOURCE_DATA_MOVED=NO")
+          print("R24_REAL_SBI_DATA_EXECUTED=NO")
+          print("R24_FINANCIAL_APPLY=LOCKED")
+          PY
+      - name: R25 SOL authority, padding collision and source-type synthetic-only unit tests
+        run: |
+          set -Eeuo pipefail
+          python -m py_compile scripts/ci/sbi_r25_sol_identity_review.py tests/test_sbi_r25_sol_identity_review.py
+          python -m unittest discover -s tests -p 'test_sbi_r25_sol_identity_review.py' -v
+          python - <<'PY'
+          from pathlib import Path
+          import sys
+          sys.path.insert(0,str(Path("scripts/ci").resolve()))
+          from sbi_r25_sol_identity_review import review_identity
+          r=review_identity("2","SYNTHETIC BETA",(("0002","SYNTHETIC BETA"),))
+          assert r["status"]=="UNIQUE_PADDED_SOL_OFFICIAL_NAME_REVIEW_ONLY"
+          assert r["source_sol_preserved"]=="2"
+          assert r["candidate_master_sol"]=="0002"
+          assert not r["formal_master_authority_verified"]
+          assert not r["payment_allocation_executed"]
+          assert r["financial_apply_locked"]
+          print("R25_SOL_PADDED_IDENTITY=REVIEW_ONLY")
+          print("R25_REAL_BANK_SOURCE_OR_SOL_MASTER=NOT_UPLOADED_TO_GITHUB")
+          print("R25_PRODUCTION_DATABASE_WRITES=NONE")
+          print("R25_FINANCIAL_APPLY=LOCKED")
+          PY
+      - name: R26 independent hypothetical finance ledger and TDS oracle (SYNTHETIC ONLY)
+        run: |
+          set -Eeuo pipefail
+          python -m py_compile scripts/ci/sbi_r26_independent_financial_oracle.py tests/test_sbi_r26_independent_financial_oracle.py
+          python -m unittest discover -s tests -p 'test_sbi_r26_independent_financial_oracle.py' -v
+          mkdir -p r20-artifacts
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+          sys.path.insert(0,str(Path("scripts/ci").resolve()))
+          from sbi_r26_independent_financial_oracle import release_readiness
+          report=release_readiness()
+          assert report["stage"]=="R26_PARTIAL_INDEPENDENT_FINANCIAL_ORACLE"
+          assert not report["complete_master_v251_executable_certified"]
+          assert not report["matrix_v239_method_parity_certified"]
+          assert not report["real_financial_source_ledger_oracle_passed"]
+          assert not report["actual_v218_financial_writer_parity_passed"]
+          assert not report["real_staging_auth_and_database_passed"]
+          assert not report["finance_security_production_signoff"]
+          assert report["real_financial_allocation_count"]==0
+          assert report["financial_apply_locked"]
+          assert not report["production_release_authorized"]
+          Path("r20-artifacts/r26_synthetic_oracle_release_lock.json").write_text(
+              json.dumps(report,sort_keys=True,indent=2)+"\\n")
+          print("R26_INDEPENDENT_SYNTHETIC_FINANCIAL_ORACLE=SCOPED_QA_ONLY")
+          print("R26_FULL_V251_V239_CERTIFICATION=BLOCKED_EXTERNAL_EVIDENCE")
+          print("R26_REAL_BANK_DATA_USED=NO")
+          print("R26_PRODUCTION_DB_WRITES=NONE")
+          print("R26_FINANCIAL_APPLY=LOCKED")
+          PY
+      - name: R26.2 synthetic-only rebuilt candidate planner / no source ingestion
+        run: |
+          set -Eeuo pipefail
+          python -m py_compile scripts/ci/sbi_r262_rebuild_candidate_planner.py tests/test_sbi_r262_rebuild_candidate_planner.py
+          python -m unittest discover -s tests -p 'test_sbi_r262_rebuild_candidate_planner.py' -v
+          mkdir -p r20-artifacts
+          python - <<'PY'
+          import json
+          import sys
+          from datetime import date
+          from pathlib import Path
+          sys.path.insert(0,str(Path("scripts/ci").resolve()))
+          from sbi_r26_independent_financial_oracle import Invoice, Payment
+          from sbi_r262_rebuild_candidate_planner import fixture_digest, plan_synthetic_only
+          invoice=Invoice("SYN-MXP-001","0001","SYNTHETIC ALPHA","1000.00","90.00",
+                          "90.00","1180.00","1180.00",date(2026,9,1),("2026-09",))
+          payment=Payment("SYN-PAY-001","0001","SYNTHETIC ALPHA","1160.00",
+                          date(2026,9,15),("2026-09",),("SYN-MXP-001",))
+          master=(("0001","SYNTHETIC ALPHA"),)
+          source=[invoice]
+          bank=[payment]
+          result=plan_synthetic_only(source,bank,master,expected_fixture_sha256=
+                                      fixture_digest(source,bank,master))
+          assert result["stage"]=="R262_V251_REBUILD_CANDIDATE_NOT_CERTIFIED"
+          assert result["financial_apply_locked"]
+          assert result["real_financial_allocations"]==0
+          assert result["production_database_writes"]==0
+          assert not result["complete_v251_v239_certified"]
+          assert not result["production_release_authorized"]
+          assert result["partial_waterfall_implemented"] is False
+          assert result["financial_status"] is None
+          receipt={
+              "stage":result["stage"], "scope":"synthetic candidate edges only",
+              "test_candidate_count":len(result["review_candidate_edges"]),
+              "real_sbi_data_used":False, "oct27_master_owner_selection_recorded":True,
+              "master_private_file_uploaded_to_github":False,
+              "excluded_149_owner_rows_changed":False,
+              "full_engine_v251_v239_certified":False,
+              "financial_apply_locked":True, "production_writes":0,
+          }
+          Path("r20-artifacts/r262_scoped_rebuild_manifest.json").write_text(
+              json.dumps(receipt,sort_keys=True,indent=2)+"\n")
+          print("R262_SYNTHETIC_REBUILD_CANDIDATE=PASS_SCOPED_ONLY")
+          print("R262_USER_OCT27_MASTER_PIN=DOCUMENTED_REVIEW_ONLY")
+          print("R262_EXCLUDED_149_ROW_CHANGES=NONE")
+          print("R262_REAL_DATA_IMPORT=NOT_EXECUTED")
+          print("R262_FULL_V251_V239_CERTIFICATION=BLOCKED")
+          print("R262_FINANCIAL_APPLY=LOCKED")
+          PY
+      - name: Execute actual synthetic XLSX serialization and verify all original cells
+        run: |
+          set -Eeuo pipefail
+          python -m py_compile scripts/ci/sbi_r20_synthetic_review_writer.py
+          python -m unittest discover -s tests -p 'test_sbi_r20_synthetic_review_writer.py' -v
+      - name: Run disposable-only PostgreSQL role, transactions and conservation
+        run: |
+          set -Eeuo pipefail
+          python -m py_compile scripts/ci/sbi_r20_ephemeral_postgres_qa.py
+          python -m unittest discover -s tests -p 'test_sbi_r20_ephemeral_postgres_qa.py' -v
+      - name: Checkout pinned R14 offline auth source (NO real Firebase sign-in)
+        uses: actions/checkout@v5
+        with:
+          ref: 50053049c571b5e8a03132dc97d9f65002d2edd5
+          path: r14-offline-source
+          persist-credentials: false
+      - name: Run R14 offline-only session source refusal checks
+        run: |
+          set -Eeuo pipefail
+          python -m unittest discover -s r14-offline-source/tests -p 'test_sbi_r14_real_app_session_readonly.py' -v
+          echo 'R14_OFFLINE_SOURCE_GUARDS=PASS'
+          echo 'R14_REAL_FIREBASE_TO_FLASK=NOT_EXECUTED'
+      - name: Confirm combined fail-closed release boundaries and prepare handover proof
+        run: |
+          set -Eeuo pipefail
+          mkdir -p r20-artifacts
+          python scripts/ci/sbi_r19_combined_synthetic_rehearsal.py > r20-artifacts/synthetic_chain_evidence.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path("r20-artifacts/synthetic_chain_evidence.json").read_text())
+          assert r['output_statuses_structure_only']=={'SUSPENSE':4}
+          assert r['financial_apply_locked']
+          assert r['real_financial_allocations']==0
+          assert not r['engine_v251_certified']
+          assert not r['production_excel_writer_connected']
+          assert not r['real_firebase_app_session_tested']
+          assert not r['financial_database_connected']
+          expected={
+            "stage":"R20_SAME_DAY_DEVELOPMENT_HANDOVER",
+            "date_ist":"2026-11-24",
+            "synthetic_only":True,
+            "r15_r16_r17_r18_r19_r20_tested":True,
+            "finance_apply_locked":True,
+            "approved_v251_v239_engine":False,
+            "real_v218_financial_writer":False,
+            "aws_financial_database_tested":False,
+            "real_firebase_flask_session_tested":False,
+            "real_bank_evidence_used":False,
+            "production_release_authorized":False,
+            "pending_release_gates":r["pending_real_release_gates"],
+          }
+          Path("r20-artifacts/same_day_handover_release_gates.json").write_text(
+            json.dumps(expected,indent=2,sort_keys=True)+"\n")
+          import sys
+          from hashlib import sha256
+          sys.path.insert(0, str(Path("scripts/ci").resolve()))
+          from sbi_r19_combined_synthetic_rehearsal import build_synthetic_fixture
+          from sbi_r20_synthetic_review_writer import create_locked_synthetic_review_xlsx
+          source, master = build_synthetic_fixture()
+          demonstration_xlsx, serializer_result = create_locked_synthetic_review_xlsx(
+              source, master,
+              expected_source_sha256=sha256(source).hexdigest(),
+              expected_master_sha256=sha256(master).hexdigest(),
+          )
+          assert serializer_result["all_payment_statuses_locked_suspense"]
+          assert not serializer_result["v251_certified"]
+          Path("r20-artifacts/SBI_R20_SYNTHETIC_REVIEW_ONLY_NOT_RECONCILED.xlsx").write_bytes(
+              demonstration_xlsx)
+          Path("r20-artifacts/real_xlsx_serializer_synthetic_qa.json").write_text(
+              json.dumps(serializer_result,indent=2,sort_keys=True)+"\n")
+          for artifact_json in (
+              "r20-artifacts/synthetic_chain_evidence.json",
+              "r20-artifacts/same_day_handover_release_gates.json",
+              "r20-artifacts/real_xlsx_serializer_synthetic_qa.json",
+          ):
+              assert isinstance(json.loads(Path(artifact_json).read_text()), dict)
+          print("R20_COMBINED_SYNTHETIC_HANDOVER=PASS")
+          print("R20_REAL_BANK_SOURCE=NOT_IMPORTED")
+          print("R20_LIVE_AUTH_AND_PRODUCTION_POSTGRES=NOT_TESTED")
+          print("R20_FINANCIAL_APPLY=LOCKED")
+          PY
+      - name: R21 source hashes and external evidence gate (never auto-finance approval)
+        run: |
+          set -Eeuo pipefail
+          python -m unittest discover -s tests -p 'test_sbi_r21_required_evidence_register.py' -v
+          python scripts/ci/sbi_r21_required_evidence_register.py > r20-artifacts/r21_required_evidence_register.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          evidence=json.loads(Path("r20-artifacts/r21_required_evidence_register.json").read_text())
+          assert evidence["required_external_gates_count"]==8
+          assert len(evidence["development_files_sha256"])==9
+          assert all(gate["status"]=="BLOCKED_EXTERNAL_EVIDENCE" for gate in evidence["gates"])
+          assert evidence["financial_apply_locked"]
+          assert not evidence["production_financial_release_ready"]
+          assert not evidence["signed_finance_release"]
+          assert evidence["real_bank_allocations"]==0
+          assert not evidence["real_financial_database_accessed"]
+          print("R21_EXTERNAL_EVIDENCE_REGISTER=PASS")
+          print("R21_REAL_V251_SIGNED_SOURCE=NOT_VERIFIED")
+          print("R21_FFI001_NEW_ATTACHED_SOURCE=NOT_RECEIVED")
+          print("R21_LIVE_R14_FIREBASE_TO_FLASK=NOT_EXECUTED")
+          print("R21_REAL_AWS_STAGING_DATABASE=NOT_TESTED")
+          print("R21_SIGNED_FINANCE_RELEASE=NOT_RECEIVED")
+          print("R21_FINANCIAL_APPLY=LOCKED")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbi-r262-dev-rebuild-scaffold-finance-locked
+          path: r20-artifacts/
+          retention-days: 30
+          if-no-files-found: error
