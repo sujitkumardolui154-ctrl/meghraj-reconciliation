@@ -203,6 +203,10 @@ def append_receipt(conn, *, owner_uid, receipt_id, source_sha256,
                 reasons.append("REPEATED_SOURCE_ROW_REVIEW")
             else:
                 seen.add(key)
+            # Match the already-validated original three-column source
+            # arithmetic BEFORE applying stricter SOL/master-ledger rules.
+            if not reasons:
+                sum_original+=Decimal(amount)
             sol=canonical_sol(rawsol)
             if sol is None:
                 reasons.append("SOL_ID_NOT_CANONICAL_TEXT")
@@ -227,7 +231,6 @@ def append_receipt(conn, *, owner_uid, receipt_id, source_sha256,
                     status=STATUS_MASTER
                 else:
                     status=STATUS_PENDING
-                sum_original+=Decimal(amount)
             # Keep per-row exact raw SOL text and mapped branch, not guesses.
             conn.execute(f"""
                 INSERT INTO {TABLE} (
