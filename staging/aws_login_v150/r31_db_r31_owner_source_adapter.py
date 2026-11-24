@@ -65,10 +65,18 @@ def canonical_sol(raw: str) -> str | None:
 
 
 def exact_paise(raw: str) -> int:
-    if type(raw) is not str or not re.fullmatch(r"[0-9]+(?:\.[0-9]{1,2})?", raw):
+    if type(raw) is not str:
+        raise SourceContractError("INVALID_EXACT_CREDIT_TEXT")
+    # The approved Excel parser also accepts INR notation and numeric cells.
+    # Preserve raw strings in the original source evidence, but validate an
+    # exact decimal before conversion. No float, exponent, or rounding path.
+    clean = raw.strip().replace(",", "")
+    if clean.startswith("₹"):
+        clean = clean[1:].strip()
+    if not re.fullmatch(r"[0-9]+(?:\.[0-9]{1,2})?", clean):
         raise SourceContractError("INVALID_EXACT_CREDIT_TEXT")
     try:
-        money = Decimal(raw)
+        money = Decimal(clean)
     except InvalidOperation as exc:
         raise SourceContractError("INVALID_EXACT_CREDIT_TEXT") from exc
     value = money * 100
@@ -106,7 +114,7 @@ def build_plan(
         raise SourceContractError("PRIVATE_RECEIPT_ID_REQUIRED")
     if not isinstance(raw_file, bytes) or not 8 <= len(raw_file) <= 8*1024*1024:
         raise SourceContractError("IMMUTABLE_SOURCE_BYTES_REQUIRED")
-    if (type(original_file_name) is not str or not original_file_name.endswith(".xlsx")
+    if (type(original_file_name) is not str or not original_file_name.lower().endswith(".xlsx")
         or len(original_file_name) > 255 or "/" in original_file_name or "\\" in original_file_name):
         raise SourceContractError("ORIGINAL_FILE_NAME_INVALID")
     if type(source_sheet_name) is not str or not source_sheet_name.strip() or len(source_sheet_name)>80:
