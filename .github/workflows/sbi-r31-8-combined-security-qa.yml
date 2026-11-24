@@ -1,0 +1,42 @@
+name: SBI DB-R31.8 combined private security QA (offline)
+
+on:
+  push:
+    branches:
+      - feature/sbi-r31-8-combined-security-20261125
+  pull_request:
+    branches:
+      - feature/sbi-r31-firebase-private-acceptance-20261125
+
+permissions:
+  contents: read
+
+jobs:
+  r31-private-security-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install staging dependencies (no real login)
+        run: |
+          python3 -m pip install -r staging/aws_login_v150/requirements.txt
+          python3 -m pip install 'psycopg[binary]>=3.2,<4'
+      - name: Source compile and static safety
+        run: |
+          python3 -m py_compile \
+            staging/aws_login_v150/r31_8_combined_security.py \
+            staging/aws_login_v150/r31_8_combined_security_incontainer.py \
+            staging/aws_login_v150/r31_real_firebase_qa_acceptance.py \
+            staging/aws_login_v150/r31_stage_blueprint.py
+      - name: Integrated previous 22 tests and R31.8 security unit tests
+        env:
+          PYTHONPATH: staging/aws_login_v150:dashboard_source:staging/railway_public
+        run: |
+          python3 -m unittest -q \
+            test_r31_private_staging \
+            test_r31_firebase_private_acceptance \
+            test_r31_8_combined_security
+      - name: Confirm dry-run boundaries
+        run: echo 'DB_R31_8_CI=OFFLINE_TESTS_ONLY_PRODUCTION_LOCKED'
