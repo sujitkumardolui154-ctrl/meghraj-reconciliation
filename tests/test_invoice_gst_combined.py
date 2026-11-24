@@ -287,6 +287,35 @@ class IsolatedPostgresCombinedTests(unittest.TestCase):
         self.assertIn("QA-LR1", annexure_text)
         self.assertIn("QA-LR2", annexure_text)
 
+    def test_08_private_vendor_bundle_qa_database_import(self):
+        """Real PostgreSQL QA: checked archive import updates only vendor profile."""
+        from importlib.util import module_from_spec, spec_from_file_location
+        from tempfile import TemporaryDirectory
+        from test_invoice_gst_private_vendor import synthetic_zip
+        importer_path = ROOT / "staging/invoice-gst/private_vendor_loader.py"
+        spec = spec_from_file_location("qa_vendor_importer", importer_path)
+        importer = module_from_spec(spec)
+        spec.loader.exec_module(importer)
+        with TemporaryDirectory() as directory:
+            bundle = synthetic_zip(Path(directory))
+            outcome = importer.apply_only_isolated_qa(
+                self.dsn, bundle, "qa-verified-reviewer"
+            )
+            self.assertEqual(outcome["status"], "PRIVATE_VENDOR_QA_PROFILE_LOADED")
+            self.assertFalse(outcome["production_write"])
+        with self.connect() as conn:
+            saved = conn.execute(
+                """SELECT legal_name, exact_logo_verified, registered_office,
+                          head_office, website, length(logo_image) AS logo_bytes
+                   FROM sbi_invoice_gst.vendor_profiles
+                   WHERE vendor_key='MEGHRAJ_EXPRESS'"""
+            ).fetchone()
+        self.assertEqual(saved["legal_name"], "MEGHRAJ EXPRESS")
+        self.assertTrue(saved["exact_logo_verified"])
+        self.assertEqual(saved["registered_office"], "QA PLACEHOLDER")
+        self.assertEqual(saved["head_office"], "QA PLACEHOLDER")
+        self.assertGreater(saved["logo_bytes"], 50)
+
     def test_07_unapproved_logo_denied(self):
         with self.connect() as conn:
             conn.execute(
