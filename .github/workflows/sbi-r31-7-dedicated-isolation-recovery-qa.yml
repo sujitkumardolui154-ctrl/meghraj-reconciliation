@@ -28,8 +28,14 @@ jobs:
           set -Eeuo pipefail
           python3 -B -m unittest discover -s database/stage31 \
              -p 'test_db_r31_7_dedicated_isolated.py' -v
-          python3 -B -m py_compile database/stage31/db_r31_7_dedicated_isolated.py \
-             database/stage31/db_r31_owner_qa_combined.py
+          python3 -B - <<'PY'
+          import ast
+          from pathlib import Path
+          for path in ("database/stage31/db_r31_7_dedicated_isolated.py",
+                       "database/stage31/db_r31_owner_qa_combined.py"):
+              ast.parse(Path(path).read_text())
+          print("DB_R31_7_PARSER_SYNTAX=PASS")
+          PY
           test -z "$(git status --porcelain --untracked-files=all)" ||
               { echo 'DB_R31_7_GIT_WORKTREE_DIRTY'; exit 1; }
           echo 'DB_R31_7_DEDICATED_NETWORK_NEGATIVE_TESTS=PASS'
