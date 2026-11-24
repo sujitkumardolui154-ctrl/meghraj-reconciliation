@@ -174,8 +174,8 @@ def main():
 
         repeat=client.post(sync_url,headers=headers,**base)
         strict(repeat,200,"RECEIPT_REPLAY")
-        if (repeat.get_json() or {}).get("status")!="ALREADY_RECORDED" or
-            reports(client)!=after:
+        if ((repeat.get_json() or {}).get("status")!="ALREADY_RECORDED"
+                or reports(client)!=after):
             refuse("REPLAY_DUPLICATED_PAYMENT_CREDIT")
         print("DB_R31_AUTHENTICATED_REPLAY_NO_DOUBLE_CREDIT=PASS",flush=True)
     print("DB_R31_REAL_FIREBASE_CREDENTIALS_SAVED=NO",flush=True)
