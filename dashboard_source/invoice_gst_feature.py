@@ -230,7 +230,7 @@ def create_invoice_gst_blueprint(can_read, can_create, csrf_valid,
     @blueprint.get("/invoices/<invoice_no>.pdf")
     def invoice_pdf(invoice_no):
         """Render from immutable, finalized registry and private vendor logo."""
-        if not can_read():
+        if not (can_read() or can_create()):
             return failure("INVOICE_PDF_VIEWER_PERMISSION_REQUIRED", 403)
         if re.fullmatch(r"MXP[0-9]{4,10}", invoice_no) is None:
             return failure("INVALID_INVOICE_NUMBER", 400)
