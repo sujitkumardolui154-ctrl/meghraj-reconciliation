@@ -24,6 +24,19 @@ ROOT=Path(__file__).resolve().parent
 PRIVATE=Path("/home/ubuntu/sbi-db-management/db-r31-ownerqa")
 QA_SQL=ROOT/"db_r31_owner_persistent_qa.sql"
 
+# Fixed alternative profile used ONLY by the dedicated disposable QA launcher.
+# Never modify the shared R31-auth staging network or broaden its member list.
+DEDICATED_NETWORK="sbi-r31-7-dedicated-internal"
+DEDICATED_PG="sbi-r31-7-dedicated-pg"
+DEDICATED_PRIVATE=Path("/home/ubuntu/sbi-db-management/db-r31-7-dedicated")
+
+def use_dedicated_isolated_profile():
+    global PG, NETWORK, PRIVATE
+    PG=DEDICATED_PG
+    NETWORK=DEDICATED_NETWORK
+    PRIVATE=DEDICATED_PRIVATE
+
+
 def run(args, *, source=None, timeout=90):
     p=subprocess.run(args,input=source,text=True,capture_output=True,timeout=timeout)
     if p.returncode:
@@ -63,8 +76,9 @@ def validate_safety():
     n=json.loads(docker("network","inspect",NETWORK))[0]
     pg=inspect(PG)
     names={x.get("Name") for x in (n.get("Containers") or {}).values()}
-    allowed={PG,"sbi-ft04-payment-staging-overlay",
-              "sbi-ft04-payment-staging-v2","sbi-ft04-payment-outbox-v2"}
+    allowed=({PG} if NETWORK==DEDICATED_NETWORK else
+             {PG,"sbi-ft04-payment-staging-overlay",
+              "sbi-ft04-payment-staging-v2","sbi-ft04-payment-outbox-v2"})
     if not (n.get("Internal") is True and PG in names and
             names<=allowed and pg["State"]["Status"]=="running" and
             set((pg["NetworkSettings"].get("Networks") or {}))=={NETWORK}
@@ -72,6 +86,11 @@ def validate_safety():
         raise RuntimeError("QA_NETWORK_ISOLATION_FAILED")
     for name in names:
         c=inspect(name)
+        # Dedicated R31.7 must be exclusively single-network: an auth
+        # service connected to the AWS private web is not an approved member.
+        if (NETWORK==DEDICATED_NETWORK and
+                set((c["NetworkSettings"].get("Networks") or {}))!={NETWORK}):
+            raise RuntimeError("QA_DEDICATED_MULTINET_MEMBER_FORBIDDEN")
         if c["State"]["Status"]!="running" or c["HostConfig"].get("PortBindings") or any(
             m.get("Destination","").startswith("/var/run/postgresql")
             for m in c.get("Mounts") or []):
@@ -210,7 +229,13 @@ def main():
     print("=== DB-R31 COMBINED OWNER QA COMPLETE ===",flush=True)
 
 if __name__=="__main__":
-    try:main()
+    import sys
+    try:
+        if sys.argv[1:]==["--dedicated-isolated-qa"]:
+            use_dedicated_isolated_profile()
+        elif sys.argv[1:]:
+            raise RuntimeError("QA_RUNNER_ARGUMENTS_NOT_ALLOWED")
+        main()
     except Exception as exc:
         print("DB_R31_COMBINED_OWNER_QA=REVIEW_REQUIRED",flush=True)
         print("STOP="+str(exc)[:900],flush=True)
