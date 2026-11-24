@@ -73,8 +73,10 @@ def classify_case23_shadow(workbook, case23, *, evidence=(),
     if type(evidence) is not tuple or any(type(e) is not StatusEvidence for e in evidence):
         raise StatusIntegrationRefusal("IMMUTABLE_STATUS_EVIDENCE_REQUIRED")
     banks = {bank.source_row:bank for bank in workbook.banks}
-    if len(banks) != len(workbook.banks) or len(evidence) > len(banks):
+    if len(banks) != len(workbook.banks):
         raise StatusIntegrationRefusal("DUPLICATED_BANK_SOURCE_ROW")
+    if len(evidence) > len(banks):
+        raise StatusIntegrationRefusal("DUPLICATE_STATUS_EVIDENCE_FOR_ROW")
     provided = {}
     for ev in evidence:
         if ev.upload_id != workbook.upload_id or ev.bank_source_row not in banks:
