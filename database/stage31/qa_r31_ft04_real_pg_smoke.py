@@ -68,7 +68,7 @@ def run():
     assert os.environ.get("SBI_R31_CI_MODE")=="SYNTHETIC_DOCKER_ONLY"
     assert os.environ.get("PGDATABASE")==QA_DB
     assert os.environ.get("PGUSER")==QA_ROLE
-    conn=psycopg.connect(os.environ["SBI_R31_QA_DSN"])
+    conn=psycopg.connect(os.environ["SBI_R31_QA_DSN"],autocommit=True)
     try:
         with conn.cursor() as cur:
             cur.execute("SELECT current_database(),current_user")
