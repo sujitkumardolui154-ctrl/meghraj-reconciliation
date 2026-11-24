@@ -4,6 +4,7 @@ on:
     paths:
       - 'dashboard_source/invoice_gst_*'
       - 'dashboard_source/production_gateway.py'
+      - 'dashboard_source/dashboard_sessions.py'
       - 'dashboard_source/index.html'
       - 'dashboard_source/requirements.txt'
       - 'staging/invoice-gst/**'
@@ -59,10 +60,12 @@ jobs:
           from pathlib import Path
           html=Path("dashboard_source/index.html").read_text()
           gateway=Path("dashboard_source/production_gateway.py").read_text()
+          sessions=Path("dashboard_source/dashboard_sessions.py").read_text()
           schema=Path("staging/invoice-gst/001_isolated_invoice_schema.sql").read_text()
           assert "Generate GST Report (.xlsx)" in html
           assert "Finalize &amp; Record in Database" in html
           assert "create_invoice_gst_blueprint" in gateway
+          assert "https://sbi-preview.13-232-241-221.sslip.io" in sessions
           assert "FINALIZED_INVOICE_IMMUTABLE" in schema
           assert "dashboard_payment" not in schema.lower()
           print("COMBINED_INVOICE_GST_UI_API_DB_CONTRACT=PASS")
