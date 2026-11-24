@@ -1,0 +1,64 @@
+name: SBI R29 Isolated AWS Candidate Preview Image QA (No AWS)
+on:
+  pull_request:
+    branches:
+      - feature/sbi-payment-reconciliation-readiness-gate-20261120
+  push:
+    branches:
+      - review/sbi-r29-aws-calculation-preview-integration-20261124
+permissions:
+  contents: read
+jobs:
+  r29-aws-calculation-prescreen-isolation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test isolated candidate route, owner exclusions and denied writes
+        run: |
+          set -Eeuo pipefail
+          python -m pip install -r staging/aws_calculation_prescreen/requirements.txt
+          python -m unittest discover -s tests -p 'test_sbi_r28_owner_deployment_and_row_exclusion_policy.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_r29_aws_calculation_prescreen_app.py' -v
+      - name: Ensure sealed container has no financial backend imports
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          docker=Path('staging/aws_calculation_prescreen/Dockerfile').read_text()
+          assert 'COPY scripts/ci/sbi_r28_owner_deployment_and_row_exclusion_policy.py' in docker
+          assert 'COPY backend_source/aws_calculation_prescreen_app.py' in docker
+          for forbidden in ('COPY backend_source/ ', 'COPY . ', 'COPY backend_source/main.py',
+                            'COPY backend_source/import', 'COPY backend_source/payment',
+                            'COPY backend_source/credit_note', 'COPY database'):
+              assert forbidden not in docker, forbidden
+          assert 'USER 10001:10001' in docker
+          assert 'SBI_FINANCIAL_APPLY=LOCKED' in docker
+          compose=Path('staging/aws_calculation_prescreen/compose.local.yml').read_text()
+          assert '127.0.0.1:18088:8080' in compose
+          assert 'read_only: true' in compose
+          assert 'cap_drop: [ALL]' in compose
+          assert 'no-new-privileges:true' in compose
+          print('R29_SEALED_NO_FINANCIAL_WRITERS=PASS')
+          PY
+      - name: Build isolated container only, no deploy
+        run: |
+          docker build -f staging/aws_calculation_prescreen/Dockerfile \
+            --build-arg SBI_SOURCE_SHA="$GITHUB_SHA" \
+            -t "sbi-r29-calc-prescreen:$GITHUB_SHA" .
+      - name: No-network readonly nonroot container smoke
+        run: |
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --user 10001:10001 \
+            "sbi-r29-calc-prescreen:$GITHUB_SHA" python -c \
+            'import os; from app import app; c=app.test_client(); assert os.getuid()==10001; assert c.get("/healthz").status_code==200; assert c.get("/readyz").status_code==503; assert c.post("/api/candidate-screen").status_code==503; assert c.post("/database/update").status_code==403; assert c.get("/reports").status_code==403; print("R29_ISOLATED_IMAGE_SMOKE=PASS")'
+      - name: Confirm final stage excludes AWS/DB writes
+        run: |
+          echo 'R29_AWS_DEPLOYMENT=NOT_PERFORMED'
+          echo 'R29_FULL_V251_V239_ENGINE=NOT_CONNECTED'
+          echo 'R29_PAYMENT_STATUS_M=NOT_ASSIGNED'
+          echo 'R29_FINANCIAL_APPLY=LOCKED'

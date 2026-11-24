@@ -1,8 +1,8 @@
-name: SBI R28 Calculation Deployment Owner Policy + Finance-Locked QA
+name: SBI R29 AWS Candidate Gateway + R28 Row Exclusions QA (Finance Locked)
 on:
   push:
     branches:
-      - review/sbi-r28-owner-calculation-deploy-without-certificate-20261124
+      - review/sbi-r29-aws-calculation-preview-integration-20261124
   pull_request:
     branches:
       - feature/sbi-payment-reconciliation-readiness-gate-20261120
@@ -1155,6 +1155,52 @@ jobs:
           print("R28_INDIVIDUAL_RULE_FAILED_ROWS=EXCLUDED_ONLY")
           print("R28_FINANCIAL_APPLY=LOCKED")
           print("R28_ACTUAL_AWS_DEPLOYMENT=NOT_PERFORMED")
+          PY
+      - name: R29 authenticated AWS calculation prescreen isolated Flask QA
+        run: |
+          set -Eeuo pipefail
+          python -m pip install -r staging/aws_calculation_prescreen/requirements.txt
+          python -m py_compile \
+            backend_source/aws_calculation_prescreen_app.py \
+            tests/test_sbi_r29_aws_calculation_prescreen_app.py
+          python -m unittest discover -s tests -p 'test_sbi_r29_aws_calculation_prescreen_app.py' -v
+          python - <<'PY'
+          import json,sys
+          from pathlib import Path
+          sys.path.insert(0,str(Path("scripts/ci").resolve()))
+          sys.path.insert(0,str(Path("backend_source").resolve()))
+          from aws_calculation_prescreen_app import app,STAGE
+          c=app.test_client()
+          assert c.get("/healthz").status_code==200
+          assert c.get("/readyz").status_code==503
+          assert c.post("/api/candidate-screen").status_code==503
+          assert c.post("/database/update").status_code==403
+          h=c.get("/healthz").json
+          assert h["full_v251_v239_engine_connected"] is False
+          assert h["formal_financial_certificate_required"] is False
+          assert h["real_database_writes"]==0
+          receipt={
+              "stage":STAGE,
+              "scope":"PRE_SCREENED_CANDIDATE_REVIEW_ONLY",
+              "existing_synthetic_test_count":1116,
+              "new_r29_synthetic_test_count":30,
+              "full_master_v251_matrix_v239_connected":False,
+              "owner_formal_finance_certificate_required_for_calculation_deploy":False,
+              "api_auth_and_negative_routes":"SYNTHETIC_TESTED",
+              "real_financial_allocation_count":0,
+              "source_workbook_modified":False,
+              "payment_status_column_m_written":False,
+              "real_database_writes":0,
+              "real_aws_deployment_performed":False,
+              "financial_apply":"LOCKED",
+          }
+          Path("r20-artifacts/r29_aws_candidate_prescreen_route_synthetic_receipt.json").write_text(
+              json.dumps(receipt,sort_keys=True,indent=2)+"\\n")
+          print("R29_AUTHENTICATED_CANDIDATE_REVIEW=PASS_SYNTHETIC")
+          print("R29_FULL_V251_V239_ENGINE=NOT_CONNECTED")
+          print("R29_CERTIFICATE_FOR_APP_DEPLOY=NOT_REQUIRED")
+          print("R29_REAL_AWS_DEPLOYMENT=NONE")
+          print("R29_FINANCIAL_APPLY=LOCKED")
           PY
       - uses: actions/upload-artifact@v4
         with:
