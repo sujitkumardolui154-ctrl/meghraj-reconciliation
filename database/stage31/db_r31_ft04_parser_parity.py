@@ -54,6 +54,26 @@ def classify_exact_ft04_rows(payload, original_parser, ft04):
     reviewed=[]
     normalized_seen=set()
     accepted_paise=0
+    # Fast path: complete original parser has no reviewed rows, so no
+    # same-file repeats under its normalization. Avoid up to 20,000
+    # expensive one-row XLSX reparses when there is no review ambiguity.
+    if not partial:
+        for number,row,raw_error in rows:
+            require(raw_error is None and type(row) is dict and
+                    type(number) is int and number>=2,
+                    "ORIGINAL_SOURCE_ACCEPTED_ROW_CONFLICT")
+            amount=_paise(row.get("Credit Amount"))
+            require(amount is not None, "ORIGINAL_SOURCE_ACCEPTED_CREDIT_CONFLICT")
+            eligible.append((number,row,amount))
+            accepted_paise+=amount
+        try:
+            expected=Decimal(str(full.get("valid_credit_total")))*100
+        except (InvalidOperation,ValueError,TypeError):
+            raise RowParityReviewRequired("SOURCE_CREDIT_TOTAL_INVALID") from None
+        require(len(eligible)==full.get("valid_rows") and
+                expected.is_finite() and expected==accepted_paise,
+                "FULL_SOURCE_ACCEPTED_CREDIT_PARITY_FAILED")
+        return eligible,reviewed
     for number, row, raw_error in rows:
         reason=raw_error
         try:
