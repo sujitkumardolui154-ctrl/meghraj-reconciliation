@@ -119,6 +119,50 @@ async function refreshDashboard() {
 <script src="/dashboard.js" defer></script>
 
 <main id="dil-reports" hidden>
+
+<!-- SBI Invoice Generation and Approved GST Export, gated independently. -->
+<section class="card" id="ig-gst-report" aria-labelledby="ig-gst-title">
+  <h2 id="ig-gst-title">GST Report — Approved 16-Column Format</h2>
+  <p>Export finalized invoices by service month. Invoice No, Taxable Amount, CGST,
+  SGST and Total Bill Amount come from recorded invoices; all other fields come
+  from verified database master snapshots. This does not allocate payments.</p>
+  <label for="ig-gst-month">Service month (not invoice issue month)</label>
+  <input id="ig-gst-month" type="month" required>
+  <button id="ig-gst-download" type="button">Generate GST Report (.xlsx)</button>
+  <p id="ig-gst-message" role="status" aria-live="polite">
+    Requires a verified invoice database and GST report viewing permission.
+  </p>
+</section>
+
+<section class="card" id="ig-invoice-generator" aria-labelledby="ig-invoice-title">
+  <h2 id="ig-invoice-title">Generate Tax Invoice — Meghraj Express</h2>
+  <p>Uses verified SBI branch data and a shipment annexure. The original company logo,
+  declaration, bank details and signature must be approved and stored privately
+  before finalizing invoices. This is separate from payment reconciliation.</p>
+  <form id="ig-form" onsubmit="return false">
+    <p><label for="ig-branch">Verified customer / branch</label>
+    <select id="ig-branch" required style="display:block;width:100%;max-width:580px;padding:9px"></select></p>
+    <p><label for="ig-number">New unique invoice number</label>
+    <input id="ig-number" placeholder="MXP00000" pattern="MXP[0-9]{4,10}" required></p>
+    <p><label for="ig-from">From Date</label>
+    <input type="date" id="ig-from" required>
+    <label for="ig-to">To Date</label>
+    <input type="date" id="ig-to" required>
+    <label for="ig-date">Invoice Date</label>
+    <input type="date" id="ig-date" required></p>
+    <p><label for="ig-annexure">Shipment annexure — paste all six columns from Excel (tab-separated)</label></p>
+    <p><small>Dispatch Date | LR No | Packet Ref No | Consignee | Weight | Amount.
+    Keep empty Packet Ref No cells when copying. Each shipment must belong to the service period.</small></p>
+    <textarea id="ig-annexure" rows="7" required
+      placeholder="02/02/2026&#9;334371520&#9;&#9;LA MARTINIER&#9;0.100&#9;15.00"
+      style="width:100%;padding:10px;border-radius:8px;resize:vertical"></textarea>
+    <p><button type="button" id="ig-preview">Preview Invoice &amp; GST</button>
+    <button type="button" id="ig-finalize" disabled>Finalize &amp; Record in Database</button></p>
+  </form>
+  <pre id="ig-message" style="white-space:pre-wrap;overflow-wrap:anywhere"
+       role="status" aria-live="polite">Invoice feature not verified yet.</pre>
+</section>
+
 <!-- Selected-Invoice Bulk Report: read-only database lookup; no financial writes. -->
 <section class="card" id="bulk-selected-report" aria-labelledby="bulk-selected-title">
   <h2 id="bulk-selected-title">Bulk Report — Selected Invoice Numbers</h2>
@@ -822,5 +866,6 @@ Reports include new invoices only after an import completes. Preview alone does 
 <script src="/account.js" defer></script>
 <!-- F01: single floating overlay across existing dashboard views; inert until authorized API is reviewed. -->
 <script src="/dil_floating_assistant.js" defer></script>
+<script src="/invoice_gst_ui.js" defer></script>
 </body>
 </html>
