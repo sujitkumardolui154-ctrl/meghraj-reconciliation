@@ -56,7 +56,7 @@ def plan(payload, receipt, owner="synthetic-owner-001"):
         "sol_id":"001505","official_branch_name":"SOUTHERN AVENUE",
         "approved":True
     }]}
-    raw=(json.dumps(document,sort_keys=True)+"\\n").encode()
+    raw=json.dumps(document,sort_keys=True).encode()
     with TemporaryDirectory() as directory:
         source=Path(directory)/"private-sol-master.json"
         source.write_bytes(raw)
