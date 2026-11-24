@@ -13,7 +13,6 @@ MODE="${1:-}"
 RELEASE_SHA="${2:-}"
 SECRET_FILE="${SBI_R30_SECRET_FILE:-/etc/sbi-calc-prescreen/stage.env}"
 OLD_REF=""
-OLD_IMAGE_ID=""
 ROLLBACK_REF=""
 SWAPPED=0
 
@@ -134,7 +133,6 @@ case "$MODE" in
     old_container="$(compose ps -q "$SERVICE")"
     if [[ -n "$old_container" ]]; then
       OLD_REF="$(docker inspect --format '{{.Config.Image}}' "$old_container")"
-      OLD_IMAGE_ID="$(docker inspect --format '{{.Image}}' "$old_container")"
       [[ "$OLD_REF" =~ ^sbi-calc-prescreen:[0-9a-f]{40}$ ]] ||
         refuse "UNKNOWN_EXISTING_STAGING_IMAGE"
       verify_live || refuse "EXISTING_STAGING_NOT_HEALTHY"
@@ -143,16 +141,18 @@ case "$MODE" in
         refuse "PORT_18088_OCCUPIED_BY_UNRELATED_SERVICE"
       fi
     fi
+    # Keep the old image manifest pinned BEFORE the same-SHA rebuild can
+    # reassign its tag. Never depend on a container config digest as a tag.
+    if [[ -n "$OLD_REF" ]]; then
+      ROLLBACK_REF="sbi-calc-prescreen:rollback-$RELEASE_SHA"
+      docker tag "$OLD_REF" "$ROLLBACK_REF"
+    fi
     compose build --pull "$SERVICE"
     # Test *uncredentialed disabled* behavior without network access or host writes.
     docker run --rm --network none --read-only --cap-drop ALL \
       --security-opt no-new-privileges --user 10001:10001 \
       "sbi-calc-prescreen:$RELEASE_SHA" python -c \
       'from app import app; c=app.test_client(); assert c.get("/healthz").status_code==200; assert c.get("/readyz").status_code==503; assert c.post("/database/update").status_code==403'
-    if [[ -n "$OLD_REF" ]]; then
-      ROLLBACK_REF="sbi-calc-prescreen:rollback-$RELEASE_SHA"
-      docker tag "$OLD_IMAGE_ID" "$ROLLBACK_REF"
-    fi
     SWAPPED=1
     trap rollback EXIT
     compose up --detach --no-build --force-recreate "$SERVICE"
