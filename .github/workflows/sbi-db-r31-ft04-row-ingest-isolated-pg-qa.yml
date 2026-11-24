@@ -26,11 +26,15 @@ jobs:
             database/stage31/test_db_r31_ft04_ingest_qa.py \
             database/stage31/db_r31_ft04_parser_parity.py \
             database/stage31/test_db_r31_ft04_parser_parity.py \
+            database/stage31/db_r31_private_sol_master.py \
+            database/stage31/test_db_r31_private_sol_master.py \
             database/stage31/qa_r31_ft04_real_pg_smoke.py
           python -m unittest discover -s database/stage31 \
             -p 'test_db_r31_ft04_ingest_qa.py' -v
           python -m unittest discover -s database/stage31 \
             -p 'test_db_r31_ft04_parser_parity.py' -v
+          python -m unittest discover -s database/stage31 \
+            -p 'test_db_r31_private_sol_master.py' -v
           python -m unittest discover -s database/stage31 \
             -p 'test_db_r31_source_reporting.py' -v
           python -m unittest discover -s database/stage31 \
