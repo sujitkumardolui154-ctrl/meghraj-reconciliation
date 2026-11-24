@@ -10,6 +10,7 @@ on:
       - 'staging/invoice-gst/**'
       - 'tests/test_invoice_gst_combined.py'
       - 'tests/test_invoice_gst_private_*.py'
+      - 'tests/test_invoice_gst_master_workbook_gate.py'
       - '.github/workflows/sbi-invoice-gst-combined-qa.yml'
   workflow_dispatch:
 
@@ -56,6 +57,8 @@ jobs:
       - name: Private master and vendor source-import safeguards
         run: |
           python -m unittest discover -s tests -p 'test_invoice_gst_private_*.py' -v
+      - name: Four-tab original SBI master workbook source QA
+        run: python -m unittest discover -s tests -p 'test_invoice_gst_master_workbook_gate.py' -v
       - name: Existing GST contract regression
         run: python -m unittest discover -s staging/mxp-gst/tests -p 'test_*.py' -v
       - name: Release safety assertions
