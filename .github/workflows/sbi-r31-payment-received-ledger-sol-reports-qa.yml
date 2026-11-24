@@ -1,0 +1,63 @@
+name: SBI R31 Payment Received Ledger and SOL Reports (Synthetic No AWS)
+on:
+  push:
+    branches:
+      - feature/sbi-r31-payment-ledger-sol-report-20261124
+  pull_request:
+    branches:
+      - feature/sbi-payment-reconciliation-readiness-gate-20261120
+permissions:
+  contents: read
+
+jobs:
+  r31-payment-ledger-reports-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install isolated current AWS Flask Firebase and XLSX runtime
+        run: python -m pip install -r staging/aws_login_v150/requirements.txt
+      - name: Validate R31 code imports and Python syntax
+        run: |
+          python -m py_compile \
+            staging/aws_login_v150/payment_received_ledger.py \
+            staging/aws_login_v150/payment_received_reports.py \
+            staging/aws_login_v150/payment_evidence_upload.py \
+            staging/aws_login_v150/app.py \
+            tests/test_sbi_r31_payment_received_ledger_sol_reports.py \
+            staging/aws_login_v150/prepare_private_sol_master.py \
+            tests/test_sbi_r31_private_sol_master_converter.py
+      - name: R31 source-preserving payment DB, branch auto mapping and SOL report tests
+        run: python -m unittest discover -s tests -p 'test_sbi_r31_payment_received_ledger_sol_reports.py' -v
+      - name: R31 private SOL master conversion and conflict suppression QA
+        run: python -m unittest discover -s tests -p 'test_sbi_r31_private_sol_master_converter.py' -v
+      - name: Existing fixed-header payment upload contract regression
+        run: python -m unittest discover -s tests -p 'test_sbi_payment_evidence_upload.py' -v
+      - name: Existing login and Database Update UI regressions
+        run: |
+          python -m unittest discover -s tests -p 'test_sbi_database_update_nav.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_aws_login_v150.py' -v
+      - name: Build sealed login and payment receipt image without any AWS deployment
+        run: |
+          docker build -f staging/aws_login_v150/Dockerfile \
+            --build-arg SBI_SOURCE_SHA="$GITHUB_SHA" \
+            -t "sbi-r31-payment-ledger:$GITHUB_SHA" .
+      - name: Non-root read-only offline image smoke without secrets
+        run: |
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --user 10001:10001 \
+            "sbi-r31-payment-ledger:$GITHUB_SHA" python -c \
+            'import os; from app import app; c=app.test_client(); assert os.getuid()==10001; assert c.get("/healthz").status_code==200; assert c.get("/api/payment-received/sol-report").status_code==401; assert c.post("/api/payment-reconciliation/run").status_code==403 or c.post("/api/payment-reconciliation/run").status_code==401; print("R31_NO_NETWORK_PAYMENT_LEDGER_IMAGE=PASS")'
+      - name: Confirm staged-only release scope
+        run: |
+          echo 'R31_AUTO_BRANCH_SOURCE=PRIVATE_SHA_PINNED_SOL_MASTER'
+          echo 'R31_NEW_PAYMENT_ENTRIES_STORED=APPEND_ONLY_WITH_SOURCE_RECEIPT'
+          echo 'R31_FINANCE_RECONCILIATION_ENGINE=NOT_CONNECTED'
+          echo 'R31_REAL_BANK_ALLOCATION_OR_MATCHED_STATUS=NOT_EXECUTED'
+          echo 'R31_AWS_HOST_DEPLOYMENT=NOT_PERFORMED'
+          echo 'R31_FINANCIAL_INVOICE_DB_WRITES=0'

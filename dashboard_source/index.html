@@ -121,6 +121,69 @@ small{color:#9fb1cc}
 })();
 </script>
 
+<section class="card" id="dil-sol-payment-report" aria-labelledby="dil-sol-payment-report-title">
+  <h2 id="dil-sol-payment-report-title">Payment Received — SOL-wise Reconciliation Tally</h2>
+  <p>Records from the new fixed-header Payment Upload are grouped by approved SOL and mapped branch. <strong>Matched</strong> counts only verified reconciliation results; until the full engine is connected, payments are shown as <strong>Not Calculated</strong> or <strong>Excluded</strong>. This is not the earlier invoice OK report.</p>
+  <button type="button" id="dil-sol-payment-load">Load SOL-wise Payment Report</button>
+  <a href="/api/payment-received/sol-report.csv" id="dil-sol-payment-download" hidden download="SBI_SOL_WISE_PAYMENT_TALLY_REPORT.csv">Download SOL Summary CSV</a>
+  <a href="/api/payment-received/payment-details.csv" id="dil-payment-details-download" hidden download="SBI_PAYMENT_RECEIVED_ROW_DETAILS.csv">Download Individual Payment Details CSV</a>
+  <p id="dil-sol-payment-status" role="status" aria-live="polite">Payment report not loaded.</p>
+  <div style="max-width:100%;overflow:auto">
+    <table id="dil-sol-payment-table" hidden>
+      <thead><tr><th>SOL ID</th><th>Official Branch Name</th><th>Payment Rows</th><th>Credit Amount (₹)</th><th>Matched</th><th>Not Calculated</th><th>Excluded</th><th>Held for Review</th></tr></thead>
+      <tbody id="dil-sol-payment-body"></tbody>
+    </table>
+  </div>
+</section>
+<script>
+/* SOL summary is sourced from saved payment entries, NOT assumed reconciliation. */
+(() => {
+  "use strict";
+  const $=id=>document.getElementById(id);
+  const button=$("dil-sol-payment-load"), status=$("dil-sol-payment-status");
+  const table=$("dil-sol-payment-table"), tbody=$("dil-sol-payment-body");
+  const money=v=>Number(v).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
+  function put(tr,value) {
+    const td=document.createElement("td"); td.textContent=String(value ?? "");
+    tr.appendChild(td);
+  }
+  button.addEventListener("click",async()=>{
+    button.disabled=true; status.textContent="Loading saved payment rows grouped by SOL…";
+    table.hidden=true;
+    $("dil-sol-payment-download").hidden=true;
+    $("dil-payment-details-download").hidden=true;
+    try {
+      const response=await fetch("/api/payment-received/sol-report",{
+        credentials:"same-origin",cache:"no-store",redirect:"error"
+      });
+      const json=await response.json();
+      if(!response.ok)throw new Error(json.error || "Payment summary is unavailable.");
+      if(!Array.isArray(json.sol_groups) || json.reconciliation_executed!==false)
+        throw new Error("Unexpected payment tally source.");
+      tbody.replaceChildren();
+      for(const group of json.sol_groups) {
+        const tr=document.createElement("tr");
+        for(const value of [group.sol_id,group.branch_name,group.payment_rows,
+          money(group.credit_total),group.matched,group.not_calculated,
+          group.excluded,group.held_for_review])put(tr,value);
+        tbody.appendChild(tr);
+      }
+      const t=json.totals;
+      status.textContent="SOL groups: "+json.sol_groups.length+
+        " | Payment source rows: "+t.payment_rows+
+        " | Matched: "+t.matched+
+        " | Not calculated: "+t.not_calculated+
+        " | Excluded: "+t.excluded+
+        ". Full reconciliation engine not connected; no payment status was changed.";
+      table.hidden=json.sol_groups.length===0;
+      $("dil-sol-payment-download").hidden=false;
+      $("dil-payment-details-download").hidden=false;
+    } catch(e) {status.textContent=e.message;}
+    finally {button.disabled=false;}
+  });
+})();
+</script>
+
 <h2>Reports <small>— Dashboard v1.4.2</small></h2>
 <p>Reports include the original database snapshot plus new invoices from completed imports. Preview uploads and unfinished imports are excluded. All 53 report headers remain in their original order; model fields absent from the source remain blank.</p>
 <p>Payment reports use the saved Payment Received value: blank or zero goes to Unpaid, non-zero numbers to OK, and invalid values to Error Value. OK does not confirm full payment. Reconciliation has not run.</p>
@@ -468,8 +531,8 @@ Reports include new invoices only after an import completes. Preview alone does 
     <div class="dil-db-heading-row">
       <div><p class="dash-overline">FIXED-HEADER EXCEL UPLOAD</p>
       <h2 id="dil-payment-evidence-heading">Upload New Payment Evidence</h2>
-      <p>Upload and preview payment source evidence securely. Each workbook is stored as an immutable staging receipt, separate from invoice and financial databases.</p></div>
-      <span class="status good">EVIDENCE INTAKE ONLY</span>
+      <p>Upload the approved three-column payment file. Original evidence is preserved, and every payment row is recorded in a separate private Payment Received database for future fresh-invoice reconciliation. This does not mark any invoice paid.</p></div>
+      <span class="status good">PAYMENT RECEIVED SOURCE LEDGER</span>
     </div>
     <p><a id="dil-payment-template" href="/api/payment-evidence/template" download="SBI_Payment_Evidence_Fixed_Header_Template.xlsx">Download Fixed Excel Template (.xlsx)</a></p>
     <div class="dil-payment-fixed-columns" aria-label="Required Excel columns">
@@ -487,12 +550,13 @@ Reports include new invoices only after an import completes. Preview alone does 
         <button type="button" id="dil-payment-reconcile" disabled>Apply Reconciliation to Financial Database — Locked</button>
       </div>
     </form>
+    <p><small>Run Payment Reconciliation — Not Enabled. Payment source rows are stored for a future fresh-invoice engine run; this source-only feature never marks a bank payment matched.</small></p>
     <p id="dil-payment-lock-note" role="status" aria-live="polite" class="dil-db-lock-note">Upload and preview can stage evidence for review. They do not merge payments into invoices, allocate payments or modify financial records. The reconciliation engine remains blocked.</p>
     <p id="dil-payment-readiness-result" role="status" aria-live="polite">Select a verified payment evidence receipt to check reconciliation prerequisites. The financial engine is not connected.</p>
     <p id="dil-payment-evidence-status" role="status" aria-live="polite">No evidence file uploaded in this session.</p>
     <div id="dil-payment-evidence-summary" class="dil-payment-summary" hidden></div>
     <div id="dil-payment-evidence-table" class="dil-payment-table-wrap" hidden>
-      <table><thead><tr><th>Excel Row</th><th>Description</th><th>SOL ID</th><th>Credit Amount</th><th>Verification Flags</th></tr></thead>
+      <table><thead><tr><th>Excel Row</th><th>Description</th><th>SOL ID</th><th>Official Branch Name</th><th>Credit Amount</th><th>Ledger Status</th><th>Verification Flags</th></tr></thead>
       <tbody id="dil-payment-evidence-preview"></tbody></table>
     </div>
     <section class="dil-payment-receipts" aria-labelledby="dil-payment-receipts-title">
@@ -550,7 +614,12 @@ Reports include new invoices only after an import completes. Preview alone does 
       ["Valid rows", result.valid_rows],
       ["Rows requiring review", result.review_rows],
       ["Valid credit sum (NOT reconciled)",money(result.valid_credit_total)],
-      ["Staging status",result.staging_status || result.status]
+      ["Staging status",result.staging_status || result.status],
+      ["Payment rows saved in database",result.payment_rows_recorded ?? "Existing evidence-only receipt"],
+      ["Eligible for future calculation",result.pending_reconciliation ?? "Not assessed"],
+      ["SOL branch mapping review",result.master_mapping_review ?? "Not assessed"],
+      ["Duplicate candidate review",result.duplicate_candidate_review ?? "Not assessed"],
+      ["Invalid source rows excluded",result.excluded_invalid_source ?? "Not assessed"]
     ];
     summary.replaceChildren();
     for (const [label, value] of entries) {
@@ -563,17 +632,21 @@ Reports include new invoices only after an import completes. Preview alone does 
       summary.appendChild(block);
     }
     tbody.replaceChildren();
-    for (const row of result.preview || []) {
+    for (const row of result.payment_preview || result.preview || []) {
       const tr=document.createElement("tr");
       cell(tr,row.excel_row);
       cell(tr,row.description);
       cell(tr,row.sol_id);
+      cell(tr,row.branch_name || "PENDING_SOL_MASTER");
       cell(tr,row.credit_amount);
+      cell(tr,row.ledger_status || "EVIDENCE_ONLY");
       cell(tr,(row.review_flags || []).join(", ") || "VALID");
       tbody.appendChild(tr);
     }
-    status.textContent="Evidence staged safely. Showing first "+(result.preview || []).length+
-       " rows of "+result.source_rows+". No financial allocation or reconciliation has run.";
+    status.textContent="Evidence staged safely. Showing first "+((result.payment_preview || result.preview) || []).length+
+       " rows of "+result.source_rows+". "+
+       (Number.isSafeInteger(result.payment_rows_recorded) ? "Payment source rows saved to private database. " : "This is an earlier evidence-only receipt. ")+
+       "No financial allocation or reconciliation has run.";
   }
   async function loadReceipts() {
     try {

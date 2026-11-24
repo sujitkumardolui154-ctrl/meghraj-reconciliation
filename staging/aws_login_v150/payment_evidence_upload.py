@@ -311,6 +311,7 @@ def upload_evidence():
                 output.flush()
                 os.fsync(output.fileno())
             with closing(_connection(base)) as conn, conn:
+                from payment_received_ledger import append_receipt
                 conn.execute(
                     "INSERT INTO receipts "
                     "(id,owner_uid,filename,source_name,sha256,created_utc,"
@@ -321,11 +322,16 @@ def upload_evidence():
                      parsed["review_rows"], parsed["valid_credit_total"],
                      "REVIEW_REQUIRED" if parsed["review_rows"] else "STAGED_FOR_REVIEW"),
                 )
+                ledger = append_receipt(
+                    conn, owner_uid=owner, receipt_id=receipt_id,
+                    source_sha256=digest, source_bytes=payload,
+                    original_parsed=parsed, created_utc=_utc(),
+                )
         except Exception:
             (base / leaf).unlink(missing_ok=True)
             raise
         return jsonify(
-            **parsed, receipt_id=receipt_id,
+            **parsed, **ledger, receipt_id=receipt_id,
             source_sha256=digest,
             staging_status="REVIEW_REQUIRED" if parsed["review_rows"] else "STAGED_FOR_REVIEW",
             financial_writes=False,
@@ -336,6 +342,10 @@ def upload_evidence():
         return jsonify(error="Duplicate evidence workbook; no changes made"), 409
     except (OSError, sqlite3.Error):
         return jsonify(error="Private payment staging storage unavailable"), 503
+    except Exception:
+        # A missing or changed private master cannot create a partial receipt.
+        # Fixed code only; do not disclose file paths, bank rows or keys.
+        return jsonify(error="Payment ledger or private SOL master configuration invalid"), 503
 
 
 @payment_evidence.get("/api/payment-evidence/uploads")
@@ -377,6 +387,28 @@ def receipt_preview(receipt_id):
         if hashlib.sha256(contents).hexdigest() != row["sha256"]:
             return jsonify(error="Stored evidence digest changed"), 503
         parsed = _parse(contents)
+        # Later receipt views read the saved branch decision and source-row
+        # status from the isolated payment ledger, never rematch an invoice.
+        from payment_received_ledger import ensure_payment_schema, TABLE
+        with closing(_connection(base)) as conn:
+            ensure_payment_schema(conn)
+            saved = conn.execute(
+                f"SELECT excel_row,description,sol_id_text,official_branch_name,"
+                f"credit_amount,review_reasons_json,source_status FROM {TABLE} "
+                "WHERE owner_uid=? AND receipt_id=? ORDER BY excel_row LIMIT 50",
+                (str(g.dil_user.uid),receipt_id),
+            ).fetchall()
+        if saved:
+            parsed["payment_rows_recorded"] = row["source_rows"]
+            parsed["payment_preview"] = [{
+                "excel_row":p["excel_row"],
+                "description":p["description"],
+                "sol_id":p["sol_id_text"],
+                "branch_name":p["official_branch_name"] or "PENDING_SOL_MASTER",
+                "credit_amount":p["credit_amount"],
+                "review_flags":json.loads(p["review_reasons_json"]),
+                "ledger_status":p["source_status"],
+            } for p in saved]
         return jsonify({**_metadata(row), **parsed})
     except ValueError:
         return jsonify(error="Stored evidence workbook invalid"), 503
