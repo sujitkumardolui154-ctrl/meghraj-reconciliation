@@ -1,8 +1,8 @@
-name: SBI R26.9 Cases 2.1-2.4 Combined Ledger and Status Review QA (Finance Locked)
+name: SBI R26.9 Cases 2.1-2.5 Combined Forensic Ledger QA (Finance Locked)
 on:
   push:
     branches:
-      - review/sbi-r269-case24-combined-integration-qa-20261124
+      - review/sbi-r269-case25-forensic-oracle-20261124
   pull_request:
     branches:
       - feature/sbi-payment-reconciliation-readiness-gate-20261120
@@ -928,6 +928,74 @@ jobs:
           print("R269_CASE24_FULL_V251_V239_CERTIFIED=NO")
           print("R269_CASE24_PRODUCTION_WRITES=NONE")
           print("R269_CASE24_FINANCIAL_APPLY=LOCKED")
+          PY
+      - name: R26.9 Case 2.5 independent per-payment forensic and allocation shadow QA
+        run: |
+          set -Eeuo pipefail
+          python -m py_compile \
+            scripts/ci/sbi_r269_case25_forensic_independent_shadow_oracle.py \
+            tests/test_sbi_r269_case25_forensic_independent_shadow_oracle.py
+          python -m unittest discover -s tests -p 'test_sbi_r269_case25*.py' -v
+          python - <<'PY'
+          from pathlib import Path
+          import json,sys
+          sys.path.insert(0,str(Path("scripts/ci").resolve()))
+          sys.path.insert(0,str(Path("tests").resolve()))
+          from test_sbi_r269_case24_case23_review_handoff import fixture
+          from sbi_r269_case24_case23_review_handoff import classify_case23_shadow
+          from sbi_r269_case25_forensic_independent_shadow_oracle import (
+              independently_verify_shadow_forensics,
+          )
+          wb,case23,wb_sha=fixture()
+          case24=classify_case23_shadow(
+              wb,case23,expected_workbook_digest=wb_sha)
+          result=independently_verify_shadow_forensics(
+              wb,case23,case24,
+              expected_workbook_digest=wb_sha,
+              expected_matrix_evidence_digest=case23["matrix_evidence_digest"],
+              financial_apply="LOCKED",
+          )
+          assert result["independent_cash_arithmetic_verified"]
+          assert result["bank_and_invoice_cash_conservation"]
+          assert result["shadow_cash_reserved"]=="1160.00"
+          assert result["shadow_invoice_cash_gap_not_receivable"]=="20.00"
+          assert result["payment_rows_recomputed"]==1
+          assert result["review_edges_recomputed"]==1
+          assert not result["original_source_xlsx_bytes_independently_verified"]
+          assert not result["verified_bank_utr_or_statement_event"]
+          assert not result["verified_external_tds_gst_credit_note_ledger"]
+          assert not result["case24_status_claim_independently_certified"]
+          assert not result["final_paymnent_column_m_written"]
+          assert result["real_financial_allocations"]==0
+          assert result["real_database_writes"]==0
+          assert result["financial_apply_locked"]
+          assert not result["production_release_authorized"]
+          receipt={
+              "stage":result["stage"],
+              "source":"SYNTHETIC_FIXTURE_ONLY",
+              "Case21_Case22_Case23_Case24_previously_ran_in_same_workflow":True,
+              "expected_existing_suite_count":962,
+              "expected_case25_test_count":42,
+              "independent_cash_arithmetic_verified":True,
+              "source_money_and_edge_conservation":True,
+              "forensic_manifest_sha256":result["forensic_manifest_sha256"],
+              "per_payment_forensic_receipts":result["payment_rows_recomputed"],
+              "real_financial_allocations":0,
+              "real_financial_database_writes":0,
+              "original_XLSX_bytes_independently_verified":False,
+              "external_documentary_ledger_certified":False,
+              "full_v251_v239_certified":False,
+              "final_status_assigned":False,
+              "financial_apply_locked":True,
+              "production_release_authorized":False,
+          }
+          Path("r20-artifacts/r269_case25_forensic_oracle_development_receipt.json").write_text(
+              json.dumps(receipt,indent=2,sort_keys=True)+"\\n")
+          print("R269_CASE25_INDEPENDENT_FORENSIC_CASH_QA=PASS_SYNTHETIC_ONLY")
+          print("R269_CASE25_REAL_FINANCIAL_EVIDENCE_CERTIFIED=NO")
+          print("R269_CASE25_PAYMNENT_COLUMN_M=NOT_ASSIGNED")
+          print("R269_CASE25_FINANCIAL_APPLY=LOCKED")
+          print("R269_CASE25_PRODUCTION_WRITES=NONE")
           PY
       - uses: actions/upload-artifact@v4
         with:
