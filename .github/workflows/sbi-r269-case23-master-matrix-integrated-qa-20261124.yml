@@ -1,8 +1,8 @@
-name: SBI R26.9 Cases 2.1-2.6 Combined Method and Finance Gate QA (Locked)
+name: SBI R27 FFI-001 + Cases 2.1-2.6 Finance-Locked Evidence QA
 on:
   push:
     branches:
-      - review/sbi-r269-case26-method-coverage-release-gates-20261124
+      - review/sbi-r27-real-financial-evidence-intake-preflight-20261124
   pull_request:
     branches:
       - feature/sbi-payment-reconciliation-readiness-gate-20261120
@@ -1052,6 +1052,51 @@ jobs:
           print("R269_CASE26_PAYMNENT_COLUMN_M=NOT_ASSIGNED")
           print("R269_CASE26_FINANCIAL_APPLY=LOCKED")
           print("R269_CASE26_PRODUCTION_WRITES=NONE")
+          PY
+      - name: R27.1 FFI-001 fresh-source structure and no-automatic-finance-approval
+        run: |
+          set -Eeuo pipefail
+          python -m py_compile \
+            scripts/ci/sbi_r27_1_ffi001_fresh_intake_structure_gate.py \
+            tests/test_sbi_r27_1_ffi001_fresh_intake_structure_gate.py
+          python -m unittest discover -s tests -p 'test_sbi_r27_1_ffi001_fresh_intake_structure_gate.py' -v
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from importlib.util import spec_from_file_location,module_from_spec
+          module=Path("scripts/ci/sbi_r27_1_ffi001_fresh_intake_structure_gate.py")
+          spec=spec_from_file_location("r27_gate",module)
+          import sys
+          x=module_from_spec(spec)
+          sys.modules[spec.name]=x
+          spec.loader.exec_module(x)
+          try:
+              x.inspect_fresh_file_structure(None, x.FreshIntakeRequest(
+                "CURRENT_INPUT.xlsx","GOOGLE_DRIVE_PRIOR", "SYN-R27-CURRENT",True))
+              raise AssertionError("STALE_DRIVE_WAS_ALLOWED")
+          except x.FreshIntakeRefusal as e:
+              assert str(e)=="FFI001_FRESH_CURRENT_RUN_USER_UPLOAD_REQUIRED"
+          receipt={
+              "stage":"R27_1_FRESH_FILE_EXECUTION_HARD_LOCK",
+              "source_of_tests":"SYNTHETIC_MINIMAL_OOXML_ONLY",
+              "combined_existing_synthetic_tests":1067,
+              "new_ffi001_synthetic_tests":19,
+              "fresh_current_conversation_user_upload_received":False,
+              "historical_drive_workbook_used_for_financial_matching":False,
+              "payment_rows_reconciled":0,
+              "bank_credit_status_m_assigned":False,
+              "source_xlsx_genuine_authority_certified":False,
+              "financial_apply_locked":True,
+              "real_database_writes":0,
+              "production_release_authorized":False,
+          }
+          Path("r20-artifacts/r27_1_ffi001_fresh_upload_gate_receipt.json").write_text(
+             json.dumps(receipt,sort_keys=True,indent=2)+"\\n")
+          print("R27_1_FFI001_HISTORICAL_DRIVE_REUSE=REFUSED")
+          print("R27_1_CURRENT_USER_UPLOAD=NOT_RECEIVED")
+          print("R27_1_FINANCIAL_SOURCE_CERTIFICATION=BLOCKED")
+          print("R27_1_FINANCIAL_APPLY=LOCKED")
+          print("R27_1_REAL_DB_WRITES=0")
           PY
       - uses: actions/upload-artifact@v4
         with:
