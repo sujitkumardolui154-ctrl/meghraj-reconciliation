@@ -170,7 +170,7 @@ class IsolatedPostgresCombinedTests(unittest.TestCase):
                     declaration_text,bank_instructions,pan,gstin,vendor_id,
                     service_type,sac_code,footer_text,authorized_signature_label,
                     verified_by,verified_at)
-                   VALUES ('MEGHRAJ_EXPRESS','SYNTHETIC QA VENDOR',
+                   VALUES ('MEGHRAJ_EXPRESS','MEGHRAJ EXPRESS',
                            %s,'image/png',TRUE,'QA DECLARATION','QA BANK','QA PAN',
                            'QA GSTIN','QA VENDOR ID','COURIER','QA SAC',
                            'QA FOOTER','QA SIGNATURE','qa-reviewer',now())""",
