@@ -12,6 +12,7 @@
   if (!branch || !preview || !finalize || !gstButton) return;
   let approvedPreview = null;
   let busy = false;
+  $("ig-form").addEventListener("submit", event => event.preventDefault());
 
   function whenBusy(status) {
     busy = status;
