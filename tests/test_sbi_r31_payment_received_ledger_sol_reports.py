@@ -294,15 +294,15 @@ class R31PaymentRowsTests(unittest.TestCase):
     def test_21_csv_formula_injection_escaped_but_original_preserved(self):
         with self.auth():
             self.upload(rows=[
-                ("=HYPERLINK(\"https://bad.invalid\")","1505",12.00),
+                ("@HYPERLINK(\"https://bad.invalid\")","1505",12.00),
                 ("SAFE","1505",6.00),
             ])
             csvr=self.client.get("/api/payment-received/payment-details.csv")
-            self.assertIn("'=HYPERLINK",csvr.get_data(as_text=True))
+            self.assertIn("'@HYPERLINK",csvr.get_data(as_text=True))
             with closing(sqlite3.connect(Path(self.tmp.name)/"receipts.sqlite3")) as conn:
                 raw=conn.execute("SELECT description FROM payment_received_evidence_v1 "
                                  "WHERE excel_row=2").fetchone()[0]
-            self.assertTrue(raw.startswith("=HYPERLINK"))
+            self.assertTrue(raw.startswith("@HYPERLINK"))
 
     def test_22_synthetic_master_tamper_detected(self):
         with self.auth():
