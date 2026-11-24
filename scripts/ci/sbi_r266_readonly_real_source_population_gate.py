@@ -17,6 +17,7 @@ import io
 import re
 import xml.etree.ElementTree as ET
 import zipfile
+from sbi_case1_payment_header_mapper import map_payment_headers, HeaderMappingRefusal
 
 XML = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 REL = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
@@ -188,13 +189,23 @@ def scan_readonly_source(contents, *, expected_sha256, financial_apply="LOCKED")
                 metrics["invoice_cached_formula_errors"] += 1
         metrics["duplicate_invoice_groups"] = sum(1 for cnt in invoice_keys.values() if cnt > 1)
         metrics["duplicate_invoice_rows"] = sum(cnt for cnt in invoice_keys.values() if cnt > 1)
-        for rowno, row in x.rows("PAYMNENT", {6,9}):
+        # Payment fields follow the approved header *meaning*, not physical
+        # column numbers from a historical workbook. This check is distinct
+        # from historic row-count / OK status parity, which is not required.
+        source_bank_header = next(x.rows("PAYMNENT", range(1,65)))[1]
+        try:
+            layout = map_payment_headers(tuple(
+                _v(source_bank_header, col) for col in range(1,65)
+            ))
+        except HeaderMappingRefusal:
+            raise R266Refusal("ORIGINAL_BANK_CREDIT_I_CONTRACT_FAILED")
+        bank_credit_col = layout.column("Credit")
+        bank_sol_col = layout.column("SOL ID")
+        for rowno, row in x.rows("PAYMNENT", {bank_sol_col,bank_credit_col}):
             if rowno == 1:
-                if any(_v(row,col) != name for col,name in PAYMENT_HEADERS.items()):
-                    raise R266Refusal("ORIGINAL_BANK_CREDIT_I_CONTRACT_FAILED")
                 continue
             pay_count += 1
-            raw = _v(row, 9)
+            raw = _v(row, bank_credit_col)
             if raw is None or str(raw).strip() == "":
                 metrics["bank_credit_blank"] += 1
             else:
@@ -219,6 +230,7 @@ def scan_readonly_source(contents, *, expected_sha256, financial_apply="LOCKED")
         "taxable_cached_rounded_sum": str(taxable_sum),
         "positive_bank_credit_rounded_sum": str(bank_positive),
         "findings": dict(metrics),
+        "payment_header_normalization": layout.audit(),
         "cached_values_only_not_formula_recalculation": True,
         "historical_OK_status_copy_authorized": False,
         "reconciliation_allocation_executed": False,

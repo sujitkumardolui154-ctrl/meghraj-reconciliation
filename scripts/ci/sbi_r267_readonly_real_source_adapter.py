@@ -19,6 +19,9 @@ from sbi_r266_readonly_real_source_population_gate import (
 from sbi_r267_readonly_real_candidate_engine import (
     InvoiceInput,BankInput, FinancialReviewRefusal,
 )
+from sbi_case1_payment_header_mapper import (
+    map_payment_headers, HeaderMappingRefusal,
+)
 
 M_ABBR=("JAN","FEB","MAR","APR","MAY","JUN","JUL",
         "AUG","SEP","OCT","NOV","DEC")
@@ -173,31 +176,58 @@ def read_private_snapshots(
                 rowno,key,raw_code,str(_raw(row,8) or ""),source_date,
                 months,*values,_raw(row,19),
             ))
-        for rowno,row in s.rows("PAYMNENT",{3,4,5,6,7,9,11}):
+        bank_headers=next(s.rows("PAYMNENT",range(1,65)))[1]
+        try:
+            payment_map=map_payment_headers(tuple(
+                _raw(bank_headers,col) for col in range(1,65)
+            ))
+        except HeaderMappingRefusal:
+            raise FinancialReviewRefusal("PAYMENT_HEADER_MAPPING_UNVERIFIED")
+        bank_cols={payment_map.column(name) for name in (
+            "Description","Posting Date","Service Period","SOL ID",
+            "Client Name","Credit","Record For Me",
+        )}
+        bank_cols.discard(None)
+        for rowno,row in s.rows("PAYMNENT",bank_cols):
             if rowno==1:continue
-            credit=_money(_raw(row,9))
+            credit_col=payment_map.column("Credit")
+            sol_col=payment_map.column("SOL ID")
+            credit=_money(_raw(row,credit_col))
             if credit is None:
-                # Blank/not-numeric rows are not incoming receipts.
                 holds.append(("PAYMENT",rowno,"BANK_CREDIT_BLANK_OR_NONNUMERIC"))
                 continue
             if Decimal(credit)<=0:
                 holds.append(("PAYMENT",rowno,"BANK_CREDIT_NONPOSITIVE"))
                 continue
-            if _type(row,6) not in ("s","inlineStr","str"):
+            if _type(row,sol_col) not in ("s","inlineStr","str"):
                 holds.append(("PAYMENT",rowno,"BANK_SOL_NOT_TEXT"))
                 continue
-            posted=excel_date(_raw(row,3)) or excel_date(_raw(row,4))
+            # A date in a different location is not automatically a Posting
+            # Date. Original Value Date is deliberately not substituted.
+            posted_col=payment_map.column("Posting Date")
+            posted=excel_date(_raw(row,posted_col)) if posted_col else None
             if posted is None:
                 holds.append(("PAYMENT",rowno,"BANK_POSTING_DATE_UNVERIFIED"))
                 continue
-            description=_raw(row,5)
+            description=_raw(row,payment_map.column("Description"))
             if not isinstance(description,str):
                 holds.append(("PAYMENT",rowno,"BANK_NARRATION_NOT_TEXT"))
                 continue
+            source_period_col=payment_map.column("Service Period")
+            explicit_period=(service_months(_raw(row,source_period_col))
+                             if source_period_col else ())
+            narrated_period=service_months(description)
+            if explicit_period and narrated_period and set(explicit_period)!=set(narrated_period):
+                holds.append(("PAYMENT",rowno,"BANK_PERIOD_SOURCE_NARRATION_CONFLICT"))
+                continue
+            periods=explicit_period or narrated_period
+            name_col=payment_map.column("Client Name")
+            client=str(_raw(row,name_col) or "") if name_col else ""
+            marker_col=payment_map.column("Record For Me")
             pay.append(BankInput(
-                rowno,_raw(row,6),str(_raw(row,7) or ""),
-                posted,service_months(description),description,
-                credit,_raw(row,11),
+                rowno,_raw(row,sol_col),client,
+                posted,periods,description,
+                credit,_raw(row,marker_col) if marker_col else None,
             ))
     finally:
         m.close();s.close()

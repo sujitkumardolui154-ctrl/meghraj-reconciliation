@@ -37,7 +37,7 @@ def invoice_head():
 
 
 def bank_head():
-    return cell("F1","Branch Code")+cell("I1","Credit")
+    return (cell("C1","Txn Date")+cell("E1","Description")+cell("F1","Branch Code")+cell("G1","Name")+cell("I1","Credit")+cell("K1","Record For Me"))
 
 
 def inv(number=2, key="SYN-MXP-001", sol="0001", taxable=1000,
