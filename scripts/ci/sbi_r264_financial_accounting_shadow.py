@@ -205,7 +205,8 @@ def account_synthetic_only(
         opening = amount(inv.outstanding)
         if cash_inv[inv.key] + tds_by_inv[inv.key] + note_by_inv[inv.key] > opening:
             reasons.add("GROSS_CASH_TDS_CN_OVERSETTLEMENT")
-        if tds_by_inv[inv.key] > amount(inv.taxable) * Decimal("0.03"):
+        if tds_by_inv[inv.key] > (amount(inv.taxable) * Decimal("0.03")).quantize(
+                CENT, rounding=ROUND_HALF_UP):
             reasons.add("TDS_INVOICE_RATE_CAP_EXCEEDED")
         gst_component = sum(
             (amount(money) for p, i, money, method in shadow
