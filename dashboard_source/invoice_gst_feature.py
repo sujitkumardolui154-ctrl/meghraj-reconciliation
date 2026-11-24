@@ -227,6 +227,69 @@ def create_invoice_gst_blueprint(can_read, can_create, csrf_valid,
         except Exception:
             return failure("INVOICE_DATABASE_UNAVAILABLE", 503)
 
+    @blueprint.get("/invoices/<invoice_no>.pdf")
+    def invoice_pdf(invoice_no):
+        """Render from immutable, finalized registry and private vendor logo."""
+        if not can_read():
+            return failure("INVOICE_PDF_VIEWER_PERMISSION_REQUIRED", 403)
+        if re.fullmatch(r"MXP[0-9]{4,10}", invoice_no) is None:
+            return failure("INVALID_INVOICE_NUMBER", 400)
+        try:
+            from invoice_gst_pdf import render_invoice_pdf, TemplateVerificationError
+            with private_db() as conn, conn.cursor() as cur:
+                cur.execute(
+                    """SELECT invoice_no, service_from::text AS service_from,
+                              service_to::text AS service_to,
+                              invoice_date::text AS invoice_date,
+                              service_month, service_month_key, fy, client_name,
+                              gstin, invoice_branch, invoice_generate_location,
+                              original_branch_name, sol_id, master_snapshot,
+                              taxable::text AS taxable, cgst::text AS cgst,
+                              sgst::text AS sgst, total::text AS total,
+                              shipment_count, status, verification_flags
+                       FROM sbi_invoice_gst.invoices
+                       WHERE invoice_no = %s""",
+                    (invoice_no,),
+                )
+                invoice = cur.fetchone()
+                if invoice is None:
+                    return failure("INVOICE_NOT_FOUND", 404)
+                cur.execute(
+                    """SELECT line_no, dispatch_date::text AS dispatch_date,
+                              lr_no, packet_ref_no, consignee,
+                              weight_kg::text AS weight_kg,
+                              amount::text AS amount
+                       FROM sbi_invoice_gst.invoice_lines
+                       WHERE invoice_no = %s ORDER BY line_no""",
+                    (invoice_no,),
+                )
+                lines = cur.fetchall()
+                cur.execute(
+                    """SELECT legal_name, logo_image, logo_mime,
+                              exact_logo_verified, declaration_text,
+                              bank_instructions, pan, gstin, vendor_id,
+                              service_type, sac_code, footer_text,
+                              authorized_signature_label, verified_by, verified_at
+                       FROM sbi_invoice_gst.vendor_profiles
+                       WHERE vendor_key = 'MEGHRAJ_EXPRESS'""",
+                )
+                profile = cur.fetchone()
+            if not profile:
+                return failure("VENDOR_PROFILE_UNAVAILABLE", 409)
+            try:
+                document = render_invoice_pdf(invoice, profile, lines)
+            except TemplateVerificationError:
+                return failure("PDF_TEMPLATE_OR_SOURCE_VERIFICATION_REQUIRED", 409)
+            response = Response(document, content_type="application/pdf")
+            response.headers["Content-Disposition"] = (
+                'attachment; filename="Meghraj-' + invoice_no + '.pdf"'
+            )
+            response.headers["Cache-Control"] = "private, no-store"
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            return response
+        except Exception:
+            return failure("INVOICE_PDF_SOURCE_UNAVAILABLE", 503)
+
     @blueprint.get("/gst.xlsx")
     def gst_excel():
         if not can_read():
