@@ -62,6 +62,13 @@ app.register_blueprint(payment_received_reports)
 from reconciliation_readiness import reconciliation_readiness
 app.register_blueprint(reconciliation_readiness)
 
+# R31.6: Firebase-authenticated source-only PostgreSQL QA routes.
+# Feature flag exists only in the privately staged QA Docker container.
+# No Caddy route, no financial engine, no public release by default.
+if os.environ.get("SBI_R31_PRIVATE_STAGING_ENABLED") == "isolated-ownerqa-firebase-csrf-v1":
+    from r31_stage_blueprint import stage_r31
+    app.register_blueprint(stage_r31)
+
 
 @app.after_request
 def secure_ui(response):
