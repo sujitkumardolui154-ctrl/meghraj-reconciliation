@@ -31,6 +31,7 @@ MASTER_GATE = REPO_ROOT / "staging/invoice-gst/master_workbook_gate.py"
 VENDOR_LOADER = REPO_ROOT / "staging/invoice-gst/private_vendor_loader.py"
 APPROVED_MASTER_SHA = "ba90aa8320a3283debe059be9cd6dd3083795782b13874d9823329f2185de3e0"
 APPROVED_VENDOR_BUNDLE_SHA = "ae9dfefd1d40c6be399657e7f508751583bab7dc99fcbe0c8239abb882170f8f"
+APPROVED_PDF_SHA = "631bfbcb15c4db3edca61f953bbe3f2e865dac370ff0f437cf443afacb111495"
 PUBLIC_AWS_HOST = "https://sbi-preview.13-232-241-221.sslip.io"
 
 
@@ -51,15 +52,18 @@ def _sha(path):
     return sha.hexdigest()
 
 
-def source_review(master, bundle):
+def source_review(master, bundle, approved_pdf=None):
     evidence = {
         "owner_approved_pdf_template": "APPROVED_REFERENCE_LOCKED",
         "original_logo_hash_checked": False,
+        "approved_pdf_sha256_checked": False,
         "branch_master_hash_checked": False,
         "branch_master_source_status": "NOT_READ",
         "private_vendor_bundle_status": "NOT_READ",
         "private_db_import_completed": False,
     }
+    if approved_pdf and Path(approved_pdf).is_file():
+        evidence["approved_pdf_sha256_checked"] = (_sha(approved_pdf) == APPROVED_PDF_SHA)
     if not master or not bundle:
         evidence["missing_source_files"] = True
         return evidence
@@ -177,13 +181,15 @@ def main(argv=None):
     p = argparse.ArgumentParser()
     p.add_argument("--master", type=Path)
     p.add_argument("--vendor-bundle", type=Path)
+    p.add_argument("--approved-pdf", type=Path,
+                   help="owner-approved corrected PDF; SHA256 verification, no content upload")
     p.add_argument("--qa-db", action="store_true")
     p.add_argument("--check-public-ingress", action="store_true")
     p.add_argument("--output", type=Path)
     args = p.parse_args(argv)
     report = {
         "milestone": "SBI_INVOICE_GST_PRIVATE_STAGING_PREFLIGHT",
-        "source": source_review(args.master, args.vendor_bundle),
+        "source": source_review(args.master, args.vendor_bundle, args.approved_pdf),
         "isolated_qa_database": database_review() if args.qa_db else {
             "status": "NOT_CONNECTED_NOT_TESTED"},
         "aws_ingress": public_access_review(PUBLIC_AWS_HOST)
