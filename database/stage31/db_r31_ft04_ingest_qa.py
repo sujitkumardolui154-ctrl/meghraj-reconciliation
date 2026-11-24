@@ -250,7 +250,7 @@ def write_qa_source_receipt(conn, plan):
     require(type(plan) is ReceiptPlan and plan.rows,
             "SOURCE_PLAN_REQUIRED")
     # psycopg context manager supplies transaction rollback on exception.
-    with conn:
+    with conn.transaction():
         with conn.cursor() as cur:
             cur.execute("SELECT current_database(), current_user")
             require(tuple(cur.fetchone()) == (QA_DB, QA_ROLE),
