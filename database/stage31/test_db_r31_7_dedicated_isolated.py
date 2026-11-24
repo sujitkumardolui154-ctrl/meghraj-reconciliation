@@ -3,20 +3,15 @@
 Never creates/deletes Docker containers or accesses AWS. Tests only functions
 under mocked inspect/docker values, including regression for dual-home auth.
 """
-import importlib.util
 from pathlib import Path
 from unittest import mock
 import unittest
+import sys
 
 ROOT=Path(__file__).resolve().parent
-def module(name,filename):
-    spec=importlib.util.spec_from_file_location(name,ROOT/filename)
-    result=importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(result)
-    return result
-
-qa=module("r31_7_profile_source","db_r31_owner_qa_combined.py")
-launcher=module("r31_7_dedicated_source","db_r31_7_dedicated_isolated.py")
+sys.path.insert(0,str(ROOT))
+import db_r31_owner_qa_combined as qa
+import db_r31_7_dedicated_isolated as launcher
 
 class ProfileIsolationTests(unittest.TestCase):
     def setUp(self):
