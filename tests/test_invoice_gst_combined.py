@@ -155,6 +155,10 @@ class IsolatedPostgresCombinedTests(unittest.TestCase):
             conn.execute(ddl)
             migration = (ROOT / "staging/invoice-gst/002_vendor_header_fields.sql").read_text()
             conn.execute(migration)
+            verified_sol_index = (
+                ROOT / "staging/invoice-gst/003_verified_sol_uniqueness.sql"
+            ).read_text()
+            conn.execute(verified_sol_index)
             conn.execute(
                 """INSERT INTO sbi_invoice_gst.verified_branches
                    (branch_key,client_name,invoice_branch,invoice_generate_location,
@@ -351,6 +355,32 @@ class IsolatedPostgresCombinedTests(unittest.TestCase):
             count = conn.execute(
                 """SELECT count(*) AS n FROM sbi_invoice_gst.verified_branches
                    WHERE sol_id='03970'"""
+            ).fetchone()["n"]
+            self.assertEqual(count, 1)
+
+    def test_09_database_rejects_duplicate_verified_sol_even_direct_sql(self):
+        with self.connect() as conn:
+            with self.assertRaises(self.psycopg.errors.UniqueViolation):
+                with conn.transaction():
+                    conn.execute(
+                        """INSERT INTO sbi_invoice_gst.verified_branches
+                          (branch_key, client_name, invoice_branch,
+                           invoice_generate_location, original_branch_name,
+                           sol_id, client_class, gstin, recipient_title,
+                           customer_address, state_code, verified,
+                           verified_by, verified_at)
+                           SELECT 'qa-second-key', client_name || ' OTHER',
+                           invoice_branch, invoice_generate_location,
+                           original_branch_name, sol_id, client_class,
+                           gstin, recipient_title, customer_address,
+                           state_code, TRUE, 'qa-reviewer', now()
+                           FROM sbi_invoice_gst.verified_branches
+                           WHERE branch_key=%s""",
+                        (BRANCH["branch_key"],),
+                    )
+            count = conn.execute(
+                "SELECT count(*) AS n FROM sbi_invoice_gst.verified_branches "
+                "WHERE sol_id='03970'"
             ).fetchone()["n"]
             self.assertEqual(count, 1)
 
