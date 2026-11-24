@@ -15,6 +15,23 @@ INNER=(ROOT/"r31_8_combined_security_incontainer.py").read_text("utf-8")
 
 
 class DBR318SecurityOfflineTests(TestCase):
+    def test_streaming_runner_emits_approved_receipts_without_batched_capture(self):
+        from r31_8_combined_security import accepted_qa_line, ALLOWED_QA_KEYS
+        self.assertIn("DB_R31_8_REAL_FIREBASE_SESSION",ALLOWED_QA_KEYS)
+        self.assertTrue(accepted_qa_line("DB_R31_8_REAL_FIREBASE_SESSION=PASS"))
+        self.assertTrue(accepted_qa_line("STOP=DB_R31_8_FORGED_SESSION_COOKIE_DENIAL"))
+        self.assertTrue(accepted_qa_line(
+            "DB_R31_8_RELEASE_STATUS=PRIVATE_COMBINED_SECURITY_QA_ONLY_PRODUCTION_BLOCKED"))
+        self.assertFalse(accepted_qa_line("TRACEBACK_CREDENTIAL=password"))
+        self.assertFalse(accepted_qa_line("DB_R31_8_POSSIBLE_TOKEN=secret-identity-token"))
+        self.assertFalse(accepted_qa_line("DB_R31_8_REAL_FIREBASE_SESSION=PASS\\nSECRET"))
+        self.assertFalse(accepted_qa_line("DB_R31_8_REAL_FIREBASE_SESSION=secret-token"))
+        self.assertNotIn("capture_output=True",HOST)
+        self.assertIn('stderr=subprocess.DEVNULL',HOST)
+        self.assertIn('selectors.DefaultSelector()',HOST)
+        self.assertIn('"python3","-u","-c",source',HOST)
+        self.assertIn('DB_R31_8_RUNNING_WAITING_FOR_CHECK=YES',HOST)
+
     def test_two_report_reads_get_separate_restricted_connections(self):
         first=MagicMock()
         second=MagicMock()
