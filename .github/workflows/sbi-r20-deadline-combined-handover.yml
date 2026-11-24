@@ -117,7 +117,13 @@ jobs:
           Path("r20-artifacts/SBI_R20_SYNTHETIC_REVIEW_ONLY_NOT_RECONCILED.xlsx").write_bytes(
               demonstration_xlsx)
           Path("r20-artifacts/real_xlsx_serializer_synthetic_qa.json").write_text(
-              json.dumps(serializer_result,indent=2,sort_keys=True)+"\\n")
+              json.dumps(serializer_result,indent=2,sort_keys=True)+"\n")
+          for artifact_json in (
+              "r20-artifacts/synthetic_chain_evidence.json",
+              "r20-artifacts/same_day_handover_release_gates.json",
+              "r20-artifacts/real_xlsx_serializer_synthetic_qa.json",
+          ):
+              assert isinstance(json.loads(Path(artifact_json).read_text()), dict)
           print("R20_COMBINED_SYNTHETIC_HANDOVER=PASS")
           print("R20_REAL_BANK_SOURCE=NOT_IMPORTED")
           print("R20_LIVE_AUTH_AND_PRODUCTION_POSTGRES=NOT_TESTED")
