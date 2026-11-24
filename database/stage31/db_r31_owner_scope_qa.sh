@@ -54,7 +54,11 @@ schema_before="$(psql_db "$DB" \
 
 # DO NOT remove explicit SQL ROLLBACK. A failed query automatically aborts
 # the session's open transaction without committing any synthetic data.
-result="$(sudo -n docker exec -i "$PG" psql -X -qAt -v ON_ERROR_STOP=1 -U postgres -d "$DB" -f - < "$FILE" 2>&1)"
+if ! result="$(sudo -n docker exec -i "$PG" psql -X -qAt -v ON_ERROR_STOP=1 -U postgres -d "$DB" -f - < "$FILE" 2>&1)"; then
+  echo "DB_R31_OWNER_SCOPE_QA=BLOCKED"
+  printf '%s\n' "$result" | grep -E 'ERROR:|HINT:|DETAIL:|STATEMENT:|LINE ' | head -n 12 || true
+  exit 1
+fi
 printf '%s\n' "$result" | grep -F 'DB_R31_OWNER_SCOPE_QA_TRANSACTION=ROLLED_BACK' >/dev/null || {
   echo 'STOP=QA_SQL_ROLLBACK_MARKER_MISSING'; exit 1;
 }
