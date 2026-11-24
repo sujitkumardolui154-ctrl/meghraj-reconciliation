@@ -13,7 +13,10 @@ OUTDIR='/home/ubuntu/sbi-db-management/db-r31-central-catalog'
 mkdir -p "$OUTDIR"
 chmod 700 "$OUTDIR"
 OUT="$OUTDIR/DB_R31_SCHEMA_DIFF_AND_TABLE_MAP.txt"
-sudo -n -u postgres psql -X -qAt -v ON_ERROR_STOP=1 -d "$DB" -f "$HERE/db_r31_catalog_probe.sql" > "$OUT"
+# The invoking ubuntu shell opens this private source file. The postgres OS
+# account can read SQL from stdin without permission to traverse /home/ubuntu.
+# Never chmod/chown private source directories or copy SQL to a world-readable path.
+sudo -n -u postgres psql -X -qAt -v ON_ERROR_STOP=1 -d "$DB" -f - < "$HERE/db_r31_catalog_probe.sql" > "$OUT"
 chmod 600 "$OUT"
 grep -qx 'DB_R31_CATALOG_END|READ_ONLY' "$OUT" || { echo 'STOP=READ_ONLY_CATALOG_INCOMPLETE'; exit 1; }
 echo 'DB_R31_READ_ONLY_CATALOG=PASS'
