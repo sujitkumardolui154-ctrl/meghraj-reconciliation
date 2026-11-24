@@ -1,0 +1,44 @@
+name: SBI R17 Financial Math and Conservation Synthetic QA (no production)
+on:
+  push:
+    branches:
+      - review/sbi-r17-synthetic-financial-shadow-20261124
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  r17-reconciliation-shadow-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install only original XLSX source reader for R15/R16 tests
+        run: python -m pip install 'openpyxl>=3.1.5,<4'
+      - name: Run R15 and R16 source/identity guard regression
+        env:
+          CI: "true"
+        run: |
+          set -Eeuo pipefail
+          python -m unittest discover -s tests -p 'test_sbi_r15_financial_source_preflight.py' -v
+          python -m unittest discover -s tests -p 'test_sbi_r16_master_identity_shadow.py' -v
+      - name: Run R17 independent TDS/DNM/SBISA/global-conservation QA
+        env:
+          CI: "true"
+          SBI_FINANCIAL_APPLY: LOCKED
+        run: |
+          set -Eeuo pipefail
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${FIREBASE_AUTH_EMULATOR_HOST:-}"
+          python -m py_compile scripts/ci/sbi_r17_synthetic_financial_shadow.py
+          python -m unittest discover -s tests -p 'test_sbi_r17_synthetic_financial_shadow.py' -v
+          echo 'R17_SYNTHETIC_SHADOW_TESTS=PASS'
+          echo 'R17_V251_ENGINE_SOURCE=NOT_CERTIFIED_OR_CONNECTED'
+          echo 'R17_SQL_AND_FINANCIAL_DATA=NOT_CONNECTED'
+          echo 'R17_REAL_BANK_AND_MASTER_DATA=NOT_IMPORTED'
+          echo 'R17_INVOICE_STATUSES=NOT_WRITTEN'
+          echo 'R17_FINANCIAL_APPLY=LOCKED'
