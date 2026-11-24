@@ -1,0 +1,8 @@
+# Builds a separate staging image from the exact already-deployed app image.
+# Its base tag is created locally by install_aws_staging.sh.
+ARG BASE_IMAGE=sbi-ft04-base:20261124
+FROM ${BASE_IMAGE}
+COPY sbi_payment_pg_bridge.py /app/sbi_payment_pg_bridge.py
+COPY staging_wsgi.py /app/staging_wsgi.py
+ENV PYTHONDONTWRITEBYTECODE=1
+# No CMD override here: start the staging entrypoint explicitly.
