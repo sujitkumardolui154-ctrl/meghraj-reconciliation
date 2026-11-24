@@ -1,0 +1,48 @@
+name: SBI DB-R31 private Firebase staging safety
+
+on:
+  push:
+    branches:
+      - feature/sbi-r31-authenticated-staging-20261125
+  pull_request:
+    branches:
+      - feature/sbi-payment-reconciliation-readiness-gate-20261120
+    paths:
+      - 'staging/aws_login_v150/r31_*'
+      - 'staging/aws_login_v150/app.py'
+      - 'staging/aws_login_v150/Dockerfile.r31_private_staging'
+      - '.github/workflows/sbi-r31-private-staging-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  private-staging-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install isolated source test dependencies
+        run: |
+          python3 -m pip install -r staging/aws_login_v150/requirements.txt
+          python3 -m pip install 'psycopg[binary]>=3.2,<4'
+      - name: Compile staging integration source
+        run: |
+          python3 -m py_compile \
+            staging/aws_login_v150/r31_currency.py \
+            staging/aws_login_v150/r31_stage_blueprint.py \
+            staging/aws_login_v150/r31_db_r31_owner_source_adapter.py \
+            staging/aws_login_v150/r31_db_r31_owner_report_adapter.py \
+            staging/aws_login_v150/r31_db_r31_source_report_contract.py
+          bash -n staging/aws_login_v150/r31_stage_private_qa.sh
+      - name: Offline INR and Firebase-CSRF gate tests
+        env:
+          PYTHONPATH: staging/aws_login_v150:dashboard_source:staging/railway_public
+        run: |
+          python3 -m unittest -q test_r31_private_staging
+      - name: Prohibit any production activation
+        run: |
+          ! grep -q 'docker network connect .*sbi_reconciliation_main' staging/aws_login_v150/r31_stage_private_qa.sh
+          echo 'DB_R31_CI_SCOPE=OFFLINE_PRIVATE_QA_ONLY'
