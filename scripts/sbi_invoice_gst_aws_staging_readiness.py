@@ -119,6 +119,16 @@ def database_review():
                 return {"status": "VENDOR_HEADER_MIGRATION_002_MISSING"}
             cursor.execute(
                 """SELECT EXISTS (
+                    SELECT 1 FROM pg_indexes
+                    WHERE schemaname='sbi_invoice_gst'
+                      AND tablename='verified_branches'
+                      AND indexname='ux_sbi_invoice_verified_unique_sol'
+                )"""
+            )
+            if not bool(cursor.fetchone()[0]):
+                return {"status": "VERIFIED_SOL_UNIQUENESS_MIGRATION_003_MISSING"}
+            cursor.execute(
+                """SELECT EXISTS (
                     SELECT 1 FROM sbi_invoice_gst.vendor_profiles
                     WHERE vendor_key='MEGHRAJ_EXPRESS'
                       AND exact_logo_verified=TRUE
