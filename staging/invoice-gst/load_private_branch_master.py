@@ -15,7 +15,7 @@ import re
 from private_master_adapter import prepare_private_master_rows
 
 
-def verified_private_inputs(master_csv, additional_evidence_json, *, master_sha, evidence_sha):
+def verified_private_inputs(master_csv, additional_evidence_json, *, master_sha, evidence_sha, reviewed_subset_only=False):
     blob = Path(master_csv).read_bytes()
     evidence_blob = Path(additional_evidence_json).read_bytes()
     digest = lambda data: hashlib.sha256(data).hexdigest()
@@ -48,19 +48,25 @@ def verified_private_inputs(master_csv, additional_evidence_json, *, master_sha,
         extras[key] = row
     result = prepare_private_master_rows(master,extras)
     errors = [item for item in result if item["status"] != "READY_FOR_PRIVATE_QA_IMPORT"]
-    if not master or errors:
+    ready_rows = [item["branch"] for item in result
+                  if item["status"] == "READY_FOR_PRIVATE_QA_IMPORT"]
+    if not master or (errors and not reviewed_subset_only) or not ready_rows:
         return {"status":"REVIEW_REQUIRED","total":len(master),
-                "ready":len(result)-len(errors),"review":errors,
+                "ready":len(ready_rows),"review":errors,
                 "rows":[]}
-    branch_keys = [x["branch"]["branch_key"] for x in result]
+    branch_keys = [x["branch_key"] for x in ready_rows]
     if len(set(branch_keys)) != len(branch_keys):
         raise ValueError("DUPLICATE_PRIVATE_BRANCH_KEYS")
-    return {"status":"READY_FOR_PRIVATE_QA_IMPORT","total":len(master),
-            "ready":len(result),"review":[],"rows":[x["branch"] for x in result]}
+    return {"status": ("READY_VERIFIED_SUBSET_FOR_ISOLATED_QA"
+                       if errors else "READY_FOR_PRIVATE_QA_IMPORT"),
+            "total":len(master),"ready":len(ready_rows),
+            "review":errors,"rows":ready_rows}
 
 
 def stage_approved_master_qa(dsn, validated):
-    if validated.get("status") != "READY_FOR_PRIVATE_QA_IMPORT":
+    if validated.get("status") not in (
+        "READY_FOR_PRIVATE_QA_IMPORT", "READY_VERIFIED_SUBSET_FOR_ISOLATED_QA"
+    ):
         raise ValueError("REVIEW_REQUIRED_NO_DATABASE_WRITE")
     import psycopg
     from psycopg.rows import dict_row
@@ -105,10 +111,13 @@ if __name__=="__main__":
     p.add_argument("--master-sha256",required=True)
     p.add_argument("--evidence-sha256",required=True)
     p.add_argument("--apply-to-isolated-qa",action="store_true")
+    p.add_argument("--reviewed-subset-only",action="store_true",
+                   help="only independently approved rows; unresolved excluded")
     args=p.parse_args()
     result=verified_private_inputs(
         args.master_csv,args.evidence_json,
-        master_sha=args.master_sha256,evidence_sha=args.evidence_sha256
+        master_sha=args.master_sha256,evidence_sha=args.evidence_sha256,
+        reviewed_subset_only=args.reviewed_subset_only
     )
     print("MASTER_REVIEW_STATUS=",result["status"])
     print("TOTAL=",result["total"],"READY=",result["ready"],
