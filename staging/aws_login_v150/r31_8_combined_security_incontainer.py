@@ -199,6 +199,17 @@ def main():
             http_status(res,401,"ANONYMOUS_DENIAL")
     print("DB_R31_8_ANONYMOUS_FINANCIAL_SOURCE_API_DENIED=PASS",flush=True)
 
+    # A made-up cookie must not be trusted, even if presented under the
+    # original __Host session-cookie name. Do not use a real user's cookie.
+    with app.test_client() as forged_client:
+        domain="sbi-preview.13-232-241-221.sslip.io"
+        forged_client.set_cookie(SESSION_COOKIE,"not-a-firebase-session-cookie",
+                                 domain=domain,secure=True,httponly=True)
+        denied=forged_client.get("/api/r31-private-qa/sol-report",
+                                 base_url=SITE_ORIGIN)
+        http_status(denied,401,"FORGED_SESSION_COOKIE_DENIAL")
+    print("DB_R31_8_FORGED_FIREBASE_COOKIE_DENIED=PASS",flush=True)
+
     with app.test_client() as client:
         base={"base_url":SITE_ORIGIN}
         csrf_r=client.get("/auth/csrf",**base)
