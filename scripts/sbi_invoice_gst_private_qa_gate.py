@@ -26,6 +26,7 @@ def evaluate_staging_preflight(payload):
             source.get("owner_approved_pdf_template") == "APPROVED_REFERENCE_LOCKED"
         ),
         "MASTER_FILE_SHA256_VERIFIED": source.get("branch_master_hash_checked") is True,
+        "APPROVED_PDF_SHA256_VERIFIED": source.get("approved_pdf_sha256_checked") is True,
         "SOURCE_REVIEW_NOT_MISREPRESENTED_AS_FINAL": (
             source.get("branch_master_source_status")
             == "WORKING_REVIEW_NOT_APPROVED_FOR_AUTOMATIC_IMPORT"
