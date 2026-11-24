@@ -135,7 +135,7 @@ for attempt in $(seq 1 20);do
 done
 [[ "$READY" == 1 ]] || { echo 'STOP=PRIVATE_STAGE_HEALTHCHECK';exit 2; }
 
-docker exec "$STAGE" python3 - <<'PY'
+docker exec -i "$STAGE" python3 - <<'PY'
 from urllib.request import Request,build_opener,HTTPRedirectHandler
 from urllib.error import HTTPError
 class NoRedirect(HTTPRedirectHandler):
