@@ -1,0 +1,24 @@
+# Isolated local/private staging only; does NOT touch live AWS preview/Caddy.
+# Credentials must be injected via environment/secrets by an authorized operator.
+services:
+  sbi-calc-prescreen-staging:
+    build:
+      context: ../..
+      dockerfile: staging/aws_calculation_prescreen/Dockerfile
+    read_only: true
+    user: "10001:10001"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    pids_limit: 100
+    mem_limit: 256m
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=8m
+    environment:
+      SBI_CALC_PREVIEW_ENABLED: "${SBI_CALC_PREVIEW_ENABLED:-false}"
+      SBI_FINANCIAL_APPLY: LOCKED
+      SBI_CALC_PREVIEW_USERNAME: "${SBI_CALC_PREVIEW_USERNAME:-}"
+      SBI_CALC_PREVIEW_PASSWORD: "${SBI_CALC_PREVIEW_PASSWORD:-}"
+    # Loopback bind; never publish this app to public AWS/Caddy.
+    ports:
+      - "127.0.0.1:18088:8080"
