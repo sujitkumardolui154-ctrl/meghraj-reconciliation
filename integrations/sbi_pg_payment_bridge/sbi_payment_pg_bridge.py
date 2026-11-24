@@ -150,6 +150,8 @@ def payment_rows(payload: bytes) -> list[tuple[int, dict[str, str], int]]:
                     if value.strip():
                         raise ContractError("Unexpected data outside approved three-column format")
                     continue
+                if n > 1 and index == 2 and c.get("t", "n") not in ("s", "inlineStr", "str"):
+                    raise ContractError("SOL ID must be an Excel text cell")
                 cells[index - 1] = value
             if n == 1:
                 headers = cells
@@ -303,7 +305,13 @@ def _all_source_rows(payload: bytes) -> list[tuple[int, dict[str, str], str | No
                     if value.strip():
                         raise ContractError("Unexpected data outside approved columns")
                 else:
+                    # Numeric Excel SOL can lose source leading zeros; do not
+                    # silently treat the converted value as verified text.
+                    if number > 1 and index == 2 and cell.get("t", "n") not in ("s", "inlineStr", "str"):
+                        reason = reason or "SOL_ID_NOT_EXCEL_TEXT"
                     cells[index - 1] = value
+            if number > 1 and not reason and not re.fullmatch(r"[0-9]{1,12}", cells[1]):
+                reason = "SOL_ID_NOT_TEXT_DIGITS"
             if number == 1:
                 if tuple(cells) != COLS or reason:
                     raise ContractError("Approved header mismatch")
