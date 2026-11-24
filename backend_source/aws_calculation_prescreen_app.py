@@ -157,6 +157,8 @@ def candidate_screen():
     denied=authorized()
     if denied is not None:
         return denied
+    if request.content_length is not None and request.content_length>app.config["MAX_CONTENT_LENGTH"]:
+        return error("PAYLOAD_TOO_LARGE",413)
     if request.content_type!="application/json":
         return error("JSON_CONTENT_TYPE_REQUIRED",415)
     try:
