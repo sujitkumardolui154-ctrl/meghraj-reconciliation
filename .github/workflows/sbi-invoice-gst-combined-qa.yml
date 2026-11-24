@@ -66,12 +66,20 @@ jobs:
         run: |
           python -m unittest discover -s tests -p 'test_invoice_gst_private_qa_gate.py' -v
           python scripts/sbi_invoice_gst_aws_staging_readiness.py > /tmp/invoice-staging-readiness.json
-          if python scripts/sbi_invoice_gst_private_qa_gate.py --preflight-json /tmp/invoice-staging-readiness.json --assert-ready; then
-            echo "ERROR: Dry-run with no private source and DB must not be release-ready"
-            exit 1
-          else
-            echo "PRIVATE_QA_PREREQUISITES_MISSING_FAIL_CLOSED=PASS"
-          fi
+          set +e
+          python scripts/sbi_invoice_gst_private_qa_gate.py --preflight-json /tmp/invoice-staging-readiness.json --assert-ready > /tmp/invoice-private-qa-decision.json
+          code=$?
+          set -e
+          test "$code" -eq 2
+          python - <<'PY'
+          import json
+          report=json.load(open("/tmp/invoice-private-qa-decision.json"))
+          assert report["ready_for_authenticated_private_qa"] is False
+          assert report["production_deployment"] == "NOT_AUTHORIZED"
+          assert "APPROVED_PDF_SHA256_VERIFIED" in report["outstanding"]
+          assert "ISOLATED_QA_DATABASE_SCHEMAS_PRESENT" in report["outstanding"]
+          print("PRIVATE_QA_PREREQUISITES_MISSING_FAIL_CLOSED=PASS")
+          PY
       - name: Existing GST contract regression
         run: python -m unittest discover -s staging/mxp-gst/tests -p 'test_*.py' -v
       - name: Safe AWS staging preflight default remains read-only
