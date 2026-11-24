@@ -349,5 +349,57 @@ class MasterMatrixIntegrationQA(unittest.TestCase):
         self.assertEqual(a,b)
         self.assertEqual(repr(d),before)
 
+    def test_63_review_priority_exact_mxp_before_documented_gst(self):
+        iv=(invoice(),invoice(source_row=3,invoice_no="MXP10002"))
+        bank_rows=(
+            bank(credit="180.00",description="GST MXP10002 SEPTEMBER 2026"),
+            bank(source_row=3,credit="1160.00",
+                 description="MXP10001 SEPTEMBER 2026"),
+        )
+        g=proof("GST",row=2,invoice_no="MXP10002")
+        x=run(invoices=iv,payments=bank_rows,relationships=[g])
+        self.assertEqual(len(x["review_edges_not_financial_allocations"]),2)
+        self.assertEqual(
+            [v[3] for v in x["review_edges_not_financial_allocations"]],
+            ["EXACT_MXP_REVIEW","GST_COMPONENT_REVIEW"])
+        self.assertEqual(x["shadow_reserved_cash_total"],"1340.00")
+
+    def test_64_forged_dnm_unknown_bank_row_refused(self):
+        d=args(payments=[bank(description="POSTAGE SEPTEMBER 2026")])
+        actual=gate.plan_review_only(
+            list(d["invoices"]),list(d["payments"]),list(d["master_pairs"]),
+            source_sha256=SHA,master_sha256=MASTER_SHA)
+        bad=dict(actual)
+        bad["candidate_rows"]=((999,"MXP10001","1160.00",
+                "DNM01_PROVISIONAL_NO_RESERVATION",2),)
+        with patch.object(gate,"plan_review_only",return_value=bad):
+            self.refused("PROVISIONAL_DNM_OUTSIDE_VERIFIED_SOURCE",
+                         input_override=d)
+
+    def test_65_forged_dnm_amount_mismatch_refused(self):
+        d=args(payments=[bank(description="POSTAGE SEPTEMBER 2026")])
+        actual=gate.plan_review_only(
+            list(d["invoices"]),list(d["payments"]),list(d["master_pairs"]),
+            source_sha256=SHA,master_sha256=MASTER_SHA)
+        bad=dict(actual)
+        bad["candidate_rows"]=((2,"MXP10001","999.00",
+                "DNM01_PROVISIONAL_NO_RESERVATION",2),)
+        with patch.object(gate,"plan_review_only",return_value=bad):
+            self.refused("PROVISIONAL_DNM_CREDIT_SOURCE_MISMATCH",
+                         input_override=d)
+
+    def test_66_forged_dnm_with_explicit_mxp_ref_refused(self):
+        d=args()
+        actual=gate.plan_review_only(
+            list(d["invoices"]),list(d["payments"]),list(d["master_pairs"]),
+            source_sha256=SHA,master_sha256=MASTER_SHA)
+        bad=dict(actual)
+        bad["candidate_rows"]=((2,"MXP10001","1160.00",
+                "DNM01_PROVISIONAL_NO_RESERVATION",2),)
+        with patch.object(gate,"plan_review_only",return_value=bad):
+            self.refused("PROVISIONAL_DNM_CONTRADICTORY_MXP_REF",
+                         input_override=d)
+
+
 if __name__=="__main__":
     unittest.main()
