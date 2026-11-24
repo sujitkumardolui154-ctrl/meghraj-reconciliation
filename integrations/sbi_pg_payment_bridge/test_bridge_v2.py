@@ -1,5 +1,6 @@
 """Unit contract checks for partial rows and durable outbox (no AWS)."""
 import io
+import sqlite3
 import os
 import sys
 import tempfile
@@ -14,7 +15,7 @@ from xml.sax.saxutils import escape
 sys.modules.setdefault('flask',types.SimpleNamespace(jsonify=None,request=None,g=None))
 sys.path.insert(0,str(Path(__file__).parent))
 from sbi_payment_pg_bridge import _all_source_rows, classify_payment_rows, ContractError
-from sbi_pg_outbox import queue_delivery, process_queued, process_pending, _connect
+from sbi_pg_outbox import queue_delivery, process_queued, process_pending, recover_missing_receipts, _connect
 from sbi_payment_pg_bridge import QA_DATABASE,QA_HOST,QA_WRITER
 
 
@@ -106,6 +107,19 @@ class OutboxTests(unittest.TestCase):
         with _connect() as db:
             row=db.execute('SELECT state,length(payload),attempt_count FROM delivery_queue').fetchone()
         self.assertEqual(row,('COMMITTED',None,2))
+    def test_receipt_recovery_after_crash_window(self):
+        import hashlib
+        data=make_excel([('OK','0123','118.00')]);digest=hashlib.sha256(data).hexdigest()
+        root=Path(os.environ['SBI_PAYMENT_EVIDENCE_DIR'])
+        receipt='a'*32
+        (root/(receipt+'.xlsx')).write_bytes(data)
+        with sqlite3.connect(str(root/'receipts.sqlite3')) as con:
+            con.execute('CREATE TABLE receipts(id TEXT,owner_uid TEXT,sha256 TEXT,created_utc TEXT)')
+            con.execute('INSERT INTO receipts VALUES (?,?,?,?)',(receipt,'qa-recovery',digest,'2026-11-24T00:00:00Z'))
+        self.assertEqual(recover_missing_receipts(),1)
+        self.assertEqual(recover_missing_receipts(),0)
+        self.assertEqual(process_queued(digest,'qa-recovery',lambda x:'COMMITTED',lambda x:[]),'COMMITTED')
+
     def test_staging_target_is_enforced(self):
         with patch.dict(os.environ,{'PGDATABASE':'sbi_reconciliation_main'}):
             with self.assertRaises(RuntimeError):queue_delivery(b'test12345678','qa')
