@@ -10,8 +10,12 @@ on:
     paths:
       - 'database/stage31/db_r31_owner_source_adapter.py'
       - 'database/stage31/db_r31_owner_report_adapter.py'
+      - 'database/stage31/db_r31_owner_persistent_qa.sql'
+      - 'database/stage31/db_r31_owner_qa_combined.py'
+      - 'database/stage31/db_r31_owner_qa_runtime.py'
       - 'database/stage31/test_db_r31_owner_source_adapter.py'
       - 'database/stage31/test_db_r31_owner_report_adapter.py'
+      - 'database/stage31/test_db_r31_owner_persistent_qa.py'
       - '.github/workflows/db-r31-owner-source-contract.yml'
 
 permissions:
@@ -28,8 +32,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Safe source-only unit checks
+      - name: Compile isolated QA code without executing
         run: |
-          python3 -m unittest -q             test_db_r31_owner_source_adapter             test_db_r31_owner_report_adapter
+          python3 -m py_compile db_r31_owner_source_adapter.py db_r31_owner_report_adapter.py db_r31_owner_qa_combined.py db_r31_owner_qa_runtime.py
+      - name: Offline source-only and QA safety tests
+        run: |
+          python3 -m unittest -q test_db_r31_owner_source_adapter test_db_r31_owner_report_adapter test_db_r31_owner_persistent_qa
       - name: No database or deployment effects
         run: echo 'DB_R31_CI_SCOPE=OFFLINE_UNIT_ONLY_NO_PRODUCTION_ACCESS'
