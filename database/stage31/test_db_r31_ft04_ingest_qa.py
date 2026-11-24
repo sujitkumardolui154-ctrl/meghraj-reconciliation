@@ -121,6 +121,7 @@ class FakeConnection:
         self.fake=FakeCursor(**kwargs)
         self.committed=False
         self.rolled_back=False
+    def transaction(self):return self
     def __enter__(self):return self
     def __exit__(self,typ,*_):
         self.rolled_back=typ is not None
