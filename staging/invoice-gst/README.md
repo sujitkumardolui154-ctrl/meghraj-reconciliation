@@ -132,8 +132,9 @@ python staging/invoice-gst/load_private_branch_master.py \
   --evidence-sha256 <approved-evidence-64-hex> \
   --apply-to-isolated-qa
 ```
-Use existing schema migration `001_isolated_invoice_schema.sql` before
-importing, and do not enable finalization until private QA and owner approval
+Use isolated schema migration `001_isolated_invoice_schema.sql`, then
+`002_vendor_header_fields.sql`, then `003_verified_sol_uniqueness.sql`
+**in that order** before importing, and do not enable finalization until private QA and owner approval
 prove the logo, legal details, addresses, SOL text, original print and report
 parity. Test files are synthetic and do not contain live customer records.
 
@@ -162,3 +163,22 @@ No real private master or vendor bundle is uploaded to the public repository.
 The corrected six-page reference PDF retains the original five annexure
 pages. This remains a screenshot-aligned **preview**, not certification
 of an identical native XLSX print rendering.
+
+## Staging resume — 25 November 2026: approved source separation
+
+- `SBI_SOL_Branch_Master_FINAL.xlsx` was located in the owner's connected
+  Google Drive. Its **Review Summary declares WORKING REVIEW — NOT FINAL**;
+  source filename is not evidence that all branches are verified.
+- See `STAGE_PRIVATE_RESUME_20261125.md` for source, import status and exact
+  isolated QA milestones.
+- Additive SQL migrations **001 → 002 → 003** are now mandatory; #003 prevents
+  two verified branch identities sharing a SOL in the same isolated database.
+- The reviewed-subset loader now refuses an existing verified branch if the
+  stored identity, address, generation location, recipient, class or GSTIN
+  differs, even when the SOL and name match. Owner review required for change.
+- The private Meghraj Express vendor loader now refuses to overwrite approved
+  logo, declaration, banking instructions or company-header fields.
+  Identical, previously-approved profiles can be reloaded idempotently.
+- An AWS staging read-only preflight checks for migration 003. **No AWS
+  authenticated invoice run, private AWS database write or deployment has
+  been performed from this GitHub PR.**
