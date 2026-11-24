@@ -84,13 +84,14 @@ BEFORE INSERT ON sbi_r20_shadow_only.reservation
 FOR EACH ROW EXECUTE FUNCTION sbi_r20_shadow_only.enforce_shadow_conservation();
 INSERT INTO sbi_r20_shadow_only.payment VALUES
   ('SYN-PAY-001','0001','SYNTHETIC ALPHA',1160.00),
-  ('SYN-PAY-002','0001','SYNTHETIC ALPHA',400.00),
+  ('SYN-PAY-002','0001','SYNTHETIC ALPHA',2000.00),
   ('SYN-PAY-003','0002','SYNTHETIC BETA',300.00);
 INSERT INTO sbi_r20_shadow_only.invoice VALUES
   ('SYN-MXP-001','0001','SYNTHETIC ALPHA',1180.00,false),
   ('SYN-MXP-002','0001','SYNTHETIC ALPHA',600.00,false),
   ('SYN-MXP-003','0001','SYNTHETIC ALPHA',200.00,true),
-  ('SYN-MXP-004','0002','SYNTHETIC BETA',350.00,false);
+  ('SYN-MXP-004','0002','SYNTHETIC BETA',350.00,false),
+  ('SYN-MXP-005','0001','SYNTHETIC ALPHA',2000.00,false);
 """
 
 
@@ -130,7 +131,7 @@ def run_ephemeral_pg_probe(dsn):
                 cur.execute("SELECT COUNT(*) FROM sbi_r20_shadow_only.payment")
                 assert cur.fetchone()[0] == 3
                 cur.execute("SELECT COUNT(*) FROM sbi_r20_shadow_only.invoice")
-                assert cur.fetchone()[0] == 4
+                assert cur.fetchone()[0] == 5
 
                 try:
                     with con.transaction():
@@ -160,6 +161,7 @@ def run_ephemeral_pg_probe(dsn):
                         result["readonly_role_write_denied"] = True
                 finally:
                     cur.execute("RESET ROLE")
+                    cur.execute("DROP OWNED BY sbi_r20_shadow_readonly")
                     cur.execute("DROP ROLE IF EXISTS sbi_r20_shadow_readonly")
 
                 try:
@@ -178,8 +180,8 @@ def run_ephemeral_pg_probe(dsn):
                              "('SYN-PAY-001','SYN-MXP-001',1)",
                              errors.UniqueViolation),
                             ("credit_capacity_violation_rejected",
-                             "('SYN-PAY-001','SYN-MXP-002',1000)",
-                             errors.UniqueViolation),
+                             "('SYN-PAY-001','SYN-MXP-005',900)",
+                             errors.CheckViolation),
                             ("invoice_capacity_violation_rejected",
                              "('SYN-PAY-002','SYN-MXP-001',1100)",
                              errors.CheckViolation),
