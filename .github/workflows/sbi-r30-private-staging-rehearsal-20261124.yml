@@ -1,0 +1,115 @@
+name: SBI R30 Private Candidate Staging Rehearsal (Disposable Docker Only)
+on:
+  pull_request:
+    branches:
+      - feature/sbi-payment-reconciliation-readiness-gate-20261120
+  push:
+    branches:
+      - review/sbi-r30-private-staging-rollout-20261124
+permissions:
+  contents: read
+
+jobs:
+  r30-disposable-host-stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Source syntax and exact-commit read-only preflight
+        run: |
+          set -Eeuo pipefail
+          bash -n staging/aws_calculation_prescreen/host_stage.sh
+          python -m py_compile backend_source/aws_calculation_prescreen_app.py \
+            scripts/ci/sbi_r28_owner_deployment_and_row_exclusion_policy.py
+          SHA="$(git rev-parse HEAD)"
+          bash staging/aws_calculation_prescreen/host_stage.sh preflight "$SHA"
+          if bash staging/aws_calculation_prescreen/host_stage.sh preflight "0\${SHA:1}" ; then
+            echo "R30_BAD_SHA_INCORRECTLY_ACCEPTED"; exit 1
+          fi
+      - name: Create ephemeral root-owned SYNTHETIC staging credentials
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          root="$(mktemp -d)"
+          sudo chown root:root "$root"
+          sudo chmod 0700 "$root"
+          printf '%s\n' "$root/stage.env" > "$RUNNER_TEMP/r30-env-path"
+          printf '%s\n' \
+            "SBI_CALC_PREVIEW_ENABLED=true" \
+            "SBI_CALC_PREVIEW_USERNAME=offline-runner-qa" \
+            "SBI_CALC_PREVIEW_PASSWORD=SYNTHETIC_Only_Offline_Password_20261124" |
+            sudo tee "$root/stage.env" >/dev/null
+          sudo chown root:root "$root/stage.env"
+          sudo chmod 0600 "$root/stage.env"
+          echo "R30_SYNTHETIC_STAGING_SECRET_MODE=ROOT_0600"
+      - name: Reject missing private-host intent without deploying
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          SHA="$(git rev-parse HEAD)"
+          secret="$(cat "$RUNNER_TEMP/r30-env-path")"
+          if sudo env SBI_R30_SECRET_FILE="$secret" SBI_R30_STAGE_SCOPE=PUBLIC \
+             bash staging/aws_calculation_prescreen/host_stage.sh stage "$SHA" ; then
+            echo "R30_INVALID_PUBLIC_SCOPE_INCORRECTLY_ALLOWED"; exit 1
+          fi
+          echo "R30_PUBLIC_SCOPE=DENIED"
+      - name: Build and run PINNED private-loopback staging container on DISPOSABLE runner
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          SHA="$(git rev-parse HEAD)"
+          secret="$(cat "$RUNNER_TEMP/r30-env-path")"
+          sudo env SBI_R30_SECRET_FILE="$secret" \
+            SBI_R30_STAGE_SCOPE=PRIVATE_LOOPBACK_ONLY \
+            bash staging/aws_calculation_prescreen/host_stage.sh stage "$SHA"
+          bash staging/aws_calculation_prescreen/host_stage.sh status "$SHA"
+          echo "R30_DISPOSABLE_DOCKER_STAGE=PASS"
+          echo "R30_AWS_ACTUAL_HOST_DEPLOY=NOT_PERFORMED"
+      - name: Assert localhost only, read-only filesystem and no financial writer surface
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          secret="$(cat "$RUNNER_TEMP/r30-env-path")"
+          SHA="$(git rev-parse HEAD)"
+          container="$(sudo env SBI_CALC_RELEASE_SHA="$SHA" docker compose \
+            --project-name sbi-r30-calc-preview-staging \
+            --env-file "$secret" -f staging/aws_calculation_prescreen/compose.local.yml \
+            ps -q sbi-calc-prescreen-staging)"
+          [[ -n "$container" ]]
+          sudo docker inspect "$container" | python -c '
+          import json,sys
+          v=json.load(sys.stdin)[0]
+          host=v["HostConfig"]
+          bindings=host["PortBindings"]["8080/tcp"]
+          assert len(bindings)==1 and bindings[0]["HostIp"]=="127.0.0.1"
+          assert bindings[0]["HostPort"]=="18088"
+          assert host["ReadonlyRootfs"] is True
+          assert "ALL" in host["CapDrop"]
+          assert v["Config"]["User"]=="10001:10001"
+          print("R30_PRIVATE_LOOPBACK_READONLY_NONROOT=PASS")
+          '
+          [[ "$(curl -sS -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:18088/api/settle)" == 403 ]]
+          [[ "$(curl -sS -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:18088/api/candidate-screen)" == 401 ]]
+          echo "R30_AUTHENTICATION_AND_FINANCIAL_WRITES_DENIED=PASS"
+      - name: Dispose temporary staging and root-owned synthetic credentials
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          SHA="$(git rev-parse HEAD)"
+          if [[ -f "$RUNNER_TEMP/r30-env-path" ]]; then
+            secret="$(cat "$RUNNER_TEMP/r30-env-path")"
+            sudo env SBI_CALC_RELEASE_SHA="$SHA" docker compose \
+              --project-name sbi-r30-calc-preview-staging \
+              --env-file "$secret" -f staging/aws_calculation_prescreen/compose.local.yml \
+              down --remove-orphans
+            sudo rm -rf "$(dirname "$secret")"
+            rm -f "$RUNNER_TEMP/r30-env-path"
+          fi
+          echo "R30_DISPOSABLE_STAGING_CLEANUP=COMPLETE"
+          echo "R30_PRODUCTION_OR_FINANCIAL_WRITE=NEVER_RUN"
