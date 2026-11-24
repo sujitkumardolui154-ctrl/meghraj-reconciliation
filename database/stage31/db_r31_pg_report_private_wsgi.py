@@ -65,9 +65,13 @@ def _identity():
         return None
     # Only a dedicated report-viewer claim, or the actual master account.
     # Normal dashboard logins are not automatically entitled to bank data.
-    from dashboard_sessions import is_master
-    if claims.get("sbi_report_viewer") is not True and not is_master(user):
-        return None
+    if claims.get("sbi_report_viewer") is not True:
+        try:
+            from dashboard_sessions import is_master
+            if not is_master(user):
+                return None
+        except (ImportError,AttributeError):
+            return None
     return uid
 
 
