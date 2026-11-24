@@ -64,7 +64,7 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_invoice_gst_master_workbook_gate.py' -v
       - name: Private staging readiness go no-go safeguards
         run: |
-          python -m unittest discover -s tests -p 'test_invoice_gst_private_qa_gate.py' -v
+          # Unit tests are already covered by the private_* suite above.
           python scripts/sbi_invoice_gst_aws_staging_readiness.py > /tmp/invoice-staging-readiness.json
           set +e
           python scripts/sbi_invoice_gst_private_qa_gate.py --preflight-json /tmp/invoice-staging-readiness.json --assert-ready > /tmp/invoice-private-qa-decision.json
