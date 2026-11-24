@@ -70,9 +70,9 @@ class VerifiedPrivateMasterIntake(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             master, evidence_path, _, _ = self.write(Path(folder))
             master.write_text(
-                "Official Branch Name,SOL ID,Search Aliases\\n"
-                "QA VERIFIED KOLKATA BRANCH,03970,QA VK\\n"
-                "QA OTHER VERIFIED BRANCH,03970,QA OTHER\\n"
+                "Official Branch Name,SOL ID,Search Aliases\n"
+                "QA VERIFIED KOLKATA BRANCH,03970,QA VK\n"
+                "QA OTHER VERIFIED BRANCH,03970,QA OTHER\n"
             )
             evidence = json.loads(evidence_path.read_text())
             other = dict(evidence[0])
