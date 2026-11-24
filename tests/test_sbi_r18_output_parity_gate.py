@@ -259,3 +259,46 @@ class R18StructureParity(unittest.TestCase):
 
 if __name__=="__main__":
     unittest.main()
+
+
+class R18Report53HeaderParity(unittest.TestCase):
+    @staticmethod
+    def approved():
+        import json
+        return json.loads(
+            (ROOT / "backend_source" / "invoice_import_contract.json").read_text()
+        )["headers"]
+
+    def test_37_approved_header_order_all_53_pass(self):
+        from sbi_r18_output_parity_gate import verify_53_header_contract
+        headers = self.approved()
+        r = verify_53_header_contract(headers, headers)
+        self.assertEqual(r["header_count"], 53)
+        self.assertFalse(r["report_financial_amount_parity_verified"])
+        self.assertFalse(r["v251_writer_certified"])
+
+    def test_38_duplicate_heading_Client_Name_is_preserved(self):
+        headers = self.approved()
+        self.assertEqual(headers[0], headers[7])
+        self.assertEqual(headers[0], "Client Name")
+
+    def test_39_duplicate_heading_Branch_Code_is_preserved(self):
+        headers = self.approved()
+        self.assertEqual(headers[6], headers[10])
+        self.assertEqual(headers[6], "Branch Code")
+
+    def test_40_collapsed_duplicate_heading_fails(self):
+        from sbi_r18_output_parity_gate import verify_53_header_contract
+        approved = self.approved()
+        changed = approved.copy()
+        changed[7] = "Client Name 2"
+        with self.assertRaisesRegex(R18GateError, "REPORT_53_HEADER_ORDER_OR_DUPLICATE_MISMATCH"):
+            verify_53_header_contract(changed, approved)
+
+    def test_41_reordered_report_columns_fail(self):
+        from sbi_r18_output_parity_gate import verify_53_header_contract
+        approved = self.approved()
+        changed = approved.copy()
+        changed[13], changed[14] = changed[14], changed[13]
+        with self.assertRaisesRegex(R18GateError, "REPORT_53_HEADER_ORDER_OR_DUPLICATE_MISMATCH"):
+            verify_53_header_contract(changed, approved)
