@@ -15,6 +15,12 @@ INNER=(ROOT/"r31_8_combined_security_incontainer.py").read_text("utf-8")
 
 
 class DBR318SecurityOfflineTests(TestCase):
+    def test_unhandled_harness_exceptions_emit_safe_stop_category(self):
+        self.assertIn('UNHANDLED_TEST_EXCEPTION_',INNER)
+        self.assertIn('except Exception as exc:',INNER)
+        self.assertIn('type(exc).__name__',INNER)
+        self.assertNotIn('print(str(exc))',INNER)
+
     def test_actual_firebase_middleware_rejects_fake_session_cookie(self):
         # Test real Flask protect_dashboard hook, with a synthetic Firebase
         # verifier rejection. Does not contact Firebase or require secrets.
