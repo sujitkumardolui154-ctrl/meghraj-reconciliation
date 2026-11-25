@@ -1,7 +1,11 @@
 """Offline R31.10 no-secret, fail-closed combined remediation contracts."""
 from pathlib import Path
 import ast
+import io
 import unittest
+from urllib.error import HTTPError
+
+from r31_9_combined_gate import safe_r319_firebase_error
 
 ROOT = Path(__file__).resolve().parent
 RUN = (ROOT/"r31_10_combined_remediation.py").read_text("utf-8")
@@ -56,6 +60,23 @@ class CombinedR310SafetyTests(unittest.TestCase):
         self.assertIn("BLOCKED_PENDING_APPROVED_MTLS_ROUTE",RUN)
         self.assertIn("UNAPPROVED_CADDY_QA_ROUTE_PRESENT",RUN)
         self.assertNotIn('EXTERNAL_HTTPS_E2E=PASS',RUN)
+
+    def test_safe_firebase_400_taxonomy_does_not_log_provider_text(self):
+        def error(code, detail):
+            body = ('{"error":{"message":"' + code + ':' + detail + '"}}').encode()
+            return HTTPError('https://example.invalid', 400,
+                             'Bad Request', {}, io.BytesIO(body))
+        self.assertEqual(safe_r319_firebase_error(error(
+            "INVALID_EMAIL", "PRIVATE_TEST_ADDRESS")), "INVALID_EMAIL")
+        self.assertEqual(safe_r319_firebase_error(error(
+            "NEW_UNKNOWN_FIREBASE_ERROR", "SENSITIVE_VALUE")), "REJECTED_HTTP_400")
+        self.assertNotIn("print(str(exc))", RUN)
+
+    def test_failed_login_keeps_security_gate_blocked_and_checks_https(self):
+        self.assertIn("DB_R31_10_ACCOUNT_1_SIGNIN=BLOCKED", RUN)
+        self.assertIn("DB_R31_10_ACCOUNT_2_SIGNIN=BLOCKED", RUN)
+        self.assertIn("except SystemExit:", RUN)
+        self.assertIn("https_ok = external_https_gate()", RUN)
 
     def test_no_cloud_identity_or_network_mutations(self):
         for disallowed in (
