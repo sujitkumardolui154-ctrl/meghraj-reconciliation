@@ -92,8 +92,11 @@ def main() -> int:
         success = run_inner(tokens)
     finally:
         tokens.clear()
+    print("DB_R31_12_IDENTITY_QA=" +
+          ("PASS_DISTINCT_PRIVATE_SESSIONS" if success else "BLOCKED_RUNTIME"),
+          flush=True)
     print("DB_R31_12_RELEASE_STATUS=IDENTITY_QA_ONLY_PRODUCTION_BLOCKED", flush=True)
-    return 2 if success else 2  # Deliberately never approves production.
+    return 2  # Deliberately never approves production.
 
 
 if __name__ == "__main__":
