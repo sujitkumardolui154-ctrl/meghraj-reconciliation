@@ -1,0 +1,20 @@
+name: DB-R31.11 Existing Clone Read-Only Resume QA
+on:
+  push:
+    branches:
+      - feature/sbi-r31-11-existing-clone-readonly-resume-20261125
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  readonly-existing-clone-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run non-destructive clone state and role gate regressions
+        run: python -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_existing_clone_readonly_audit.py' -v
+      - name: Compile read-only operator module
+        run: python -m py_compile staging/aws_login_v150/r31_11_existing_clone_readonly_audit.py
