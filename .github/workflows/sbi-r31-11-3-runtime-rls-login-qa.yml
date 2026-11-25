@@ -51,6 +51,7 @@ jobs:
       - name: Run minimal runtime source adapter regression
         run: |
           python -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_3_runtime_rls_adapter.py' -v
+          python -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_3_runtime_rls_blueprint.py' -v
           python -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_3_real_postgres_login.py' -v
       - name: Confirm production database absent from synthetic service
         run: |
