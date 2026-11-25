@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feature/sbi-r31-11-tenant-enforcement-firebase-https-20261125
+      - feature/sbi-r31-11-2-readonly-tenant-isolation-20261125
   workflow_dispatch:
 permissions:
   contents: read
@@ -46,6 +47,8 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f staging/aws_login_v150/r31_11_clone_rls_up.sql
       - name: Prove two owner sessions and no global view access
         run: psql -X -v ON_ERROR_STOP=1 -f staging/aws_login_v150/r31_11_clone_rls_verify.sql
+      - name: R31.11.2 independently audit existing clone read-only tenant A/B security
+        run: psql -X -qAt -v ON_ERROR_STOP=1 -f staging/aws_login_v150/r31_11_2_existing_clone_readonly.sql
       - name: Confirm no prod DB name and policy coverage
         run: |
           test "$(psql -X -qAt -c "SELECT count(*) FROM pg_database WHERE datname = 'sbi_reconciliation_main'")" = 0
