@@ -52,6 +52,35 @@ def safe_line(line):
     return key in ALLOWED and re.fullmatch(r"[A-Z0-9_]{1,100}", value) is not None
 
 
+def safe_r319_firebase_error(exc):
+    """Static-code-only Firebase 400 diagnosis; never echo provider strings.
+
+    Some identity providers append human-readable text after a safe code.
+    Only a known leading code is allowed into diagnostic output.
+    """
+    if exc.code != 400:
+        return "REJECTED_HTTP_" + str(exc.code)
+    try:
+        data = json.loads(exc.read(4096))
+        message = data.get("error", {}).get("message")
+    except (OSError, ValueError, UnicodeError, AttributeError, TypeError):
+        message = None
+    allowed = frozenset({
+        "INVALID_LOGIN_CREDENTIALS", "EMAIL_NOT_FOUND", "INVALID_PASSWORD",
+        "USER_DISABLED", "OPERATION_NOT_ALLOWED", "PASSWORD_LOGIN_DISABLED",
+        "INVALID_API_KEY", "API_KEY_INVALID", "PROJECT_NOT_FOUND",
+        "TOO_MANY_ATTEMPTS_TRY_LATER", "MISSING_PASSWORD", "MISSING_EMAIL",
+        "INVALID_EMAIL", "EMAIL_NOT_VERIFIED", "MFA_REQUIRED",
+        "INVALID_TENANT_ID", "TENANT_ID_MISMATCH", "CAPTCHA_CHECK_FAILED",
+        "INVALID_RECAPTCHA_TOKEN", "RECAPTCHA_CHECK_FAILED",
+    })
+    if type(message) is str:
+        code = message.split(":", 1)[0].strip()
+        if code in allowed:
+            return code
+    return "REJECTED_HTTP_400"
+
+
 def signin(api_key):
     # Hide email as well as password; never print or pass in shell/env.
     email = getpass.getpass("Existing Firebase TEST user email (hidden): ").strip()
@@ -72,7 +101,7 @@ def signin(api_key):
         with urllib.request.urlopen(req, timeout=25) as res:
             doc = json.loads(res.read(25000))
     except urllib.error.HTTPError as exc:
-        print("STOP=DB_R31_9_FIREBASE_" + safe_firebase_signin_error(exc),
+        print("STOP=DB_R31_9_FIREBASE_" + safe_r319_firebase_error(exc),
               flush=True)
         raise SystemExit(2)
     except (OSError, ValueError, TimeoutError):
