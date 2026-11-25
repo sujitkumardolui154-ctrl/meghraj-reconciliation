@@ -37,12 +37,11 @@ class RealPostgresCI(unittest.TestCase):
             return psycopg.connect(host=CI_HOST,dbname=a.QA_DB,port=5432,
                                    **kwargs)
         for uid,role,password,expected_paise in records:
-            with self.subTest(role=role), (
-                patch.dict(os.environ,{"SBI_R31_11_3_RUNTIME_ENABLED":a.ENABLE_FLAG}),
-                patch.object(a,"_binding_for_uid",return_value=(
+            with (self.subTest(role=role),
+                  patch.dict(os.environ,{"SBI_R31_11_3_RUNTIME_ENABLED":a.ENABLE_FLAG}),
+                  patch.object(a,"_binding_for_uid",return_value=(
                     role,Path("/run/secrets/r3113-disposable-ci.env"))),
-                patch.object(a,"_login_secret",return_value=password)
-            ):
+                  patch.object(a,"_login_secret",return_value=password)):
                 data=a.read_tenant_source_only(
                     SimpleNamespace(uid=uid,custom_claims={"dil_dashboard":True}),
                     limit=10,connect=loopback)
