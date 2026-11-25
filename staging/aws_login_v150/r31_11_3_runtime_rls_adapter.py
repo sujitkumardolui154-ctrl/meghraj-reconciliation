@@ -86,7 +86,7 @@ def _binding_for_uid(trusted_uid: str, *, path=MAP_PATH) -> tuple[str, Path]:
     for row in doc["bindings"]:
         if type(row) is not dict or set(row) != {"firebase_uid", "pg_login_role", "secret_path"}:
             raise RuntimeRLSBlocked("QA_BINDING_CONFIG_INVALID")
-        uid, role, secret = row.values() if False else (
+        uid, role, secret = (
             row["firebase_uid"], row["pg_login_role"], row["secret_path"]
         )
         if (type(uid) is not str or not 1 <= len(uid) <= 200
@@ -124,13 +124,13 @@ def _login_secret(path: Path, expected_role: str) -> str:
 
 
 def _assert_rls_identity(row, trusted_uid: str, expected_role: str) -> None:
-    if (row is None or len(row) != 19
+    if (row is None or len(row) != 20
         or tuple(row[0:5]) != (QA_DB, expected_role, expected_role, "on", trusted_uid)
         or row[5] is not True  # Actual dedicated LOGIN (not NOLOGIN test role)
         or any(value is not False for value in row[6:9])  # Super, bypass, create role
         or row[9] is not False  # CREATEDB
         or any(value is not True for value in row[10:14])
-        or any(value is not False for value in row[14:19])):
+        or any(value is not False for value in row[14:20])):
         raise RuntimeRLSBlocked("QA_TENANT_ROLE_VERIFICATION_FAILED")
 
 
