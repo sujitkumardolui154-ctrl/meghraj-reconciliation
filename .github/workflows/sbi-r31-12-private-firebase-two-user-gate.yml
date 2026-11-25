@@ -1,0 +1,28 @@
+name: DB-R31.12 Private Firebase Two-User Safety Contracts
+on:
+  push:
+    branches:
+      - feature/sbi-r31-12-private-firebase-two-user-20261125
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-firebase-identity-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify all R31.12 offline contracts (no credentials)
+        run: python -m unittest discover -s staging/aws_login_v150 -p 'test_r31_12_private_two_user.py' -v
+      - name: Verify Python compilation (no external dependencies loaded)
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          root = Path("staging/aws_login_v150")
+          for name in ("r31_12_private_two_user_gate.py", "r31_12_private_two_user_incontainer.py"):
+              ast.parse((root/name).read_text("utf-8"))
+          print("DB_R31_12_OFFLINE_SOURCE_PARSE=PASS")
+          PY
