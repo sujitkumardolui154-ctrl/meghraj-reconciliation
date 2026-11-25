@@ -1,0 +1,29 @@
+# R31.11 DESIGN CANDIDATE ONLY. DO NOT IMPORT OR DEPLOY AS-IS.
+# The invalid hostname is deliberate. Replace ONLY after owner approval of:
+#   QA FQDN, issuance/DNS, client CA, mTLS certs, firewall and Origin support.
+# Caddy v2 tls/client_auth syntax; verify actual deployed Caddy version first.
+https://qa-r311.example.invalid {
+    tls {
+        client_auth {
+            mode require_and_verify
+            trust_pool file /etc/caddy/r311-approved-client-ca.pem
+        }
+    }
+
+    header {
+        Cache-Control "private, no-store"
+        X-Content-Type-Options nosniff
+        Referrer-Policy same-origin
+    }
+
+    @qa_routes {
+        path /login /login.js /login.css /auth/* /healthz
+        path /api/r31-private-qa/* /api/payment-evidence/uploads*
+    }
+    handle @qa_routes {
+        reverse_proxy sbi-r31-auth-private-qa:8080
+    }
+    handle {
+        respond "Not Found" 404
+    }
+}
