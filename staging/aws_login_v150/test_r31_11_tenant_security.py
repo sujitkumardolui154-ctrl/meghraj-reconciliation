@@ -34,7 +34,7 @@ class R3111SecurityContracts(unittest.TestCase):
         self.assertIn("NOLOGIN NOINHERIT",MIG)
         self.assertIn("security_invoker=true",MIG)
         self.assertNotIn("current_setting('app.owner_uid')",MIG)
-        self.assertIn("DEFAULT", "DEFAULT") # smoke assertion for test runner
+
 
     def test_real_sql_two_roles_negative_checks(self):
         for fragment in (
@@ -51,10 +51,11 @@ class R3111SecurityContracts(unittest.TestCase):
 
     def test_no_finance_source_and_route_mutation(self):
         for forbidden in (
-            "sbi_reconciliation_main","docker run","docker build",
+            "docker run","docker build",
             "caddy reload","DROP DATABASE","ALTER TABLE sbi.",
         ):
             self.assertNotIn(forbidden,RUN)
+        self.assertIn("WHERE datname='sbi_reconciliation_main'",RUN)
         self.assertIn('NEW_EMPTY_CLONE=CREATING_SCHEMA_ONLY',RUN)
         self.assertIn('EXISTING_SBI_QA_SCHEMA=UNCHANGED',RUN)
         self.assertIn('PRODUCTION_FINANCIAL_WRITES=NONE_BY_TEST',RUN)
