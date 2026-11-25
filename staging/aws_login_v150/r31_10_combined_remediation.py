@@ -82,9 +82,19 @@ def real_two_owner_qa():
     try:
         key = firebase_api_key()
         print("FIREBASE_TEST_ACCOUNT_1=PRIVATE_INPUT", flush=True)
-        tokens.append(signin(key))
+        try:
+            tokens.append(signin(key))
+        except SystemExit:
+            print("DB_R31_10_ACCOUNT_1_SIGNIN=BLOCKED", flush=True)
+            return False
+        print("DB_R31_10_ACCOUNT_1_SIGNIN=PASS", flush=True)
         print("FIREBASE_TEST_ACCOUNT_2=PRIVATE_INPUT_DIFFERENT_UID", flush=True)
-        tokens.append(signin(key))
+        try:
+            tokens.append(signin(key))
+        except SystemExit:
+            print("DB_R31_10_ACCOUNT_2_SIGNIN=BLOCKED", flush=True)
+            return False
+        print("DB_R31_10_ACCOUNT_2_SIGNIN=PASS", flush=True)
         status, lines = run_inner(tokens)
         needed = {
             "DB_R31_9_TWO_REAL_FIREBASE_USERS=PASS_DISTINCT_AUTHENTICATED_UIDS",
