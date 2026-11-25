@@ -69,6 +69,12 @@ if os.environ.get("SBI_R31_PRIVATE_STAGING_ENABLED") == "isolated-ownerqa-fireba
     from r31_stage_blueprint import stage_r31
     app.register_blueprint(stage_r31)
 
+    # R31.11.3: disabled by default; new isolated candidate image only.
+    # Requires signed-in Firebase UID -> dedicated restricted PG LOGIN role.
+    if os.environ.get("SBI_R31_11_3_RUNTIME_ENABLED") == "private-firebase-rls-readonly-v1":
+        from r31_11_3_runtime_rls_blueprint import runtime_tenant_rls
+        app.register_blueprint(runtime_tenant_rls)
+
 
 @app.after_request
 def secure_ui(response):
