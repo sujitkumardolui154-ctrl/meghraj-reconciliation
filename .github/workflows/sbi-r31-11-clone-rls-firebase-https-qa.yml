@@ -1,0 +1,53 @@
+name: DB-R31.11 Real PostgreSQL Clone RLS + Offline Security Gate
+on:
+  push:
+    branches:
+      - feature/sbi-r31-11-tenant-enforcement-firebase-https-20261125
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  postgres-rls-invoker-and-static:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: sbi_r31_11_tenant_clone_20261125
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-r311-disposable-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: ci-r311-disposable-only
+      PGDATABASE: sbi_r31_11_tenant_clone_20261125
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline fail-closed contracts
+        run: python -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_tenant_security.py' -v
+      - name: PostgreSQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+      - name: Create CI-only shared role and synthetic schema
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -d postgres -c 'CREATE ROLE sbi_r31_ownerqa_report NOLOGIN;'
+          psql -X -v ON_ERROR_STOP=1 -f staging/aws_login_v150/r31_11_ci_schema.sql
+      - name: Apply isolated clone RLS candidate
+        run: psql -X -v ON_ERROR_STOP=1 -f staging/aws_login_v150/r31_11_clone_rls_up.sql
+      - name: Prove two owner sessions and no global view access
+        run: psql -X -v ON_ERROR_STOP=1 -f staging/aws_login_v150/r31_11_clone_rls_verify.sql
+      - name: Confirm no prod DB name and policy coverage
+        run: |
+          test "$(psql -X -qAt -c "SELECT count(*) FROM pg_database WHERE datname = 'sbi_reconciliation_main'")" = 0
+          test "$(psql -X -qAt -c "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='sbi' AND c.relname IN ('import_batches','payment_source_rows','payments','payment_source_status_v1') AND c.relrowsecurity AND c.relforcerowsecurity")" = 4
+          test "$(psql -X -qAt -c "SELECT count(*) FROM sbi.import_batches")" = 2
