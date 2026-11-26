@@ -232,6 +232,21 @@ def _restricted_roles_complete(data):
     )
 
 
+def _schema_only_login_pending(roles):
+    """R31.11.4B expected intermediate state; never production readiness."""
+    return (
+        roles["login_roles"] == 0
+        and roles["membership_pairs"] == 0
+        and roles["all_memberships"] == 0
+        and roles["group_roles"] == 2
+        and roles["distinct_owner_mappings"] == 0
+        and roles["raw_mapping_readers"] == 0
+        and roles["forced_rls"] == 4
+        and roles["invoker_view"] == 1
+        and roles["writer_grants"] == 0
+    )
+
+
 def audit():
     print("=== DB-R31.11.4 PRIVATE RUNTIME PROVISIONING READINESS ===",flush=True)
     # R31.7 pins the original private Docker image and network and verifies
@@ -273,6 +288,12 @@ def audit():
         return False
     roles = _restricted_role_state()
     if not _restricted_roles_complete(roles):
+        if _schema_only_login_pending(roles):
+            print("DB_R31_11_4_RLS_SCHEMA=PASS_SCHEMA_ONLY_NO_LOGIN_ROLES",
+                  flush=True)
+            print("DB_R31_11_4_RESTRICTED_LOGIN_ROLE_CATALOG=NOT_PROVISIONED_YET",
+                  flush=True)
+            return False
         print("DB_R31_11_4_RESTRICTED_LOGIN_ROLE_CATALOG=INCOMPLETE_OR_UNSAFE",
               flush=True)
         return False
