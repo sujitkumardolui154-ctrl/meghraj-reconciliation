@@ -141,6 +141,25 @@ def _restricted_role_state():
         JOIN pg_roles member ON member.oid=m.member
         WHERE member.rolname IN ('r3113_login_a','r3113_login_b')
       ),
+      'group_roles',(
+        SELECT COUNT(*) FROM pg_roles
+        WHERE rolname IN ('r311_qa_tenant_a','r311_qa_tenant_b')
+          AND NOT rolcanlogin AND NOT rolbypassrls AND NOT rolsuper
+          AND NOT rolinherit
+      ),
+      'distinct_owner_mappings',(
+        SELECT COUNT(DISTINCT owner_uid)
+        FROM r311_auth.role_owner_map
+        WHERE db_role IN ('r3113_login_a','r3113_login_b')
+          AND owner_uid <> ''
+          AND owner_uid NOT LIKE 'r311-%'
+          AND owner_uid NOT LIKE 'r3113-%'
+      ),
+      'raw_mapping_readers',(
+        SELECT COUNT(*) FROM pg_roles
+        WHERE rolname IN ('r3113_login_a','r3113_login_b')
+          AND has_table_privilege(oid,'r311_auth.role_owner_map','SELECT')
+      ),
       'forced_rls',(
         SELECT COUNT(*) FROM pg_class c JOIN pg_namespace n
           ON n.oid=c.relnamespace
@@ -174,7 +193,8 @@ def _restricted_role_state():
     data=json.loads(raw)
     if type(data) is not dict or not all(
         type(data.get(k)) is int for k in (
-            "login_roles","membership_pairs","all_memberships","forced_rls",
+            "login_roles","membership_pairs","all_memberships","group_roles",
+            "distinct_owner_mappings","raw_mapping_readers","forced_rls",
             "invoker_view","writer_grants"
         )
     ):
@@ -187,6 +207,9 @@ def _restricted_roles_complete(data):
         data["login_roles"] == 2
         and data["membership_pairs"] == 2
         and data["all_memberships"] == 2
+        and data["group_roles"] == 2
+        and data["distinct_owner_mappings"] == 2
+        and data["raw_mapping_readers"] == 0
         and data["forced_rls"] == 4
         and data["invoker_view"] == 1
         and data["writer_grants"] == 0
