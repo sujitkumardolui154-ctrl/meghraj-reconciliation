@@ -1,0 +1,25 @@
+name: DB-R31.11.4 Private Provisioning and Mock Session Acceptance
+on:
+  push:
+    branches:
+      - feature/sbi-r31-11-4-private-runtime-acceptance-20261126
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  minimal-private-readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install only Flask Firebase SDK testing dependencies
+        run: python -m pip install --disable-pip-version-check 'Flask>=3,<4' 'firebase-admin>=6,<8'
+      - name: Targeted non-mutating R31.11.4 checks only
+        run: |
+          python -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4_*.py' -v
+          python -m py_compile staging/aws_login_v150/r31_11_4_private_runtime_readiness.py
+      - name: Assert no shipping of credentials or financial write enablement
+        run: |
+          ! grep -nE 'FINANCIAL_APPLY=ENABLED|CREATE ROLE|DROP DATABASE|CREATE DATABASE|SET ROLE' staging/aws_login_v150/r31_11_4_private_runtime_readiness.py
