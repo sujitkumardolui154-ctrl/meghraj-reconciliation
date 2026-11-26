@@ -1,0 +1,81 @@
+name: DB-R31.11.4B Empty Private RLS Schema Integration
+on:
+  push:
+    branches:
+      - feature/sbi-r31-11-4b-isolated-rls-schema-only-20261126
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  exact-db-schema-and-deny-by-default:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: sbi_r31_11_4_auth_qa_20261126
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-only-disposable-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 8s
+          --health-timeout 5s
+          --health-retries 6
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: ci-only-disposable-password
+      PGDATABASE: sbi_r31_11_4_auth_qa_20261126
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install disposable postgres client only
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+      - name: Run narrow offline non-mutating guard unit tests
+        run: |
+          python -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4b_schema_only_runner.py' -v
+          python -m py_compile staging/aws_login_v150/r31_11_4b_schema_only_runner.py
+      - name: Apply exact empty QA schema once in disposable PostgreSQL16
+        run: |
+          psql -X -qAt -v ON_ERROR_STOP=1 -f staging/aws_login_v150/r31_11_4b_schema_only_up.sql
+      - name: Verify four forced RLS policies, two NOLOGIN roles, zero tenant mappings/data
+        run: |
+          test "$(psql -X -qAt -c "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='sbi' AND c.relname IN ('import_batches','payment_source_rows','payments','payment_source_status_v1') AND c.relrowsecurity AND c.relforcerowsecurity")" = "4"
+          test "$(psql -X -qAt -c "SELECT count(*) FROM pg_policies WHERE schemaname='sbi' AND cmd='SELECT'")" = "4"
+          test "$(psql -X -qAt -c "SELECT count(*) FROM pg_roles WHERE rolname IN ('r311_qa_tenant_a','r311_qa_tenant_b') AND NOT rolcanlogin AND NOT rolsuper AND NOT rolbypassrls")" = "2"
+          test "$(psql -X -qAt -c "SELECT count(*) FROM r311_auth.role_owner_map")" = "0"
+          test "$(psql -X -qAt -c "SELECT (SELECT count(*) FROM sbi.import_batches)+(SELECT count(*) FROM sbi.payment_source_rows)+(SELECT count(*) FROM sbi.payments)+(SELECT count(*) FROM sbi.payment_source_status_v1)")" = "0"
+          test "$(psql -X -qAt -c "SELECT COALESCE('security_invoker=true'=ANY(reloptions),false) FROM pg_class WHERE oid='sbi.payment_received_source_v1'::regclass")" = "t"
+          test "$(psql -X -qAt -c "SELECT count(*) FROM pg_roles WHERE rolname LIKE 'r3113_login_%'")" = "0"
+      - name: Prove group-role SELECT is denied by default until real login is separately approved
+        run: |
+          state="$(psql -X -qAt -v ON_ERROR_STOP=1 <<'SQL'
+          SET SESSION AUTHORIZATION r311_qa_tenant_a;
+          SELECT CASE
+            WHEN r311_auth.current_tenant_uid() IS NULL
+             AND (SELECT count(*) FROM sbi.payment_received_source_v1)=0
+             AND NOT has_table_privilege('sbi.import_batches','INSERT')
+             AND NOT has_table_privilege('sbi.payments','UPDATE')
+            THEN 'DENY_BY_DEFAULT_PASS' ELSE 'FAIL' END;
+          RESET SESSION AUTHORIZATION;
+          SQL
+          )"
+          test "$state" = "DENY_BY_DEFAULT_PASS"
+      - name: Verify second schema migration refuses any repeat or overwrite
+        run: |
+          if psql -X -qAt -v ON_ERROR_STOP=1 -f staging/aws_login_v150/r31_11_4b_schema_only_up.sql >/tmp/r3114b-second-apply.log 2>&1; then
+            echo 'REPEAT_APPLY_WAS_NOT_REJECTED'
+            exit 1
+          fi
+          test "$(psql -X -qAt -c "SELECT count(*) FROM pg_policies WHERE schemaname='sbi'")" = "4"
+      - name: Confirm no synthetic service has real production DB
+        run: |
+          test "$(psql -X -qAt -d postgres -c "SELECT count(*) FROM pg_database WHERE datname='sbi_reconciliation_main'")" = "0"
