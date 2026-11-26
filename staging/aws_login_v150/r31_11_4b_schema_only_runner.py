@@ -93,11 +93,8 @@ def _state():
           AND NOT rolcreaterole AND NOT rolcreatedb),
      'logins',(SELECT count(*) FROM pg_roles
         WHERE rolname IN ('r3113_login_a','r3113_login_b')),
-     'mapping_rows',CASE WHEN to_regclass('r311_auth.role_owner_map')
-        IS NULL THEN 0 ELSE
-        (SELECT count(*) FROM pg_catalog.pg_class
-         WHERE oid=to_regclass('r311_auth.role_owner_map'))
-        END,
+     'map_table_exists',to_regclass('r311_auth.role_owner_map')
+        IS NOT NULL,
      'invoker_view',COALESCE((
        SELECT 'security_invoker=true'=ANY(c.reloptions)
        FROM pg_class c
@@ -116,10 +113,12 @@ def _state():
         raise BootstrapBlocked("CATALOG_IDENTITY_INVALID")
     for k in (
         "schema_count","source_tables","forced_rls","policies",
-        "groups","logins","mapping_rows","user_data"
+        "groups","logins","user_data"
     ):
         if type(data.get(k)) is not int:
             raise BootstrapBlocked("CATALOG_FIELD_INVALID")
+    if type(data.get("map_table_exists")) is not bool or type(data.get("invoker_view")) is not bool:
+        raise BootstrapBlocked("CATALOG_BOOLEAN_INVALID")
     return data
 
 
@@ -131,7 +130,7 @@ def _is_empty(state):
         and state["policies"] == 0
         and state["groups"] == 0
         and state["logins"] == 0
-        and state["mapping_rows"] == 0
+        and state["map_table_exists"] is False
         and state["invoker_view"] is False
         and state["user_data"] == 0
     )
@@ -145,10 +144,25 @@ def _is_schema_only(state):
         and state["policies"] == 4
         and state["groups"] == 2
         and state["logins"] == 0
-        and state["mapping_rows"] == 1
+        and state["map_table_exists"] is True
         and state["invoker_view"] is True
         and state["user_data"] == 0
     )
+
+
+def _all_new_source_tables_empty():
+    """Exact source and protected mapping rows: no real or synthetic data."""
+    statement = """
+    BEGIN READ ONLY;
+    SELECT
+       (SELECT count(*) FROM sbi.import_batches)
+      +(SELECT count(*) FROM sbi.payment_source_rows)
+      +(SELECT count(*) FROM sbi.payments)
+      +(SELECT count(*) FROM sbi.payment_source_status_v1)
+      +(SELECT count(*) FROM r311_auth.role_owner_map);
+    COMMIT;
+    """
+    return _psql(statement) == "0"
 
 
 def _sql_source():
@@ -196,7 +210,7 @@ def main(argv=None):
         if out != "DB_R31_11_4B_SCHEMA_RLS_BOOTSTRAP=PASS_NO_REAL_USERS":
             raise BootstrapBlocked("MIGRATION_ACK_UNEXPECTED")
         after=_state()
-        if not _is_schema_only(after):
+        if not _is_schema_only(after) or not _all_new_source_tables_empty():
             raise BootstrapBlocked("POST_MIGRATION_CATALOG_UNVERIFIED")
         if infra.caddy_fingerprint() != caddy_before:
             raise BootstrapBlocked("CADDY_CONFIG_CHANGED")
