@@ -71,6 +71,8 @@ class PrivateReadinessTests(unittest.TestCase):
     def test_roles_fail_closed(self):
         complete={
             "login_roles":2,"membership_pairs":2,"all_memberships":2,
+            "group_roles":2,"distinct_owner_mappings":2,
+            "raw_mapping_readers":0,
             "forced_rls":4,"invoker_view":1,"writer_grants":0,
         }
         self.assertTrue(gate._restricted_roles_complete(complete))
