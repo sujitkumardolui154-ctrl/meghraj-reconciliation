@@ -151,7 +151,21 @@ def review_plan():
     return image_id, caddy_hash
 
 
-def _new_secret():
+def _postgres_secret_owner():
+    # The official PostgreSQL entrypoint drops privileges to postgres BEFORE
+    # reading POSTGRES_PASSWORD_FILE. Host operator-owned 0600 is unreadable
+    # by that non-root container user, so pin the file to the image's UID/GID.
+    uid_raw = docker("exec", EXISTING_PG, "id", "-u", "postgres")
+    gid_raw = docker("exec", EXISTING_PG, "id", "-g", "postgres")
+    if not (uid_raw.isdecimal() and gid_raw.isdecimal()):
+        raise ProvisionBlocked("POSTGRES_SECRET_UID_NOT_NUMERIC")
+    uid, gid = int(uid_raw), int(gid_raw)
+    if not (1 <= uid <= 65535 and 1 <= gid <= 65535):
+        raise ProvisionBlocked("POSTGRES_SECRET_UID_NOT_RESTRICTED")
+    return uid, gid
+
+
+def _new_secret(postgres_uid, postgres_gid):
     # Create only a fresh folder and a fresh mode-0600 password file.
     # A partial provisioning run must never silently reuse any of these.
     if SECRET_DIR.is_symlink() or SECRET_DIR.exists():
@@ -176,9 +190,22 @@ def _new_secret():
             os.close(fd)
         except OSError:
             pass
+    # Docker's postgres entrypoint reads the file AFTER switching from root
+    # to the image's postgres UID. Keep it 0600 and readable only by that UID.
+    if not (1 <= postgres_uid <= 65535 and 1 <= postgres_gid <= 65535):
+        raise ProvisionBlocked("QA_POSTGRES_SECRET_OWNER_UNSAFE")
+    owner = subprocess.run(
+        ["sudo", "-n", "chown", "--",
+         f"{postgres_uid}:{postgres_gid}", str(PASSWORD_PATH)],
+        capture_output=True, timeout=15, check=False,
+    )
+    if owner.returncode:
+        raise ProvisionBlocked("QA_POSTGRES_SECRET_CHOWN_FAILED")
     state = PASSWORD_PATH.stat()
-    if (stat.S_IMODE(state.st_mode) != 0o600
-            or state.st_uid != os.geteuid()
+    if (not stat.S_ISREG(state.st_mode)
+            or stat.S_IMODE(state.st_mode) != 0o600
+            or state.st_uid != postgres_uid
+            or state.st_gid != postgres_gid
             or PASSWORD_PATH.is_symlink()):
         raise ProvisionBlocked("QA_SECRET_PERMISSIONS_INVALID")
 
@@ -306,7 +333,8 @@ def _empty_schema_restore_drill():
     docker("exec", NAME, "createdb", "-U", "postgres", PROBE_DB)
     docker_blob("exec", "-i", NAME, "pg_restore",
                 "-U", "postgres", "-d", PROBE_DB,
-                "--no-owner", "--no-privileges", payload=data, timeout=60)
+                "--no-owner", "--no-privileges", "--clean", "--if-exists",
+                payload=data, timeout=60)
     probe_check = docker(
         "exec", NAME, "psql", "-X", "-qAt", "-v", "ON_ERROR_STOP=1",
         "-U", "postgres", "-d", PROBE_DB, "-c",
@@ -332,8 +360,9 @@ def _empty_schema_restore_drill():
 
 def apply(image_id, original_caddy_hash):
     # Plans first; never skip the guarded identical-name preflight.
-    _new_secret()
-    print("DB_R31_11_4A_PASSWORD_FILE=CREATED_PRIVATE_NOT_PRINTED",flush=True)
+    postgres_uid, postgres_gid = _postgres_secret_owner()
+    _new_secret(postgres_uid, postgres_gid)
+    print("DB_R31_11_4A_PASSWORD_FILE=CREATED_MODE0600_POSTGRES_UID",flush=True)
     docker("network", "create", "--driver", "bridge",
            "--internal", "--label", f"{LABEL}=true", NETWORK)
     print("DB_R31_11_4A_NETWORK=CREATED_INTERNAL_ONLY",flush=True)
