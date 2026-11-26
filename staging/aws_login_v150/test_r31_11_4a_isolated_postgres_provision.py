@@ -165,8 +165,9 @@ class IsolatedPostgresProvisionTests(unittest.TestCase):
         recorded=[]
         def text_command(*args,**kwargs):
             recorded.append(args)
-            if args[1]=="psql":
-                return p.PROBE_DB
+            if len(args)>2 and args[2]=="psql":
+                return (p.PROBE_DB if "SELECT current_database()" in " ".join(args)
+                        else "0")
             return ""
         with (patch.object(p,"docker",side_effect=text_command),
               patch.object(p,"docker_blob",return_value=b"PGDMPtest"),
