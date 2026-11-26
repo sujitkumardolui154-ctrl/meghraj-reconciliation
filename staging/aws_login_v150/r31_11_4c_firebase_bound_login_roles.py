@@ -458,13 +458,14 @@ def apply_roles(records, caddy_before):
     if infra.caddy_fingerprint()!=caddy_before:
         raise ProvisionBlocked("CADDY_CONFIG_CHANGED")
     infra.preflight()
-    print("DB_R31_11_4C_RESTRICTED_PASSWORD_LOGINS=PASS_TWO_REAL_USERS",
+    print("DB_R31_11_4C_RESTRICTED_ROLE_PROVISIONING=PASS_TWO_VERIFIED_UID_MAPPINGS",
           flush=True)
     print("DB_R31_11_4C_DB_SESSION_USER_UID_MAPPING=PASS_TWO_DISTINCT",
           flush=True)
     print("DB_R31_11_4C_APP_SECRETS=MODE0600_UID10001_NOT_DEPLOYED",
           flush=True)
     print("DB_R31_11_4C_DML_PRIVILEGES=DENIED",flush=True)
+    print("DB_R31_11_4C_PASSWORD_LOGIN_E2E=NOT_TESTED_IN_AWS",flush=True)
 
 
 def _offline_operator_preflight():
