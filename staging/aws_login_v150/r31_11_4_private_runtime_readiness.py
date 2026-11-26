@@ -112,6 +112,22 @@ def _safe_catalog_state():
     return obj
 
 
+def _rls_schema_present():
+    """An empty new QA database is expected before DBA-approved RLS work."""
+    raw = _docker(
+        "exec", NEW_PG, "psql", "-X", "-qAt", "-v", "ON_ERROR_STOP=1",
+        "-U", "postgres", "-d", NEW_DB, "-c",
+        "SELECT CASE WHEN "
+        "to_regclass('r311_auth.role_owner_map') IS NOT NULL "
+        "AND to_regclass('sbi.import_batches') IS NOT NULL "
+        "AND to_regclass('sbi.payment_received_source_v1') IS NOT NULL "
+        "THEN 1 ELSE 0 END"
+    )
+    if raw not in ("0", "1"):
+        raise AuditBlocked("RLS_SCHEMA_CHECK_INVALID")
+    return raw == "1"
+
+
 def _restricted_role_state():
     """Aggregate approved login-role security posture; no UID disclosures.
 
@@ -251,6 +267,10 @@ def audit():
         print("DB_R31_11_4_SEPARATE_AUTH_DATABASE=NOT_PROVISIONED",flush=True)
         return False
     print("DB_R31_11_4_SEPARATE_AUTH_DATABASE=FOUND_READONLY",flush=True)
+    if not _rls_schema_present():
+        print("DB_R31_11_4_RLS_SCHEMA=NOT_PROVISIONED_DBA_APPROVAL_REQUIRED",
+              flush=True)
+        return False
     roles = _restricted_role_state()
     if not _restricted_roles_complete(roles):
         print("DB_R31_11_4_RESTRICTED_LOGIN_ROLE_CATALOG=INCOMPLETE_OR_UNSAFE",

@@ -1,0 +1,20 @@
+name: DB-R31.11.4A Isolated Postgres Provision Safety (Offline)
+on:
+  push:
+    branches:
+      - feature/sbi-r31-11-4a-isolated-postgres-provision-20261126
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  targeted-private-infrastructure-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Unit-test strict no-side-effect default and QA-only Docker plan
+        run: |
+          python -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4a_*.py' -v
+          python -m py_compile staging/aws_login_v150/r31_11_4a_isolated_postgres_provision.py

@@ -1,0 +1,26 @@
+name: DB-R31.11.4A Disposable Docker PostgreSQL Init Smoke
+on:
+  push:
+    branches:
+      - feature/sbi-r31-11-4a-isolated-postgres-provision-20261126
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  disposable-local-pg16-only:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      R3114A_DISPOSABLE_CI: "YES"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pull disposable PostgreSQL 16 test image only
+        run: docker pull postgres:16
+      - name: Prove exact Docker args create private PG and complete probe restore
+        run: |
+          PYTHONPATH=staging/aws_login_v150 python3 \
+            staging/aws_login_v150/r31_11_4a_disposable_docker_smoke.py
