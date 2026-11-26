@@ -16,6 +16,9 @@ unprivileged stage API UID. No Caddy, staging deployment, or financial Apply.
 from __future__ import annotations
 
 import argparse
+import base64
+import hashlib
+import hmac
 from contextlib import suppress
 import getpass
 import json
@@ -272,7 +275,16 @@ def _quote_password(pwd):
     if (type(pwd) is not str or not 40 <= len(pwd) <= 120
             or re.fullmatch(r"[A-Za-z0-9_-]+",pwd) is None):
         raise ProvisionBlocked("UNSAFE_GENERATED_PASSWORD")
-    return "'" + pwd + "'"
+    # Only the salted SCRAM verifier, never plaintext, enters SQL sent
+    # through stdin. Avoid exposing real passwords in PostgreSQL error logs.
+    salt=secrets.token_bytes(16)
+    salted=hashlib.pbkdf2_hmac("sha256",pwd.encode("ascii"),salt,4096)
+    client=hmac.new(salted,b"Client Key",hashlib.sha256).digest()
+    stored=hashlib.sha256(client).digest()
+    server=hmac.new(salted,b"Server Key",hashlib.sha256).digest()
+    b64=lambda b:base64.b64encode(b).decode("ascii")
+    verifier="SCRAM-SHA-256$4096:"+b64(salt)+"$"+b64(stored)+":"+b64(server)
+    return "'" + verifier + "'"
 
 
 def build_provision_sql(records, passwords):
