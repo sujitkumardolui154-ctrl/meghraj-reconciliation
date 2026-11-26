@@ -7,6 +7,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 import r31_11_4b_schema_only_runner as target
+import r31_11_4_private_runtime_readiness as readiness
 
 
 def state(empty=False):
@@ -108,6 +109,18 @@ class SchemaOnlySafety(TestCase):
               redirect_stdout(StringIO()) as output):
             self.assertEqual(target.main(["--apply","--approve",target.APPROVE]),2)
         self.assertIn("STOP=",output.getvalue())
+
+    def test_readiness_distinguishes_expected_empty_owner_login_phase(self):
+        role_state={
+            "login_roles":0, "membership_pairs":0,
+            "all_memberships":0,"group_roles":2,
+            "distinct_owner_mappings":0,"raw_mapping_readers":0,
+            "forced_rls":4,"invoker_view":1,"writer_grants":0,
+        }
+        self.assertTrue(readiness._schema_only_login_pending(role_state))
+        self.assertFalse(readiness._restricted_roles_complete(role_state))
+        unsafe=dict(role_state);unsafe["writer_grants"]=1
+        self.assertFalse(readiness._schema_only_login_pending(unsafe))
 
     def test_no_login_password_user_insertion_or_financial_apis_in_sql(self):
         sql,_=target._sql_source()
