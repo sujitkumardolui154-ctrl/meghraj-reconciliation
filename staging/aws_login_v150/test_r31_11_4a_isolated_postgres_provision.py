@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import patch
 
 import r31_11_4a_isolated_postgres_provision as p
+import r31_11_4_private_runtime_readiness as readiness
 
 
 class IsolatedPostgresProvisionTests(unittest.TestCase):
@@ -181,6 +182,15 @@ class IsolatedPostgresProvisionTests(unittest.TestCase):
         self.assertFalse(any(p.EXISTING_QA in " ".join(a) for a in recorded))
         self.assertFalse(any("sbi_reconciliation_main" in " ".join(a)
                              for a in recorded))
+
+    def test_new_empty_database_precedes_role_migration(self):
+        with patch.object(readiness,"_docker",return_value="0"):
+            self.assertFalse(readiness._rls_schema_present())
+        with patch.object(readiness,"_docker",return_value="1"):
+            self.assertTrue(readiness._rls_schema_present())
+        with patch.object(readiness,"_docker",return_value="unexpected"):
+            with self.assertRaises(readiness.AuditBlocked):
+                readiness._rls_schema_present()
 
     def test_release_never_lifts_financial_lock(self):
         with (patch.object(p,"review_plan",side_effect=p.ProvisionBlocked("x")),
