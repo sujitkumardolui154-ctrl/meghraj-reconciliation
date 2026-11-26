@@ -1,6 +1,10 @@
 """R31.11.4A minimal offline safety tests; no Docker or AWS side effects."""
 from __future__ import annotations
 import contextlib
+import os
+import stat
+from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 from io import StringIO
 from pathlib import Path
 import unittest
@@ -191,6 +195,70 @@ class IsolatedPostgresProvisionTests(unittest.TestCase):
         with patch.object(readiness,"_docker",return_value="unexpected"):
             with self.assertRaises(readiness.AuditBlocked):
                 readiness._rls_schema_present()
+
+    def test_postgres_password_owner_resolved_from_existing_image(self):
+        with patch.object(p,"docker",side_effect=[
+            "999","999"
+        ]):
+            self.assertEqual(p._postgres_secret_owner(),(999,999))
+        with patch.object(p,"docker",side_effect=["0","999"]):
+            with self.assertRaises(p.ProvisionBlocked):
+                p._postgres_secret_owner()
+        with patch.object(p,"docker",side_effect=["unknown","999"]):
+            with self.assertRaises(p.ProvisionBlocked):
+                p._postgres_secret_owner()
+
+    def test_mode0600_password_is_restricted_to_postgres_uid(self):
+        with TemporaryDirectory() as root:
+            secretdir=Path(root)/"new-secret-dir"
+            pwd=secretdir/"postgres-init-password"
+            calls=[]
+            def fake_chown(args, **kwargs):
+                calls.append(args)
+                return SimpleNamespace(returncode=0)
+            with (patch.object(p,"SECRET_DIR",secretdir),
+                  patch.object(p,"PASSWORD_PATH",pwd),
+                  patch.object(p.subprocess,"run",side_effect=fake_chown)):
+                # A simulated successful chown to current runner UID is enough
+                # to validate file permissions without needing sudo in CI.
+                p._new_secret(os.geteuid(),os.getegid())
+                self.assertEqual(stat.S_IMODE(pwd.stat().st_mode),0o600)
+                self.assertEqual(stat.S_IMODE(secretdir.stat().st_mode),0o700)
+                self.assertTrue(pwd.read_bytes().strip())
+                self.assertEqual(calls[0][0:4],["sudo","-n","chown","--"])
+                self.assertIn(str(pwd),calls[0])
+                with self.assertRaises(p.ProvisionBlocked):
+                    p._new_secret(os.geteuid(),os.getegid())
+
+        with TemporaryDirectory() as root:
+            secretdir=Path(root)/"new-secret-dir"
+            pwd=secretdir/"postgres-init-password"
+            with (patch.object(p,"SECRET_DIR",secretdir),
+                  patch.object(p,"PASSWORD_PATH",pwd),
+                  patch.object(p.subprocess,"run",return_value=SimpleNamespace(returncode=0))):
+                with self.assertRaises(p.ProvisionBlocked):
+                    p._new_secret(os.geteuid()+1,os.getegid())
+
+    def test_disposable_restore_is_clean_if_exists_only_in_probe(self):
+        args=[]
+        def docker_payload(*a,**kw):
+            args.append((a,kw))
+            return b"PGDMP_TEST"
+        def docker_text(*a,**kw):
+            args.append((a,kw))
+            if "SELECT current_database()" in " ".join(a):
+                return p.PROBE_DB
+            return "0"
+        with (patch.object(p,"docker_blob",side_effect=docker_payload),
+              patch.object(p,"docker",side_effect=docker_text),
+              contextlib.redirect_stdout(StringIO())):
+            p._empty_schema_restore_drill()
+        restore=[x for x,kw in args if "pg_restore" in x]
+        self.assertEqual(len(restore),1)
+        self.assertIn("--clean",restore[0])
+        self.assertIn("--if-exists",restore[0])
+        self.assertIn(p.PROBE_DB,restore[0])
+        self.assertNotIn(p.DATABASE,restore[0])
 
     def test_release_never_lifts_financial_lock(self):
         with (patch.object(p,"review_plan",side_effect=p.ProvisionBlocked("x")),
