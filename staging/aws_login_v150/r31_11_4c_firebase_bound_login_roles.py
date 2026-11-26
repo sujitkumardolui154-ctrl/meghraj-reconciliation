@@ -113,6 +113,8 @@ def _assert_user(user, expected_email=None, expected_uid=None):
             or (expected_email is not None and
                 email.casefold() != expected_email.casefold())):
         raise ProvisionBlocked("FIREBASE_TEST_ACCOUNT_NOT_APPROVED")
+    if uid.startswith(("r311-", "r3113-")):
+        raise ProvisionBlocked("SYNTHETIC_FIREBASE_UID_NOT_ALLOWED")
     return {"uid": uid, "email": email.casefold()}
 
 
@@ -138,6 +140,11 @@ def _verify_admin_pair(records, *, api=None):
 
 
 def _approved_users():
+    if MANIFEST_DIR.is_symlink() or not MANIFEST_DIR.is_dir():
+        raise ProvisionBlocked("PRIVATE_APPROVAL_DIRECTORY_INVALID")
+    st=MANIFEST_DIR.stat()
+    if st.st_uid!=os.geteuid() or stat.S_IMODE(st.st_mode)!=0o700:
+        raise ProvisionBlocked("PRIVATE_APPROVAL_DIRECTORY_PERMISSIONS")
     try:
         doc = json.loads(_private_text(MANIFEST))
     except (UnicodeError, ValueError, OSError):
@@ -460,6 +467,23 @@ def apply_roles(records, caddy_before):
     print("DB_R31_11_4C_DML_PRIVILEGES=DENIED",flush=True)
 
 
+def _offline_operator_preflight():
+    """Source identity guard for this exact private non-root runtime candidate."""
+    candidate=Path(__file__).with_name("Dockerfile.r31_11_4_private_candidate")
+    if candidate.is_symlink() or not candidate.is_file():
+        raise ProvisionBlocked("QA_RUNTIME_DOCKERFILE_UNAVAILABLE")
+    contents=candidate.read_text("utf-8")
+    if "USER 10001:10001" not in contents:
+        raise ProvisionBlocked("QA_RUNTIME_UID_CHANGED")
+    if ("SBI_R31_11_4_RUNTIME_ENABLED" not in
+            Path(__file__).with_name("app.py").read_text("utf-8")):
+        raise ProvisionBlocked("QA_RUNTIME_FLAG_REMOVED")
+    if (DB!="sbi_r31_11_4_auth_qa_20261126"
+            or PG!="sbi-r3114-private-postgres"
+            or ROLES!=("r3113_login_a","r3113_login_b")):
+        raise ProvisionBlocked("QA_OPERATOR_TARGET_CHANGED")
+
+
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prepare-users",action="store_true",
@@ -470,6 +494,7 @@ def main(argv=None):
     opts=parser.parse_args(argv)
     print("=== DB-R31.11.4C FIREBASE-BOUND LOGIN ROLE READINESS ===",flush=True)
     try:
+        _offline_operator_preflight()
         if opts.prepare_users and opts.apply:
             raise ProvisionBlocked("MUTUALLY_EXCLUSIVE_OPERATIONS")
         if opts.prepare_users:
