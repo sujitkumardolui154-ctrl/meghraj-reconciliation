@@ -108,6 +108,7 @@ def _existing_resource_names():
             raise ProvisionBlocked("DOCKER_RESOURCE_LIST_AMBIGUOUS")
         result[kind] = any(n.strip() == exact for n in names)
     result["secret"] = PASSWORD_PATH.exists() or PASSWORD_PATH.is_symlink()
+    result["secret_dir"] = SECRET_DIR.exists() or SECRET_DIR.is_symlink()
     return result
 
 
@@ -120,6 +121,10 @@ def inspect_original_image():
             or "sbi-synthetic-isolated-38-31" not in
                (info.get("NetworkSettings", {}).get("Networks") or {})):
         raise ProvisionBlocked("ORIGINAL_QA_CONTAINER_CHANGED")
+    entrypoint = (info.get("Config") or {}).get("Entrypoint")
+    if entrypoint not in (["docker-entrypoint.sh"],
+                          ["/usr/local/bin/docker-entrypoint.sh"]):
+        raise ProvisionBlocked("SOURCE_POSTGRES_ENTRYPOINT_NOT_VERIFIED")
     image_id = info.get("Image")
     if (type(image_id) is not str
             or re.fullmatch(r"sha256:[0-9a-f]{64}",image_id) is None):
@@ -239,7 +244,8 @@ def _exact_topology(image_id):
         and host.get("Privileged") is False
         and host.get("PortBindings") in (None, {})
         and host.get("ReadonlyRootfs") is True
-        and "no-new-privileges" in (host.get("SecurityOpt") or [])
+        and any(str(v).startswith("no-new-privileges")
+                for v in (host.get("SecurityOpt") or []))
         and set(networks) == {NETWORK}
         and net.get("Internal") is True
         and net.get("Attachable") is False
