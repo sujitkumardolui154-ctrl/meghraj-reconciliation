@@ -58,6 +58,18 @@ class SeparateAdapterTests(unittest.TestCase):
         self.assertFalse(a.SECRET_RE.fullmatch(
             "/run/secrets/r3113-owner-a.env"))
 
+    def test_private_image_and_flask_registration_require_explicit_stage_flag(self):
+        root=Path(__file__).resolve().parent
+        app=(root/"app.py").read_text("utf-8")
+        candidate=(root/"Dockerfile.r31_11_4_private_candidate").read_text("utf-8")
+        previous=(root/"Dockerfile.r31_private_staging").read_text("utf-8")
+        self.assertIn('os.environ.get("SBI_R31_11_4_RUNTIME_ENABLED")',app)
+        self.assertIn("app.register_blueprint(runtime_r3114)",app)
+        self.assertIn("r31_11_4_runtime_rls_adapter.py /app/",candidate)
+        self.assertIn("r31_11_4_runtime_rls_blueprint.py /app/",candidate)
+        self.assertNotIn("r31_11_4_runtime_rls_adapter.py",previous)
+        self.assertNotIn("r31_11_4_runtime_rls_blueprint.py",previous)
+
     def test_binding_requires_exact_private_new_db_and_unique_roles(self):
         doc={
           "version":1,"database":a.QA_DB,
