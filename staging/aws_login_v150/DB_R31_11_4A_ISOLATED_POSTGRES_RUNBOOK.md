@@ -34,6 +34,23 @@ requires a standard PostgreSQL entrypoint and PostgreSQL major version 16,
 does not pull or build an image, and refuses if any target container,
 network, volume, secret directory or secret file already exists.
 
+**Corrected private password-file access:** PostgreSQL's official entrypoint
+switches to the non-root \`postgres\` user before reading
+\`POSTGRES_PASSWORD_FILE\`. A 0600 file owned only by the AWS operator is
+not readable by that user. The corrected provisioner discovers the UID/GID
+of \`postgres\` in the pinned image, uses \`sudo -n chown\` on ONLY the newly
+created secret file, then verifies mode 0600 and that exact UID/GID.
+The password never enters an environment variable, command argument or log.
+
+**Do not use the previous GitHub commit**
+\`552e942dd6f77e57a91f8b5bbc7d872fee84418d\` for \`--apply\`.
+Fetch the verified new commit before executing. If the earlier checkout is
+already mounted, create a separate SHA-pinned worktree instead of modifying it.
+
+The empty-schema restore uses \`pg_restore --clean --if-exists\` **only in
+the disposable empty restore-probe database**, preventing a duplicate
+\`public\` schema error without touching the new QA main database.
+
 The new Docker network is \`--internal\`, bridge, non-attachable;
 PostgreSQL has no host-published ports, no Docker socket or old QA/production
 mount. The separate container uses \`--read-only\` root filesystem with
