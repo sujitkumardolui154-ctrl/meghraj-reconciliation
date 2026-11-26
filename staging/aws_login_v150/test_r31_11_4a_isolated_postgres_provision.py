@@ -173,9 +173,9 @@ class IsolatedPostgresProvisionTests(unittest.TestCase):
               patch.object(p,"docker_blob",return_value=b"PGDMPtest"),
               contextlib.redirect_stdout(StringIO())):
             p._empty_schema_restore_drill()
-        self.assertTrue(any(a[1]=="createdb" and p.PROBE_DB in a
+        self.assertTrue(any(a[2]=="createdb" and p.PROBE_DB in a
                             for a in recorded))
-        self.assertTrue(any(a[1]=="dropdb" and p.PROBE_DB in a
+        self.assertTrue(any(a[2]=="dropdb" and p.PROBE_DB in a
                             for a in recorded))
         self.assertFalse(any(p.EXISTING_QA in " ".join(a) for a in recorded))
         self.assertFalse(any("sbi_reconciliation_main" in " ".join(a)
