@@ -157,7 +157,8 @@ class PrivateFirebaseRoleTests(unittest.TestCase):
             doc={"version":1,"project":stage.PROJECT,"test_users":records()}
             manifest.write_text(json.dumps(doc))
             manifest.chmod(0o600)
-            with (patch.object(stage,"MANIFEST",manifest),
+            with (patch.object(stage,"MANIFEST_DIR",approvals),
+                  patch.object(stage,"MANIFEST",manifest),
                   patch.object(stage,"_verify_admin_pair") as verify):
                 self.assertEqual(stage._approved_users(),records())
                 verify.assert_called_once()
