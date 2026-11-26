@@ -55,12 +55,12 @@ class IsolatedPostgresProvisionTests(unittest.TestCase):
               patch.object(p,"caddy_fingerprint",return_value="caddyhash"),
               patch.object(p,"_existing_resource_names",return_value={
                   "container":False,"network":False,"volume":False,
-                  "secret":False,
+                  "secret":False,"secret_dir":False,
               }),
               contextlib.redirect_stdout(StringIO()) as output):
             self.assertEqual(p.review_plan(),(self.IMAGE,"caddyhash"))
         self.assertIn("ALL_UNUSED",output.getvalue())
-        for occupied in ("container","network","volume","secret"):
+        for occupied in ("container","network","volume","secret","secret_dir"):
             with (patch.object(p,"preflight"),
                   patch.object(p,"inspect_original_image",return_value=self.IMAGE),
                   patch.object(p,"caddy_fingerprint",return_value="caddyhash"),
@@ -88,6 +88,7 @@ class IsolatedPostgresProvisionTests(unittest.TestCase):
     def test_original_image_requires_pin_and_postgres16(self):
         info={
             "Image":self.IMAGE,"State":{"Running":True},
+            "Config":{"Entrypoint":["docker-entrypoint.sh"]},
             "HostConfig":{"PortBindings":None},
             "NetworkSettings":{"Networks":{"sbi-synthetic-isolated-38-31":{}}},
         }
