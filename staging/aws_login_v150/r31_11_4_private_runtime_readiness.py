@@ -112,6 +112,87 @@ def _safe_catalog_state():
     return obj
 
 
+def _restricted_role_state():
+    """Aggregate approved login-role security posture; no UID disclosures.
+
+    This query is deliberately read-only and is executed only after the
+    separate private Postgres instance and exact QA database are verified.
+    """
+    query = """
+    SELECT json_build_object(
+      'login_roles',(
+        SELECT COUNT(*) FROM pg_roles
+        WHERE rolname IN ('r3113_login_a','r3113_login_b')
+          AND rolcanlogin AND NOT rolbypassrls AND NOT rolsuper
+          AND NOT rolcreaterole AND NOT rolcreatedb
+      ),
+      'membership_pairs',(
+        SELECT COUNT(*) FROM pg_auth_members m
+        JOIN pg_roles member ON member.oid=m.member
+        JOIN pg_roles granted ON granted.oid=m.roleid
+        WHERE ((member.rolname='r3113_login_a'
+                AND granted.rolname='r311_qa_tenant_a')
+            OR (member.rolname='r3113_login_b'
+                AND granted.rolname='r311_qa_tenant_b'))
+          AND m.inherit_option AND NOT m.set_option AND NOT m.admin_option
+      ),
+      'all_memberships',(
+        SELECT COUNT(*) FROM pg_auth_members m
+        JOIN pg_roles member ON member.oid=m.member
+        WHERE member.rolname IN ('r3113_login_a','r3113_login_b')
+      ),
+      'forced_rls',(
+        SELECT COUNT(*) FROM pg_class c JOIN pg_namespace n
+          ON n.oid=c.relnamespace
+        WHERE n.nspname='sbi'
+          AND c.relname IN ('import_batches','payment_source_rows',
+                            'payments','payment_source_status_v1')
+          AND c.relrowsecurity AND c.relforcerowsecurity
+      ),
+      'invoker_view',(
+        SELECT COUNT(*) FROM pg_class c
+        WHERE c.oid=to_regclass('sbi.payment_received_source_v1')
+          AND 'security_invoker=true'=ANY(c.reloptions)
+      ),
+      'writer_grants',(
+        SELECT COUNT(*) FROM pg_roles r
+        WHERE r.rolname IN ('r3113_login_a','r3113_login_b')
+          AND (
+            has_table_privilege(r.oid,'sbi.payments','INSERT')
+            OR has_table_privilege(r.oid,'sbi.payments','UPDATE')
+            OR has_table_privilege(r.oid,'sbi.payments','DELETE')
+            OR has_table_privilege(r.oid,'sbi.import_batches','INSERT')
+            OR has_table_privilege(r.oid,'sbi.import_batches','UPDATE')
+            OR has_table_privilege(r.oid,'sbi.import_batches','DELETE')
+          )
+      )
+    )::text;
+    """
+    raw = _docker("exec", NEW_PG, "psql", "-X", "-qAt",
+                  "-v", "ON_ERROR_STOP=1", "-U", "postgres",
+                  "-d", NEW_DB, "-c", query)
+    data=json.loads(raw)
+    if type(data) is not dict or not all(
+        type(data.get(k)) is int for k in (
+            "login_roles","membership_pairs","all_memberships","forced_rls",
+            "invoker_view","writer_grants"
+        )
+    ):
+        raise AuditBlocked("CANDIDATE_ROLE_CATALOG_INVALID")
+    return data
+
+
+def _restricted_roles_complete(data):
+    return (
+        data["login_roles"] == 2
+        and data["membership_pairs"] == 2
+        and data["all_memberships"] == 2
+        and data["forced_rls"] == 4
+        and data["invoker_view"] == 1
+        and data["writer_grants"] == 0
+    )
+
+
 def audit():
     print("=== DB-R31.11.4 PRIVATE RUNTIME PROVISIONING READINESS ===",flush=True)
     # R31.7 pins the original private Docker image and network and verifies
@@ -147,9 +228,15 @@ def audit():
         print("DB_R31_11_4_SEPARATE_AUTH_DATABASE=NOT_PROVISIONED",flush=True)
         return False
     print("DB_R31_11_4_SEPARATE_AUTH_DATABASE=FOUND_READONLY",flush=True)
-    # The existence of a DB does NOT prove role/password/owner binding QA.
-    # That verification requires two approved real Firebase users and an
-    # independently reviewed provisioning script. Do not guess them.
+    roles = _restricted_role_state()
+    if not _restricted_roles_complete(roles):
+        print("DB_R31_11_4_RESTRICTED_LOGIN_ROLE_CATALOG=INCOMPLETE_OR_UNSAFE",
+              flush=True)
+        return False
+    print("DB_R31_11_4_RESTRICTED_LOGIN_ROLE_CATALOG=PASS_READONLY_SHAPE",
+          flush=True)
+    # Role metadata alone never validates two real Firebase sessions,
+    # private credential ownership or full cross-owner HTTPS denial.
     return False
 
 
