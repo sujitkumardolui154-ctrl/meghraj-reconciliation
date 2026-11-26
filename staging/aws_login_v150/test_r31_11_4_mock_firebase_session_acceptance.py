@@ -18,11 +18,11 @@ sys.path.insert(0,str(ROOT/"dashboard_source"))
 
 from flask import Flask
 import dashboard_sessions as sessions
-import r31_11_3_runtime_rls_blueprint as stage
+import r31_11_4_runtime_rls_blueprint as stage
 
 FLAG_ENV={
     "SBI_R31_PRIVATE_STAGING_ENABLED":"isolated-ownerqa-firebase-csrf-v1",
-    "SBI_R31_11_3_RUNTIME_ENABLED":"private-firebase-rls-readonly-v1",
+    "SBI_R31_11_4_RUNTIME_ENABLED":"private-firebase-rls-auth-acceptance-v1",
 }
 
 class SessionAcceptanceContracts(unittest.TestCase):
@@ -70,7 +70,7 @@ class SessionAcceptanceContracts(unittest.TestCase):
                         "cookie-for-a" if account=="qa-synthetic-a"
                         else "cookie-for-b", secure=True)
                 response=client.get(
-                    "/api/r31-private-qa/tenant-rls-source?limit=9"
+                    "/api/r31-private-qa/tenant-rls-source-r3114?limit=9"
                     + ("&owner_uid="+supplied if supplied else ""),
                     headers={"X-Owner-Uid":supplied or "fake-foreign-owner"},
                     base_url="https://localhost",
@@ -103,7 +103,7 @@ class SessionAcceptanceContracts(unittest.TestCase):
     def test_get_only_and_feature_disabled(self):
         with patch.dict(os.environ,FLAG_ENV):
             rules=[r for r in self.app.url_map.iter_rules()
-                   if r.rule=="/api/r31-private-qa/tenant-rls-source"]
+                   if r.rule=="/api/r31-private-qa/tenant-rls-source-r3114"]
             self.assertEqual(len(rules),1)
             self.assertNotIn("POST",rules[0].methods)
             self.assertNotIn("PUT",rules[0].methods)
@@ -111,7 +111,7 @@ class SessionAcceptanceContracts(unittest.TestCase):
 
         with (patch.dict(os.environ,{
                 "SBI_R31_PRIVATE_STAGING_ENABLED":"isolated-ownerqa-firebase-csrf-v1",
-                "SBI_R31_11_3_RUNTIME_ENABLED":"OFF",
+                "SBI_R31_11_4_RUNTIME_ENABLED":"OFF",
               }),
               patch.object(sessions,"firebase_app",return_value=object()),
               patch.object(sessions.auth,"verify_session_cookie",
@@ -125,7 +125,7 @@ class SessionAcceptanceContracts(unittest.TestCase):
                 client.set_cookie(sessions.SESSION_COOKIE,
                                   "cookie-for-a",secure=True)
                 result=client.get(
-                    "/api/r31-private-qa/tenant-rls-source",
+                    "/api/r31-private-qa/tenant-rls-source-r3114",
                     base_url="https://localhost")
             self.assertEqual(result.status_code,503)
             read.assert_not_called()
