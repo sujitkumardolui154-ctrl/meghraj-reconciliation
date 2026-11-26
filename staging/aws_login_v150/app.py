@@ -75,6 +75,12 @@ if os.environ.get("SBI_R31_PRIVATE_STAGING_ENABLED") == "isolated-ownerqa-fireba
         from r31_11_3_runtime_rls_blueprint import runtime_tenant_rls
         app.register_blueprint(runtime_tenant_rls)
 
+    # R31.11.4: a distinct, never-public private acceptance candidate.
+    # No DB privilege/user creation or Caddy routing is performed here.
+    if os.environ.get("SBI_R31_11_4_RUNTIME_ENABLED") == "private-firebase-rls-auth-acceptance-v1":
+        from r31_11_4_runtime_rls_blueprint import runtime_tenant_rls as runtime_r3114
+        app.register_blueprint(runtime_r3114)
+
 
 @app.after_request
 def secure_ui(response):
