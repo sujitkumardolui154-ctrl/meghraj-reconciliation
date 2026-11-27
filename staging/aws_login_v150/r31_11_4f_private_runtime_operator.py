@@ -253,6 +253,7 @@ def create_private_runtime(image_name):
     # DO NOT publish ports, mount Docker socket, or connect Caddy.
     # Only a disposable egress bridge plus the existing isolated QA DB bridge.
     docker("create","--name",APP,"-i",
+           "--label",MARKER+"=true",
            "--network",EGRESS,
            "--user","10001:10001",
            "--read-only","--cap-drop","ALL",
@@ -281,6 +282,7 @@ def create_private_runtime(image_name):
                 (str(SECRETS),"/run/secrets",False),
                 (str(TEMP_ADC),"/run/firebase/adc.json",False)}
             and config.get("User")=="10001:10001"
+            and config.get("Labels",{}).get(MARKER)=="true"
             and not config.get("ExposedPorts"),
             "QA_EPHEMERAL_CONTAINER_NOT_ISOLATED")
     print("DB_R31_11_4F_PRIVATE_CANDIDATE=PASS_NO_PUBLIC_PORTS",flush=True)
@@ -313,6 +315,24 @@ def clean_exact_resources(image_name=None):
     # Firebase approval receipt, source secret bundle, production containers.
     # Never dump, change or truncate any database.
     errors=[]
+    # Resource names may only be cleaned if absent or bearing our exact QA
+    # marker; never delete a same-named foreign container/network.
+    for kind,name in (("container",APP),("network",EGRESS)):
+        try:
+            p=subprocess.run(["sudo","-n","docker",kind,"inspect",name],
+                             capture_output=True,text=True,check=False,timeout=20)
+            if p.returncode==0:
+                parsed=json.loads(p.stdout)
+                item=parsed[0]
+                labels=(item.get("Config",{}).get("Labels",{})
+                        if kind=="container"
+                        else item.get("Labels",{}))
+                if labels.get(MARKER)!="true":
+                    raise Blocked("QA_RESOURCE_OWNERSHIP_NOT_PROVEN")
+            elif p.returncode!=1:
+                raise Blocked("QA_RESOURCE_INSPECTION_UNAVAILABLE")
+        except (ValueError,TypeError,IndexError,OSError,subprocess.TimeoutExpired):
+            raise Blocked("QA_RESOURCE_INSPECTION_UNAVAILABLE") from None
     for cmd in (
         ["sudo","-n","docker","rm","-f",APP],
         ["sudo","-n","docker","network","rm",EGRESS],
