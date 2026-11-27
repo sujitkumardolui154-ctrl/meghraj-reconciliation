@@ -1,0 +1,41 @@
+name: SBI R31.11.4F one-shot private real Firebase QA safety (mock CI)
+on:
+  push:
+    branches: [feature/sbi-r31-11-4f-private-real-firebase-qa-20261127]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-only-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install only mock/Flask test dependencies (no AWS access)
+        run: python -m pip install --disable-pip-version-check 'Flask>=3.1,<4' 'firebase-admin>=6.5,<8'
+      - name: Compile and test the QA-only operator and probe (all credentials mocked)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile \
+            staging/aws_login_v150/r31_11_4f_private_session_probe.py \
+            staging/aws_login_v150/r31_11_4f_private_runtime_operator.py
+          python -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4f_*.py' -v
+          python -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4e_session_binding_contract.py' -v
+      - name: Enforce no production Dockerfile, public route or financial unlock
+        shell: bash
+        run: |
+          set -euo pipefail
+          D=staging/aws_login_v150/Dockerfile.r31_11_4f_private_one_shot_qa
+          P=staging/aws_login_v150/r31_11_4f_private_session_probe.py
+          O=staging/aws_login_v150/r31_11_4f_private_runtime_operator.py
+          grep -Fq 'USER 10001:10001' "$D"
+          grep -Fq 'r31_11_4f_private_session_probe.py' "$D"
+          grep -Fq 'DB_R31_11_4F_EXTERNAL_MTLS_HTTPS=PENDING' "$P"
+          grep -Fq 'DB_R31_11_4F_FINANCIAL_APPLY=LOCKED' "$O"
+          grep -Fq 'DB_R31_11_4F_R3112=QUARANTINED' "$O"
+          ! grep -Ei '(^EXPOSE|gunicorn|CMD.*app:app|dashboard_source/index.html|payment_evidence_upload.py)' "$D"
+          ! grep -E 'CREATE ROLE|DROP DATABASE|FINANCIAL_APPLY=ENABLED|CREATE USER|SET ROLE' "$P" "$O"
