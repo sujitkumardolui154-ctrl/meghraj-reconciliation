@@ -1,0 +1,119 @@
+name: SBI invoice generation + GST combined QA (isolated)
+on:
+  pull_request:
+    paths:
+      - 'dashboard_source/invoice_gst_*'
+      - 'dashboard_source/credit_note_*'
+      - 'dashboard_source/production_gateway.py'
+      - 'dashboard_source/dashboard_sessions.py'
+      - 'dashboard_source/index.html'
+      - 'dashboard_source/requirements.txt'
+      - 'staging/invoice-gst/**'
+      - 'scripts/sbi_invoice_gst_aws_staging_readiness.py'
+      - 'scripts/sbi_invoice_gst_private_qa_gate.py'
+      - 'tests/test_invoice_gst_combined.py'
+      - 'tests/test_credit_note_qa.py'
+      - 'tests/test_invoice_gst_private_*.py'
+      - 'tests/test_invoice_gst_master_workbook_gate.py'
+      - 'tests/test_invoice_gst_private_qa_gate.py'
+      - '.github/workflows/sbi-invoice-gst-combined-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  combined-isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: invoice_qa
+          POSTGRES_USER: qa_user
+          POSTGRES_PASSWORD: qa_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U qa_user -d invoice_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      SBI_INVOICE_GST_TEST_DSN: postgresql://qa_user:qa_password@localhost:5432/invoice_qa
+    steps:
+      - name: Checkout proposed code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install isolated test dependencies
+        run: python -m pip install 'Flask>=3.1,<4' 'psycopg[binary]>=3.2,<4' 'openpyxl>=3.1,<4' 'Pillow>=11,<13' 'reportlab>=4.2,<5' 'pypdf>=5,<7'
+      - name: Python and JS syntax checks
+        run: |
+          python -m py_compile dashboard_source/invoice_gst_core.py dashboard_source/invoice_gst_feature.py dashboard_source/invoice_gst_cancellation.py dashboard_source/invoice_gst_pdf.py dashboard_source/credit_note_core.py dashboard_source/credit_note_feature.py dashboard_source/credit_note_pdf.py dashboard_source/production_gateway.py staging/invoice-gst/master_workbook_gate.py scripts/sbi_invoice_gst_aws_staging_readiness.py
+          node --check dashboard_source/invoice_gst_ui.js
+          node --check dashboard_source/invoice_gst_cancellation_ui.js
+          node --check dashboard_source/credit_note_ui.js
+      - name: Combined invoice and real isolated Postgres test
+        run: python -m unittest discover -s tests -p 'test_invoice_gst_combined.py' -v
+      - name: Multi-invoice credit note + real isolated Postgres QA
+        run: python -m unittest discover -s tests -p 'test_credit_note_qa.py' -v
+      - name: Private master and vendor source-import safeguards
+        run: |
+          python -m unittest discover -s tests -p 'test_invoice_gst_private_*.py' -v
+      - name: Four-tab original SBI master workbook source QA
+        run: python -m unittest discover -s tests -p 'test_invoice_gst_master_workbook_gate.py' -v
+      - name: Private staging readiness go no-go safeguards
+        run: |
+          # Unit tests are already covered by the private_* suite above.
+          python scripts/sbi_invoice_gst_aws_staging_readiness.py > /tmp/invoice-staging-readiness.json
+          set +e
+          python scripts/sbi_invoice_gst_private_qa_gate.py --preflight-json /tmp/invoice-staging-readiness.json --assert-ready > /tmp/invoice-private-qa-decision.json
+          code=$?
+          set -e
+          test "$code" -eq 2
+          python - <<'PY'
+          import json
+          report=json.load(open("/tmp/invoice-private-qa-decision.json"))
+          assert report["ready_for_authenticated_private_qa"] is False
+          assert report["production_deployment"] == "NOT_AUTHORIZED"
+          assert "APPROVED_PDF_SHA256_VERIFIED" in report["outstanding"]
+          assert "ISOLATED_QA_DATABASE_SCHEMAS_PRESENT" in report["outstanding"]
+          print("PRIVATE_QA_PREREQUISITES_MISSING_FAIL_CLOSED=PASS")
+          PY
+      - name: Existing GST contract regression
+        run: python -m unittest discover -s staging/mxp-gst/tests -p 'test_*.py' -v
+      - name: Safe AWS staging preflight default remains read-only
+        run: |
+          python scripts/sbi_invoice_gst_aws_staging_readiness.py > /tmp/invoice-staging-preflight.json
+          python - <<'PY'
+          import json
+          data = json.load(open("/tmp/invoice-staging-preflight.json"))
+          assert data["authenticated_aws_staging_test"] == "NOT_PERFORMED"
+          assert data["isolated_qa_database"]["status"] == "NOT_CONNECTED_NOT_TESTED"
+          assert data["reconciliation_financial_writes"] is False
+          print("AWS_STAGING_PREFLIGHT_UNAUTHENTICATED_SAFE_MODE=PASS")
+          PY
+      - name: Release safety assertions
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          html=Path("dashboard_source/index.html").read_text()
+          gateway=Path("dashboard_source/production_gateway.py").read_text()
+          sessions=Path("dashboard_source/dashboard_sessions.py").read_text()
+          schema=Path("staging/invoice-gst/001_isolated_invoice_schema.sql").read_text()
+          assert "Generate GST Report (.xlsx)" in html
+          assert "Finalize &amp; Record in Database" in html
+          assert "create_invoice_gst_blueprint" in gateway
+          assert "https://sbi-preview.13-232-241-221.sslip.io" in sessions
+          assert "FINALIZED_INVOICE_IMMUTABLE" in schema
+          assert "dashboard_payment" not in schema.lower()
+          print("COMBINED_INVOICE_GST_UI_API_DB_CONTRACT=PASS")
+          print("FINANCIAL_RECONCILIATION_WRITES=NONE")
+          print("PRODUCTION_DEPLOYMENT=NOT_PERFORMED")
+          PY

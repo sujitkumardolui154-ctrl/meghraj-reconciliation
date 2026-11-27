@@ -15,6 +15,7 @@ CSRF_COOKIE = "__Host-dil_csrf"
 SESSION_SECONDS = 8 * 60 * 60
 
 ORIGINS = {
+    "https://sbi-preview.13-232-241-221.sslip.io",  # verified AWS main dashboard origin
     "https://login-v150---sbi-dashboard-ahz6wqeiaq-el.a.run.app",
     "https://sbi-dashboard-109590290120.asia-south1.run.app",
     "https://sbi-dashboard-ahz6wqeiaq-el.a.run.app",
