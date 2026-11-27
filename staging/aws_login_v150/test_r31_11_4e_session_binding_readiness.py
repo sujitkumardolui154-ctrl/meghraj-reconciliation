@@ -43,12 +43,12 @@ class R3114EReadinessTests(unittest.TestCase):
                     stage._read_only_qa_catalog()
 
     def test_private_metadata_uses_privileged_stat_without_reading(self):
-        valid = "\\n".join([
+        valid = "\n".join([
             "700 10001 10001 4096 directory",
             "600 10001 10001 155 regular file",
             "600 10001 10001 155 regular file",
             "600 10001 10001 500 regular file",
-        ]) + "\\n"
+        ]) + "\n"
         success=SimpleNamespace(returncode=0,stdout=valid,stderr="")
         with patch.object(stage.subprocess,"run",return_value=success) as run:
             stage._secure_metadata()
