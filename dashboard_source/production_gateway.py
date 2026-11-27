@@ -456,3 +456,33 @@ app.register_blueprint(
         csrf_valid=_invoice_csrf_valid,
     )
 )
+
+# Cancellation has a DIFFERENT, narrower Firebase entitlement than invoice
+# creation. Never inherit creator permission for destructive/admin actions.
+from invoice_gst_cancellation import create_invoice_cancellation_blueprint
+
+
+def _invoice_canceller_authorized():
+    user = getattr(g, "dil_user", None)
+    identity = getattr(g, "dil_identity", None)
+    if user is None or not isinstance(identity, dict):
+        return False
+    if getattr(user, "disabled", True) or getattr(user, "uid", None) != identity.get("uid"):
+        return False
+    claims = getattr(user, "custom_claims", None) or {}
+    return (
+        claims.get("dil_dashboard") is True
+        and claims.get("sbi_invoice_canceller") is True
+    )
+
+
+app.register_blueprint(
+    create_invoice_cancellation_blueprint(
+        can_read=lambda: can_view_report(
+            getattr(g, "dil_user", None), getattr(g, "dil_identity", None)
+        ),
+        can_cancel=_invoice_canceller_authorized,
+        csrf_valid=_invoice_csrf_valid,
+    )
+)
+
