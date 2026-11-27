@@ -99,7 +99,7 @@ class OperatorSafetyTests(unittest.TestCase):
         self.assertIn("DB_R31_11_4F_FINANCIAL_APPLY=LOCKED",capture.getvalue())
 
     def test_synthetic_firebase_api_key_not_logged(self):
-        payload={"idToken":"ci-token-not-to-log","localId":"ci-fake-uid"}
+        payload={"idToken":"ci-token-not-to-log"+("x"*220),"localId":"ci-fake-uid"}
         class FakeReply:
             def __enter__(self):return self
             def __exit__(self,*args):return None
