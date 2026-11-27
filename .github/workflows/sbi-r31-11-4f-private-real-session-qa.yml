@@ -39,3 +39,33 @@ jobs:
           grep -Fq 'DB_R31_11_4F_R3112=QUARANTINED' "$O"
           ! grep -Ei '(^EXPOSE|gunicorn|CMD.*app:app|dashboard_source/index.html|payment_evidence_upload.py)' "$D"
           ! grep -E 'CREATE ROLE|DROP DATABASE|FINANCIAL_APPLY=ENABLED|CREATE USER|SET ROLE' "$P" "$O"
+
+  build-no-secrets-fail-closed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build minimal candidate with no Firebase or PostgreSQL secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          NAME="sbi-r3114f-ci:${GITHUB_SHA}"
+          docker build --pull=false \
+            --build-arg "SBI_SOURCE_SHA=${GITHUB_SHA}" \
+            -f staging/aws_login_v150/Dockerfile.r31_11_4f_private_one_shot_qa \
+            -t "$NAME" .
+          test "$(docker image inspect -f '{{.Config.User}}' "$NAME")" = "10001:10001"
+          test "$(docker image inspect -f '{{json .Config.ExposedPorts}}' "$NAME")" = "null"
+          test "$(docker image inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$NAME")" = "${GITHUB_SHA}"
+          set +e
+          OUTPUT=$(docker run --rm --network none \
+            --user 10001:10001 --read-only --cap-drop ALL \
+            --security-opt no-new-privileges \
+            "$NAME" </dev/null 2>&1)
+          RESULT=$?
+          set -e
+          test "$RESULT" -ne 0
+          printf '%s\n' "$OUTPUT" | grep -Fqx 'STOP=DB_R31_11_4F_PRIVATE_AUTH_ACCEPTANCE_FAILED'
+          printf '%s\n' "$OUTPUT" | grep -Fqx 'DB_R31_11_4F_FINANCIAL_APPLY=LOCKED'
+          printf '%s\n' "$OUTPUT" | grep -Fqx 'DB_R31_11_4F_R3112=QUARANTINED'
+          echo "DB_R31_11_4F_CI_IMAGE_FAIL_CLOSED=PASS_NO_NETWORK_OR_SECRETS"
