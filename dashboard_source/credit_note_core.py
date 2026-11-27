@@ -43,7 +43,7 @@ def credit_note_request(payload):
     if not isinstance(number, str):
         raise CreditNoteError("INVALID_CREDIT_NOTE_NUMBER")
     match = NUMBER_RE.fullmatch(number)
-    if match is None or int(match.group(2)) != int(match.group(1)) + 1:
+    if match is None or len(number) > 16 or int(match.group(2)) != int(match.group(1)) + 1:
         raise CreditNoteError("INVALID_CREDIT_NOTE_NUMBER")
     raw_date = payload.get("credit_note_date")
     if not isinstance(raw_date, str) or re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw_date) is None:
