@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """R31.13: consolidated Firebase -> PostgreSQL tenant RLS evidence gate.
 
-AUDIT-ONLY. Reuses the established R31.11.4H and 4J QA guards, including
+AUDIT-ONLY. Reuses the established R31.11.4H and 4I QA guards, including
 the prior R31.11.4I operator-reported two-real-Firebase-session receipt.
 Never creates users, roles, tokens, cookies, containers, certificates or
 SQL fixtures. No network listener, Caddy edit, deployment or financial write.
@@ -18,7 +18,10 @@ import sys
 
 sys.dont_write_bytecode = True
 
-import r31_11_4j_combined_mtls_gate as existing
+import r31_11_4h_combined_readonly_security as h
+import r31_11_4i_combined_auth_mtls as i
+
+PRIOR_4I_SOURCE_SHA = "f5b3088b2306cd6b435f4e6f1cd3e107dc88879f"
 
 ROOT = Path(__file__).resolve().parent
 ADAPTER = ROOT / "r31_11_4_runtime_rls_adapter.py"
@@ -95,7 +98,8 @@ def main(argv=None) -> int:
         # The shared guard re-audits private PG, two existing Firebase
         # Admin users, owner maps, local receipt metadata, and unchanged Caddy.
         # No second password login or new Flask test session is created.
-        existing.audit_baseline(args.source_sha)
+        h.run_combined(args.source_sha)
+        i.audit_local_receipt(PRIOR_4I_SOURCE_SHA)
         source_contracts()
         print("DB_R31_13_TWO_FIREBASE_TO_PG_SESSIONS=PASS_PRIOR_4I_LOCAL_OPERATOR_RECEIPT",
               flush=True)
