@@ -48,7 +48,8 @@ class OperatorSafetyTests(unittest.TestCase):
         image="synthetic-ci-image:123"
         container={
           "State":{"Running":False},
-          "Config":{"User":"10001:10001","ExposedPorts":None},
+          "Config":{"User":"10001:10001","ExposedPorts":None,
+                    "Labels":{op.MARKER:"true"}},
           "HostConfig":{"PortBindings":{},"Privileged":False,"ReadonlyRootfs":True},
           "NetworkSettings":{"Networks":{op.EGRESS:{},op.QA_NET:{}}},
           "Mounts":[
