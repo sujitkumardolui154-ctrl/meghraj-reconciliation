@@ -138,6 +138,49 @@ class CombinedIQA(unittest.TestCase):
             self.assertIn("STOP=DB_R31_11_4I_COMBINED_QA_REVIEW_REQUIRED",output.getvalue())
             self.assertNotIn("NEW_REAL_SESSIONS=PASS",output.getvalue())
 
+    def test_local_receipt_is_recognized_without_claiming_independent_e2e(self):
+        with tempfile.TemporaryDirectory() as d:
+            folder=Path(d)/"protected"
+            file=folder/"qa.json"
+            with (patch.object(s,"RECEIPT_DIR",folder),
+                  patch.object(s,"RECEIPT",file),
+                  redirect_stdout(StringIO()) as out):
+                s.audit_local_receipt(SHA)
+            self.assertIn("LOCAL_QA_AUTH_RECEIPT=NOT_PRESENT",out.getvalue())
+            folder.mkdir(mode=0o700)
+            payload={
+                "schema":"DB-R31.11.4I-OPERATOR-QA-RECEIPT-V1",
+                "classification":"local_operator_execution_not_independent_attestation",
+                "status":"PASS_PRIVATE_IN_PROCESS_QA_ONLY",
+                "source_sha":SHA,
+                "qa_database":s.g.QA_DB,
+                "caddy_fingerprint_sha256":s.h.EXPECTED_4G_CADDY_SHA256,
+                "verified_results":sorted(s.REQUIRED_4F),
+                "external_mtls":"NOT_TESTED",
+                "prior_4f_execution":"NOT_ATTESTED",
+                "financial_apply":"LOCKED",
+                "r3112":"ACTIVE_QA_DESIGN_RELEASE_GATED",
+                "production_release":"BLOCKED",
+            }
+            file.write_text(json.dumps(payload),encoding="utf-8")
+            file.chmod(0o600)
+            with (patch.object(s,"RECEIPT_DIR",folder),
+                  patch.object(s,"RECEIPT",file),
+                  redirect_stdout(StringIO()) as out):
+                s.audit_local_receipt(SHA)
+            self.assertIn("PRESENT_OPERATOR_REPORT_NOT_INDEPENDENT",out.getvalue())
+            payload["source_sha"]="b"*40
+            file.write_text(json.dumps(payload),encoding="utf-8")
+            with (patch.object(s,"RECEIPT_DIR",folder),
+                  patch.object(s,"RECEIPT",file)):
+                with self.assertRaises(s.Blocked):
+                    s.audit_local_receipt(SHA)
+            file.chmod(0o644)
+            with (patch.object(s,"RECEIPT_DIR",folder),
+                  patch.object(s,"RECEIPT",file)):
+                with self.assertRaises(s.Blocked):
+                    s.audit_local_receipt(SHA)
+
     def test_existing_receipt_cannot_be_overwritten(self):
         with tempfile.TemporaryDirectory() as d:
             folder=Path(d)/"private"
