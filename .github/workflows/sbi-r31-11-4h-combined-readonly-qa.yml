@@ -1,0 +1,33 @@
+name: SBI R31.11.4H combined private security (read-only CI)
+on:
+  push:
+    branches: [feature/sbi-r31-11-4h-combined-readonly-security-20261127]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  combined-fail-closed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile and run source-only combined security tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile staging/aws_login_v150/r31_11_4h_combined_readonly_security.py
+          python -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4h_*.py' -v
+          python -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4g_mtls_readonly_preflight.py' -v
+      - name: Assert financial lock and no unsupported E2E claims
+        shell: bash
+        run: |
+          set -euo pipefail
+          S=staging/aws_login_v150/r31_11_4h_combined_readonly_security.py
+          grep -Fq 'DB_R31_11_4H_FINANCIAL_APPLY=LOCKED' "$S"
+          grep -Fq 'DB_R31_11_4H_EXTERNAL_HTTPS_MTLS=NOT_TESTED' "$S"
+          grep -Fq 'DB_R31_11_4H_REAL_FIREBASE_SESSION_E2E=EVIDENCE_NOT_PROVIDED' "$S"
+          grep -Fq 'DB_R31_11_4H_R3112=ACTIVE_QA_DESIGN_RELEASE_GATED' "$S"
+          ! grep -En 'docker.*(run|create|start|network connect)|CREATE ROLE|DROP DATABASE|FINANCIAL_APPLY=ENABLED|\.execute\(.*INSERT|\.execute\(.*UPDATE' "$S"
