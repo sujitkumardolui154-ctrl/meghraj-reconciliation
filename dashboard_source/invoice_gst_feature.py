@@ -234,8 +234,13 @@ def create_invoice_gst_blueprint(can_read, can_create, csrf_valid,
                               original_branch_name, sol_id, client_name, gstin,
                               taxable::text AS taxable, cgst::text AS cgst,
                               sgst::text AS sgst, total::text AS total,
-                              shipment_count, status, created_at::text AS created_at
-                       FROM sbi_invoice_gst.invoices WHERE invoice_no=%s""",
+                              shipment_count,
+                              CASE WHEN EXISTS (
+                                  SELECT 1 FROM sbi_invoice_gst.invoice_number_cancellations c
+                                  WHERE c.invoice_no = i.invoice_no
+                              ) THEN 'CANCELLED' ELSE status END AS status,
+                              created_at::text AS created_at
+                       FROM sbi_invoice_gst.invoices i WHERE invoice_no=%s""",
                     (invoice_no,),
                 )
                 row = cur.fetchone()
@@ -272,6 +277,12 @@ def create_invoice_gst_blueprint(can_read, can_create, csrf_valid,
                 invoice = cur.fetchone()
                 if invoice is None:
                     return failure("INVOICE_NOT_FOUND", 404)
+                cur.execute(
+                    """SELECT 1 FROM sbi_invoice_gst.invoice_number_cancellations
+                       WHERE invoice_no=%s""", (invoice_no,),
+                )
+                if cur.fetchone() is not None:
+                    return failure("CANCELLED_INVOICE_PDF_NOT_ACTIVE", 409)
                 cur.execute(
                     """SELECT line_no, dispatch_date::text AS dispatch_date,
                               lr_no, packet_ref_no, consignee,
@@ -333,6 +344,10 @@ def create_invoice_gst_blueprint(can_read, can_create, csrf_valid,
                        FROM sbi_invoice_gst.invoices
                        WHERE service_month_key=%s AND fy=%s
                              AND status='FINALIZED'
+                             AND NOT EXISTS (
+                                 SELECT 1 FROM sbi_invoice_gst.invoice_number_cancellations c
+                                 WHERE c.invoice_no=sbi_invoice_gst.invoices.invoice_no
+                             )
                        ORDER BY invoice_no LIMIT %s""",
                     (month, year_start, MAX_EXPORT_ROWS + 1),
                 )
