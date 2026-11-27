@@ -178,7 +178,7 @@ def sign_in(key,email,password):
 def tokens_from_two_real_test_users(key,approved):
     require(len(approved)==2 and approved[0]["uid"]!=approved[1]["uid"],
             "QA_APPROVED_USERS_NOT_DISTINCT")
-    sdk,app=roles._firebase_admin_client()
+    sdk,app=roles._admin_api()
     tokens=[]
     for i,person in enumerate(approved):
         print("DB_R31_11_4F_SIGNIN_TEST_"+("A" if i==0 else "B")+
