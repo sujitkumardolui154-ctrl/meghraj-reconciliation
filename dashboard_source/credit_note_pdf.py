@@ -120,7 +120,7 @@ def render_credit_note_pdf(note, vendor, lines, preview=False):
     story.append(Spacer(1,5))
 
     widths=[43,62,93,91,available_width-43-62-93-91-93,93]
-    cells=[[Paragraph(x,sm bold if False else smbold) for x in
+    cells=[[Paragraph(x,smbold) for x in
             ("Sl. No.","SAC CODE","INVOICE NO.","INVOICE DATE","MONTH","AMOUNT")]]
     for entry in lines:
         d = date.fromisoformat(str(entry["invoice_date"])).strftime("%d/%m/%Y")
