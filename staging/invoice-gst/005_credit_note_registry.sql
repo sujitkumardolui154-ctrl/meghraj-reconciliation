@@ -4,7 +4,7 @@
 -- reconciliation data have been independently linked and owner-approved.
 CREATE TABLE IF NOT EXISTS sbi_invoice_gst.credit_notes (
     credit_note_no text PRIMARY KEY
-        CHECK (credit_note_no ~ '^MXP/[0-9]{4}-[0-9]{4}/[0-9]{1,6}
+        CHECK (credit_note_no ~ '^MXP/[0-9]{4}-[0-9]{4}/[0-9]{1,6}$' AND length(credit_note_no) <= 16),
     credit_note_date date NOT NULL,
     fy text NOT NULL CHECK (fy ~ '^[0-9]{4}-[0-9]{4}$'),
     customer_gstin text NOT NULL,
