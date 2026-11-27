@@ -270,6 +270,82 @@ class IsolatedCreditNotePostgres(unittest.TestCase):
         finally:
             os.environ["SBI_INVOICE_GST_DEPLOYMENT_MODE"]="ISOLATED_QA"
 
+    def test_07_historical_report_lookup_never_authorizes_issue(self):
+        from flask import Flask, g
+        from credit_note_feature import create_credit_note_blueprint
+        from invoice_source_schema import HEADERS_53
+        number = "MXP99999"
+        cells = [""] * 53
+        cells[4], cells[5] = "March 2024", "2024-04-10"
+        cells[6], cells[8] = "03970", "03970"
+        cells[7], cells[9] = "QA SMECCC KOLKATA", "QA SMECCC KOLKATA"
+        cells[11], cells[12] = GSTIN, number
+        cells[13:17] = ["100.00", "9.00", "9.00", "118.00"]
+        cells[25] = "0"
+        def verified_source(requested):
+            self.assertEqual(requested, [number])
+            return {
+                "version": "invoice-selection-v1",
+                "source_kind": "VERIFIED_READ_ONLY_REPORT_SOURCE",
+                "dataset": "qa-pinned-source",
+                "financial_writes": False,
+                "reconciliation_executed": False,
+                "database_updated": False,
+                "requested_count": 1, "matched_count": 1, "review_count": 0,
+                "matches": [{
+                    "invoice_no": number, "values": cells,
+                    "payment_kind": "unpaid", "balance_review": False,
+                }],
+                "review": [],
+            }
+        app = Flask(__name__)
+        @app.before_request
+        def identity():
+            g.dil_user = SimpleNamespace(uid="qa-credit-user")
+        app.register_blueprint(create_credit_note_blueprint(
+            can_read=lambda: True, can_create=lambda: True,
+            csrf_valid=lambda: True, connection_factory=self.connect,
+            historical_lookup=verified_source,
+        ))
+        client = app.test_client()
+        old = os.environ.get("SBI_CREDIT_NOTE_HISTORICAL_REPORT_REVIEW")
+        os.environ["SBI_CREDIT_NOTE_HISTORICAL_REPORT_REVIEW"] = "1"
+        try:
+            lookup = client.post("/api/credit-notes/lookup", json={
+                "invoice_numbers": ["MXP98001", number],
+            })
+            self.assertEqual(lookup.status_code, 200, lookup.get_json())
+            a, b = lookup.get_json()["invoices"]
+            self.assertTrue(a["credit_note_eligible"])
+            self.assertEqual(b["source_kind"], "VERIFIED_READ_ONLY_REPORT_SOURCE")
+            self.assertFalse(b["credit_note_eligible"])
+            self.assertEqual(b["original_taxable"], "100.00")
+            self.assertIsNone(b["remaining_taxable"])
+            self.assertTrue(lookup.get_json()["historical_report_review"])
+            self.assertFalse(lookup.get_json()["historical_issuance_authorized"])
+            attempt = deepcopy(BASE)
+            attempt["credit_note_no"] = "MXP/2026-2027/20"
+            attempt["entries"] = [{
+                "invoice_no": number, "credited_taxable": "20.00",
+            }]
+            # Even an accurate report row never enables preview or finalization.
+            preview = client.post("/api/credit-notes/preview", json=attempt)
+            self.assertEqual(preview.status_code, 422)
+            self.assertIn("NOT_FOUND_OR_NOT_IMPORTED", preview.get_json()["error"])
+            issued = client.post("/api/credit-notes/finalize", json=attempt)
+            self.assertEqual(issued.status_code, 422)
+            with self.connect() as conn:
+                n = conn.execute(
+                    "SELECT count(*) AS n FROM sbi_invoice_gst.credit_notes "
+                    "WHERE credit_note_no='MXP/2026-2027/20'"
+                ).fetchone()["n"]
+            self.assertEqual(n, 0)
+        finally:
+            if old is None:
+                os.environ.pop("SBI_CREDIT_NOTE_HISTORICAL_REPORT_REVIEW", None)
+            else:
+                os.environ["SBI_CREDIT_NOTE_HISTORICAL_REPORT_REVIEW"] = old
+
     def test_06_separate_creator_claim_and_csrf(self):
         from flask import Flask,g
         from credit_note_feature import create_credit_note_blueprint
