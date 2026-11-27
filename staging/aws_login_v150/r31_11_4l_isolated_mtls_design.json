@@ -1,0 +1,149 @@
+{
+  "schema": "DB-R31.11.4L-ISOLATED-MTLS-DESIGN-V1",
+  "classification": "REFERENCE_DESIGN_ONLY_NOT_DEPLOYABLE",
+  "deployment_authorization": "NOT_GRANTED",
+  "isolation": {
+    "public_caddy": "UNCHANGED_FINGERPRINT_61d14b20bd57ce7ba4e6150324bddacefa186e5196b40c19fd57827907b0877b",
+    "external_qa_reverse_proxy": "NOT_CREATED",
+    "qa_app_http_listener": "NOT_DEPLOYED",
+    "approved_hostname": "PENDING",
+    "server_tls_certificate": "PENDING",
+    "client_ca_and_revocation": "PENDING",
+    "restricted_ingress_cidrs": "PENDING",
+    "qa_origin": "PENDING",
+    "qa_proxy_docker_socket": "FORBIDDEN",
+    "qa_proxy_direct_database_access": "FORBIDDEN",
+    "qa_proxy_production_financial_network": "FORBIDDEN",
+    "public_postgres_ports": "NONE",
+    "qa_database": "sbi_r31_11_4_auth_qa_20261126",
+    "qa_database_financial_write_access": "DENIED",
+    "financial_apply": "LOCKED"
+  },
+  "exact_candidate_routes": [
+    "GET /healthz",
+    "GET /auth/csrf",
+    "POST /auth/session",
+    "GET /auth/me",
+    "GET /api/r31-private-qa/tenant-rls-source-r3114"
+  ],
+  "forbidden_route_prefixes": [
+    "/admin",
+    "/api/payment-evidence",
+    "/api/reconciliation",
+    "/api/invoice",
+    "/api/gst",
+    "/api/credit",
+    "/api/financial",
+    "/api/finance",
+    "/api/bulk"
+  ],
+  "external_acceptance_cases": [
+    {
+      "id": "REAL_TLS_VALID_CERT_AUTH_FIREBASE_A_PG_A_READONLY",
+      "status": "NOT_TESTED_EXTERNAL"
+    },
+    {
+      "id": "REAL_TLS_VALID_CERT_AUTH_FIREBASE_B_PG_B_READONLY",
+      "status": "NOT_TESTED_EXTERNAL"
+    },
+    {
+      "id": "TLS_MISSING_CLIENT_CERT_DENIED",
+      "status": "NOT_TESTED_EXTERNAL"
+    },
+    {
+      "id": "TLS_UNTRUSTED_CLIENT_CA_DENIED",
+      "status": "NOT_TESTED_EXTERNAL"
+    },
+    {
+      "id": "TLS_EXPIRED_CLIENT_CERT_DENIED",
+      "status": "NOT_TESTED_EXTERNAL"
+    },
+    {
+      "id": "TLS_REVOKED_CLIENT_CERT_DENIED",
+      "status": "NOT_TESTED_EXTERNAL"
+    },
+    {
+      "id": "TLS_WRONG_SERVER_HOSTNAME_DENIED",
+      "status": "NOT_TESTED_EXTERNAL"
+    },
+    {
+      "id": "TLS_WRONG_SERVER_TRUST_CA_DENIED",
+      "status": "NOT_TESTED_EXTERNAL"
+    },
+    {
+      "id": "TLS_SNI_HOST_MISMATCH_DENIED",
+      "status": "NOT_TESTED_EXTERNAL"
+    },
+    {
+      "id": "TLS_BELOW_1_2_DENIED",
+      "status": "NOT_TESTED_EXTERNAL"
+    },
+    {
+      "id": "FIREBASE_ANONYMOUS_DENIED",
+      "status": "NOT_TESTED_EXTERNAL"
+    },
+    {
+      "id": "FIREBASE_TAMPERED_COOKIE_DENIED",
+      "status": "NOT_TESTED_EXTERNAL"
+    },
+    {
+      "id": "FIREBASE_REAL_EXPIRED_COOKIE_DENIED",
+      "status": "NOT_TESTED_EXTERNAL"
+    },
+    {
+      "id": "FIREBASE_REAL_REVOKED_COOKIE_DENIED",
+      "status": "NOT_TESTED_EXTERNAL"
+    },
+    {
+      "id": "TENANT_A_TO_B_DATA_DENIED",
+      "status": "NOT_TESTED_EXTERNAL"
+    },
+    {
+      "id": "TENANT_B_TO_A_DATA_DENIED",
+      "status": "NOT_TESTED_EXTERNAL"
+    },
+    {
+      "id": "FORGED_OWNER_UID_OR_PG_ROLE_DENIED",
+      "status": "NOT_TESTED_EXTERNAL"
+    },
+    {
+      "id": "FINANCIAL_WRITE_UPLOAD_GST_AND_INVOICE_ROUTES_DENIED",
+      "status": "NOT_TESTED_EXTERNAL"
+    },
+    {
+      "id": "TLS_RATE_LIMITS_AND_AUDIT_EVENTS_VERIFIED",
+      "status": "NOT_TESTED_EXTERNAL"
+    },
+    {
+      "id": "CADDY_PRODUCTION_BASELINE_UNCHANGED",
+      "status": "NOT_TESTED_EXTERNAL"
+    },
+    {
+      "id": "QA_DATABASE_ROWS_ZERO_MAPS_TWO",
+      "status": "NOT_TESTED_EXTERNAL"
+    },
+    {
+      "id": "APPROVED_ROLLBACK_EXECUTION_VERIFIED",
+      "status": "NOT_TESTED_EXTERNAL"
+    }
+  ],
+  "rollback_review_steps": [
+    "VERIFY_APPROVED_CHANGE_TICKET_AND_ROLLBACK_OWNER",
+    "CAPTURE_PUBLIC_CADDY_SHA256_AND_PRIVATE_PG_QA_ROW_COUNTS",
+    "STOP_ONLY_LABELED_ISOLATED_QA_INGRESS_AFTER_APPROVAL",
+    "REVOKE_ONLY_APPROVED_QA_CLIENT_CERT_ACCESS",
+    "RESTORE_RESTRICTED_INGRESS_AND_DNS_VIA_SEPARATE_CHANGE",
+    "VERIFY_ORIGINAL_PUBLIC_CADDY_ROUTE_AND_SHA256_UNCHANGED",
+    "VERIFY_QA_PG_RLS_ROWS_ZERO_AND_TWO_OWNER_MAPS",
+    "VERIFY_NO_EPHEMERAL_ADC_OR_UNAPPROVED_LISTENER",
+    "RECORD_ROLLBACK_REVIEW_SIGNOFF"
+  ],
+  "readiness_notes": [
+    "QA mTLS authentication is a gateway requirement, not a substitute for real Firebase session and database RLS enforcement.",
+    "Caddy strict_sni_host / SNI Host matching must be reviewed against the installed version before any external ingress.",
+    "An approved CA trust pool alone does not demonstrate revocation enforcement; the revocation mechanism requires independent testing.",
+    "A separate non-root QA HTTP adapter must be reviewed and tested; the previously approved one-shot 4F Flask test_client is NOT a deployable HTTP service.",
+    "Do not expose the existing private PostgreSQL bridge or publish production financial routes.",
+    "Caddy reverse_proxy and sensitive authorization routes are NOT part of this design artifact or authorized for deployment."
+  ]
+}
