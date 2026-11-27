@@ -370,15 +370,20 @@ def execute(expected):
     approved=roles._approved_users()
     key=firebase_key_from_existing_stage()
     host_adc_ready()
-    tokens=tokens_from_two_real_test_users(key,approved)
+    tokens=None
     image=None
     before=infra.caddy_fingerprint()
     entered=False
     try:
         entered=True
+        # Build the image and finish all Docker networking BEFORE acquiring
+        # short-lived Firebase password-login tokens. /auth/session requires
+        # auth_time within five minutes, so never spend Docker build time
+        # after asking for Test A/B passwords.
         image=make_image(expected)
         prepare_temp_adc()
         create_private_runtime(image)
+        tokens=tokens_from_two_real_test_users(key,approved)
         run_one_shot(tokens)
     finally:
         tokens=None
