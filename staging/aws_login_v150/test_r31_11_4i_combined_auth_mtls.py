@@ -41,11 +41,13 @@ class CombinedIQA(unittest.TestCase):
             patch.object(s.h,"run_combined") as combined,
             patch.object(s.f,"main") as firebase,
             patch.object(s.f,"execute") as execute,
+            patch.object(s,"audit_local_receipt") as receipt,
             mtls[0], mtls[1], mtls[2],
             redirect_stdout(StringIO()) as output,
         ):
-            self.assertEqual(s.main(["--source-sha",SHA]),0)
+            self.assertEqual(s.main(["--source-sha",SHA]),0,output.getvalue())
         combined.assert_called_once_with(SHA)
+        receipt.assert_called_once_with(SHA)
         firebase.assert_not_called()
         execute.assert_not_called()
         output=output.getvalue()
