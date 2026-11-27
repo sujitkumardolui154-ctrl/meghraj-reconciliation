@@ -1,0 +1,31 @@
+name: SBI R31.11.4G external HTTPS mTLS preflight (offline QA only)
+on:
+  push:
+    branches: [feature/sbi-r31-11-4g-mtls-readonly-preflight-20261127]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-readonly-no-aws:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test topology and fail-closed source only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile staging/aws_login_v150/r31_11_4g_mtls_readonly_preflight.py
+          python -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4g_mtls_readonly_preflight.py' -v
+      - name: Guard against deployment or write code
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCRIPT=staging/aws_login_v150/r31_11_4g_mtls_readonly_preflight.py
+          grep -Fq 'DB_R31_11_4G_EXTERNAL_MTLS_HTTPS=NOT_TESTED' "$SCRIPT"
+          grep -Fq 'DB_R31_11_4G_FINANCIAL_APPLY=LOCKED' "$SCRIPT"
+          grep -Fq 'DB_R31_11_4G_R3112_QA_DESIGN=ACTIVE_RELEASE_GATED' "$SCRIPT"
+          ! grep -En 'docker[[:space:]]+(run|create|network connect|network create)|ALTER ROLE|DROP DATABASE|CREATE DATABASE|INSERT INTO|UPDATE sbi\.|DELETE FROM|FINANCIAL_APPLY=ENABLED' "$SCRIPT"
