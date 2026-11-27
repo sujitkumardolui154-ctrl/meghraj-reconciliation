@@ -94,7 +94,7 @@ class CombinedReadOnlyTests(unittest.TestCase):
                 stage.check_repo_and_scope("unsafe")
             source.assert_not_called()
             with self.assertRaises(stage.CombinedBlocked):
-                stage.check_repo_and_scope("deadbeef"*5)
+                stage.check_repo_and_scope("deadbeef"*4)
             source.assert_not_called()
 
 
