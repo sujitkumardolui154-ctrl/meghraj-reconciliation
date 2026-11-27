@@ -17,6 +17,12 @@ from __future__ import annotations
 
 import argparse
 import re
+import sys
+
+# Imports of QA modules must not create new bytecode files during checkout
+# verification. Existing untracked pycache is separately recognized without
+# loosening the tracked-source or unexpected-file checks.
+sys.dont_write_bytecode = True
 
 import r31_11_4e_session_binding_readiness as e
 import r31_11_4g_mtls_readonly_preflight as g
@@ -99,8 +105,25 @@ def main(argv=None):
     try:
         run_combined(args.source_sha)
         return 0
+    except (g.ReadOnlyBlocked, CombinedBlocked) as reason:
+        # Only expose pre-reviewed, non-sensitive source/scope refusal codes.
+        # Never print raw cloud command errors, file contents, UIDs or tokens.
+        allowed={
+            "SOURCE_SHA_INVALID", "SOURCE_COMMIT_CHANGED", "SOURCE_DIRTY",
+            "SOURCE_STATUS_UNAVAILABLE", "SOURCE_UNEXPECTED_UNTRACKED_FILE",
+            "MTLS_REFERENCE_TEMPLATE_MISSING", "UNAPPROVED_MTLS_TEMPLATE_CHANGED",
+            "QA_DATABASE_TARGET_CHANGED",
+        }
+        code=str(reason)
+        if code not in allowed:
+            code="UNCLASSIFIED_READONLY_CHECK_FAILED"
+        print("DB_R31_11_4H_BLOCK_REASON="+code,flush=True)
+        print("STOP=DB_R31_11_4H_COMBINED_READONLY_REVIEW_REQUIRED",flush=True)
+        return 2
     except Exception:
         # Never disclose raw OAuth, Firebase, UID, Caddy, SQL or Docker data.
+        print("DB_R31_11_4H_BLOCK_REASON=UNCLASSIFIED_READONLY_CHECK_FAILED",
+              flush=True)
         print("STOP=DB_R31_11_4H_COMBINED_READONLY_REVIEW_REQUIRED",flush=True)
         return 2
     finally:
