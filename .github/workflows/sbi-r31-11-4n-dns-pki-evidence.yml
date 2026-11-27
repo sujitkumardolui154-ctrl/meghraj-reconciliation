@@ -1,0 +1,47 @@
+name: SBI R31.11.4N DNS PKI evidence QA (no cloud changes)
+on:
+  push:
+    branches: [feature/sbi-r31-11-4n-dns-pki-evidence-intake-20261127]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  strict-offline-no-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install only mock source-test imports
+        run: python -m pip install --disable-pip-version-check 'Flask>=3,<4' 'firebase-admin>=6,<8' 'cryptography>=43,<49'
+      - name: Compile, validate DNS/CA intake and predecessor QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -B -m py_compile staging/aws_login_v150/r31_11_4n_combined_dns_pki_preflight.py
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4n_*.py' -v
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4m_*.py' -v
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4l_*.py' -v
+      - name: Enforce no invented DNS, PKI or release acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE=staging/aws_login_v150/r31_11_4n_dns_pki_evidence_intake.json
+          CODE=staging/aws_login_v150/r31_11_4n_combined_dns_pki_preflight.py
+          python -m json.tool "$FILE" >/dev/null
+          python - <<'PY'
+          import json
+          p="staging/aws_login_v150/r31_11_4n_dns_pki_evidence_intake.json"
+          j=json.load(open(p,encoding="utf-8"))
+          assert j["release_authorization"]=="NOT_GRANTED"
+          assert j["qa_hostname"]=="PENDING"
+          assert j["dns_zone"]=="PENDING"
+          assert len(j["items"])==10
+          assert all(x["state"]=="PENDING" for x in j["items"])
+          PY
+          grep -Fq 'DB_R31_11_4N_EXTERNAL_HTTPS_MTLS=NOT_TESTED' "$CODE"
+          grep -Fq 'DB_R31_11_4N_FINANCIAL_APPLY=LOCKED' "$CODE"
+          grep -Fq 'DB_R31_11_4N_PRODUCTION_RELEASE=BLOCKED' "$CODE"
+          ! grep -En 'FINANCIAL_APPLY=ENABLED|DROP DATABASE|CREATE ROLE|docker.*--publish|CADDY_CONFIG_WRITE_ENABLED' "$CODE"
