@@ -190,6 +190,28 @@ class PrivateFirebaseRoleTests(unittest.TestCase):
         self.assertIn("TWO_DISTINCT_TEST_USERS=PASS_ADMIN_READONLY",
                       output.getvalue())
 
+    def test_prepare_failure_reports_only_allowlisted_nonsecret_code(self):
+        for code in ("FIREBASE_ADMIN_NOT_AVAILABLE",
+                     "APPROVED_FIREBASE_USER_NOT_VERIFIABLE",
+                     "FIREBASE_TEST_ACCOUNT_NOT_APPROVED",
+                     "PRIVATE_APPROVAL_ALREADY_EXISTS_REVIEW"):
+            with (patch.object(stage,"_offline_operator_preflight"),
+                  patch.object(stage,"prepare_users",
+                      side_effect=stage.ProvisionBlocked(code)),
+                  redirect_stdout(StringIO()) as output):
+                self.assertEqual(stage.main(["--prepare-users"]),2)
+                self.assertIn("DB_R31_11_4C_PREPARE_BLOCK_REASON="+code,
+                              output.getvalue())
+                self.assertIn("FINANCIAL_APPLY=LOCKED",output.getvalue())
+        with (patch.object(stage,"_offline_operator_preflight"),
+              patch.object(stage,"prepare_users",
+                  side_effect=stage.ProvisionBlocked("token=PRIVATE_SAMPLE_TOKEN")),
+              redirect_stdout(StringIO()) as output):
+            self.assertEqual(stage.main(["--prepare-users"]),2)
+            self.assertNotIn("PRIVATE_SAMPLE_TOKEN",output.getvalue())
+            self.assertIn("PREPARE_BLOCK_REASON=UNCLASSIFIED_PRIVATE_QA_FAILURE",
+                          output.getvalue())
+
     def test_no_financial_unlock_and_no_existing_qa_mutation(self):
         src=Path(stage.__file__).read_text("utf-8")
         self.assertIn("FINANCIAL_APPLY=LOCKED",src)
