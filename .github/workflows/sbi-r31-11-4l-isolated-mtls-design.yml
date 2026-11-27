@@ -1,0 +1,39 @@
+name: SBI R31.11.4L isolated external mTLS design review (offline CI)
+on:
+  push:
+    branches: [feature/sbi-r31-11-4l-isolated-mtls-deployment-design-20261127]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-no-deploy-mtls-design:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test imports only; no cloud access
+        run: python -m pip install --disable-pip-version-check 'Flask>=3,<4' 'firebase-admin>=6,<8' 'cryptography>=43,<49'
+      - name: Compile and run offline 4L 4K and 4J regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -B -m py_compile staging/aws_login_v150/r31_11_4l_combined_design_gate.py
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4l_*.py' -v
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4k_*.py' -v
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4j_combined_gate.py' -v
+      - name: Verify no infrastructure, approvals, or financial unlock
+        shell: bash
+        run: |
+          set -euo pipefail
+          P=staging/aws_login_v150/r31_11_4l_combined_design_gate.py
+          J=staging/aws_login_v150/r31_11_4l_isolated_mtls_design.json
+          python -m json.tool "$J" >/dev/null
+          grep -Fq 'DB_R31_11_4L_EXTERNAL_HTTPS_MTLS=NOT_TESTED' "$P"
+          grep -Fq 'DB_R31_11_4L_FINANCIAL_APPLY=LOCKED' "$P"
+          grep -Fq 'DB_R31_11_4L_PRODUCTION_RELEASE=BLOCKED' "$P"
+          grep -Fq '"deployment_authorization": "NOT_GRANTED"' "$J"
+          grep -Fq '"qa_app_http_listener": "NOT_DEPLOYED"' "$J"
+          ! grep -En 'FINANCIAL_APPLY=ENABLED|CREATE ROLE|DROP DATABASE|docker.*--publish|CADDY_CONFIG_WRITE_ENABLED' "$P"
