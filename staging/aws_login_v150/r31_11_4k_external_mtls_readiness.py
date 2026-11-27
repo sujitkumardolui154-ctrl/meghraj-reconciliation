@@ -107,7 +107,7 @@ def review_packet(packet):
         if packet[name].strip() in ("", "PENDING", "NOT_PROVIDED", "TBD"):
             missing.append(name)
     name = packet["qa_fqdn"].lower()
-    if name != "PENDING":
+    if name != "pending":
         require(re.fullmatch(r"[a-z0-9](?:[a-z0-9.-]{1,251}[a-z0-9])?",name)
                 and "." in name and not name.endswith(".invalid")
                 and not name.endswith(".local") and not name.endswith(".internal")
