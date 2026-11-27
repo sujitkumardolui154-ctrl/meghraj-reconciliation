@@ -98,7 +98,7 @@
   function showInvoices(invoices) {
     const table = document.createElement("table");
     const head = document.createElement("tr");
-    for (const col of ["Invoice No","Status","Invoice Date","Month","SOL","Original Taxable","Previously Credited","Remaining"]) {
+    for (const col of ["Invoice No","Status","Source","Credit Eligible","Invoice Date","Month","SOL","Original Taxable","Previously Credited","Remaining","Review Flags"]) {
       const th = document.createElement("th"); th.textContent=col;
       th.style.textAlign="left";th.style.padding="5px";head.appendChild(th);
     }
@@ -106,9 +106,12 @@
     for (const source of invoices) {
       const tr = document.createElement("tr");
       const vals = [
-        source.invoice_no,source.status,source.invoice_date,
-        source.service_month,source.sol_id,source.original_taxable,
-        source.previously_credited,source.remaining_taxable
+        source.invoice_no, source.status, source.source_kind || "—",
+        source.credit_note_eligible === false ? "NO — REVIEW REQUIRED" :
+          source.credit_note_eligible === true ? "YES (isolated QA)" : "NOT VERIFIED",
+        source.invoice_date, source.service_month, source.sol_id,
+        source.original_taxable, source.previously_credited,
+        source.remaining_taxable, (source.review_flags || []).join("; ")
       ];
       for (const val of vals) {
         const td=document.createElement("td");
@@ -126,9 +129,15 @@
       const rows = parseRows();
       const r = await post("lookup",{invoice_numbers:rows.map(x=>x.invoice_no)});
       showInvoices(r.invoices || []);
-      notice.textContent = "Lookup complete. Confirm original invoice dates, months, " +
-        "GSTIN and credit balance. Historical invoices not present in the isolated " +
-        "registry are NOT assumed to exist.";
+      const historical = (r.invoices || []).some(
+        x => x.source_kind === "VERIFIED_READ_ONLY_REPORT_SOURCE"
+      );
+      notice.textContent = historical
+        ? "HISTORICAL REPORT EVIDENCE ONLY — source invoice dates/amounts may be displayed, " +
+          "but prior credit-note, reconciliation and GST filing checks are not certified. " +
+          "Historical rows CANNOT be used to issue or finalize a credit note."
+        : "Lookup complete. Confirm original invoice dates, months, " +
+          "GSTIN and credit balance. Missing invoices are NOT assumed to exist.";
     } catch(e) {notice.textContent=e.message;}
     finally {setBusy(false);}
   });
