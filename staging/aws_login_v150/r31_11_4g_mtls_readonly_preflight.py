@@ -85,7 +85,7 @@ def check_source(sha):
             raise ReadOnlyBlocked("SOURCE_DIRTY")
         path=entry[3:]
         if (not re.fullmatch(
-                r"(?:[A-Za-z0-9_.-]+/)*__pycache__/[A-Za-z0-9_.-]+\\.pyc",
+                r"(?:[A-Za-z0-9_.-]+/)*__pycache__/[A-Za-z0-9_.-]+\.pyc",
                 path)
                 or path.startswith("/")):
             raise ReadOnlyBlocked("SOURCE_UNEXPECTED_UNTRACKED_FILE")
