@@ -14,8 +14,8 @@ retroactively sign a separate R31.12 receipt.
 
 ## R31.13 scope
 
-The new `r31_13_firebase_pg_binding_acceptance.py` reuses R31.11.4J's
-`audit_baseline` with the reviewed R31.11.4I source receipt. That audit
+The new `r31_13_firebase_pg_binding_acceptance.py` reuses R31.11.4H's read-only combined checks and verifies the original
+R31.11.4I local operator acceptance receipt against its pinned source SHA. That audit
 rechecks the separate internal-only QA PostgreSQL, exactly two approved
 Firebase test identities and restricted role mappings, no populated
 financial source rows, private mounted-secret metadata, no lingering
