@@ -119,15 +119,250 @@ async function refreshDashboard() {
 <script src="/dashboard.js" defer></script>
 
 <main id="dil-reports" hidden>
+
+<!-- SBI Invoice Generation and Approved GST Export, gated independently. -->
+<section class="card" id="ig-gst-report" aria-labelledby="ig-gst-title">
+  <h2 id="ig-gst-title">GST Report — Approved 16-Column Format</h2>
+  <p>Export finalized invoices by service month. Invoice No, Taxable Amount, CGST,
+  SGST and Total Bill Amount come from recorded invoices; all other fields come
+  from verified database master snapshots. This does not allocate payments.</p>
+  <label for="ig-gst-month">Service month (not invoice issue month)</label>
+  <input id="ig-gst-month" type="month" required>
+  <button id="ig-gst-download" type="button">Generate GST Report (.xlsx)</button>
+  <p id="ig-gst-message" role="status" aria-live="polite">
+    Requires a verified invoice database and GST report viewing permission.
+  </p>
+</section>
+
+<section class="card" id="ig-invoice-generator" aria-labelledby="ig-invoice-title">
+  <h2 id="ig-invoice-title">Generate Tax Invoice — Meghraj Express</h2>
+  <p>Uses verified SBI branch data and a shipment annexure. The original company logo,
+  declaration, bank details and signature must be approved and stored privately
+  before finalizing invoices. This is separate from payment reconciliation.</p>
+  <form id="ig-form">
+    <p><label for="ig-branch">Verified customer / branch</label>
+    <select id="ig-branch" required style="display:block;width:100%;max-width:580px;padding:9px"></select></p>
+    <p><label for="ig-number">New unique invoice number</label>
+    <input id="ig-number" placeholder="MXP00000" pattern="MXP[0-9]{4,10}" required></p>
+    <p><label for="ig-from">From Date</label>
+    <input type="date" id="ig-from" required>
+    <label for="ig-to">To Date</label>
+    <input type="date" id="ig-to" required>
+    <label for="ig-date">Invoice Date</label>
+    <input type="date" id="ig-date" required></p>
+    <p><label for="ig-annexure">Shipment annexure — paste all six columns from Excel (tab-separated)</label></p>
+    <p><small>Dispatch Date | LR No | Packet Ref No | Consignee | Weight | Amount.
+    Keep empty Packet Ref No cells when copying. Each shipment must belong to the service period.</small></p>
+    <textarea id="ig-annexure" rows="7" required
+      placeholder="02/02/2026&#9;334371520&#9;&#9;LA MARTINIER&#9;0.100&#9;15.00"
+      style="width:100%;padding:10px;border-radius:8px;resize:vertical"></textarea>
+    <p><button type="button" id="ig-preview">Preview Invoice &amp; GST</button>
+    <button type="button" id="ig-finalize" disabled>Finalize &amp; Record in Database</button>
+    <button type="button" id="ig-pdf" disabled>Download Finalized Invoice PDF</button></p>
+  </form>
+  <pre id="ig-message" style="white-space:pre-wrap;overflow-wrap:anywhere"
+       role="status" aria-live="polite">Invoice feature not verified yet.</pre>
+</section>
+
+<!-- Credit note generator: multi-invoice, DB-sourced immutable reference data. -->
+<section class="card" id="ig-credit-notes" aria-labelledby="ig-cn-title">
+  <h2 id="ig-cn-title">Generate Credit Note — Meghraj Express</h2>
+  <p>Enter the credit note number and date manually. The SBI original invoice
+     number, invoice date, service month, SOL, GSTIN and original taxable amount
+     are fetched from the verified PostgreSQL invoice database.
+     Credit-note values are entered per invoice and cannot exceed the
+     remaining uncredited taxable value.</p>
+  <p><strong>Reference format:</strong> Service Entry Modification Details,
+     including Sl. No., SAC Code, Invoice No., Invoice Date, Month and Amount;
+     Sub Total, CGST 9%, SGST 9%, Grand Total, amount in words and
+     Meghraj Express signatory. One credit note may include many invoices.</p>
+  <p><strong>Safety:</strong> The sample source is not automatically imported;
+     historical invoice records not yet verified in the isolated registry
+     cannot be credited. This module performs no financial or GST filing postings.</p>
+  <form id="ig-cn-form">
+    <p><label for="ig-cn-number">Credit Note Number — enter manually</label>
+       <input id="ig-cn-number" required placeholder="MXP/2026-2027/01"
+              pattern="MXP/[0-9]{4}-[0-9]{4}/[0-9]{1,6}" maxlength="16"></p>
+    <p><label for="ig-cn-date">Credit Note Date — select manually</label>
+       <input id="ig-cn-date" required type="date"></p>
+    <p><label for="ig-cn-reason">Reason for Credit Note (mandatory)</label>
+       <textarea id="ig-cn-reason" maxlength="1000" rows="2" required
+         placeholder="Courier charges deducted / cancelled by customer"></textarea></p>
+    <p><label for="ig-cn-entries">Invoice numbers and credit amounts from Excel
+       — 2 columns separated by a tab</label></p>
+    <p><small>Invoice No. | Credited Taxable Amount.
+       Original invoice date, month, SAC code and customer data are fetched
+       automatically; do NOT enter those fields manually.
+       Example: MXP18430 [TAB] 100.00. Maximum 1,000 invoice rows.</small></p>
+    <textarea id="ig-cn-entries" rows="7" required
+      placeholder="MXP18430&#9;100.00"
+      style="width:100%;padding:10px;border-radius:8px;resize:vertical"></textarea>
+    <p><button type="button" id="ig-cn-lookup">Fetch Original Invoice Details</button>
+       <button type="button" id="ig-cn-preview">Preview Credit Note &amp; GST</button>
+       <button type="button" id="ig-cn-finalize" disabled>
+         Finalize Credit Note &amp; Save to Database (QA only)</button>
+       <button type="button" id="ig-cn-download" disabled>
+         Download Finalized Credit Note PDF</button></p>
+  </form>
+  <pre id="ig-cn-message" role="status" aria-live="polite"
+       style="white-space:pre-wrap;overflow-wrap:anywhere">Enter a credit note number, date and source invoice rows to begin.</pre>
+  <div id="ig-cn-found" role="region" aria-label="Verified source invoice lookup"
+       style="overflow-x:auto"></div>
+</section>
+
+<!-- Append-only invoice cancellation / unused number void registry, QA-only. -->
+<section class="card" id="ig-cancellation" aria-labelledby="ig-cancellation-title">
+  <h2 id="ig-cancellation-title">Invoice Cancellation / Number Void Register</h2>
+  <p>Cancel a finalized invoice or void a manually allocated but unused MXP number.
+     The invoice number will never be recycled. Finalized invoice and shipment
+     evidence remain immutable; the cancellation reason, reviewer reference,
+     authenticated operator and server timestamp are stored in PostgreSQL.</p>
+  <p><strong>Safety:</strong> Only available in isolated QA until independent
+     GST filing, payment and credit-note checks are integrated. This does not
+     automatically reverse reported tax or reconciled payments.</p>
+  <form id="ig-cancel-form">
+    <p><label for="ig-cancel-number">Invoice number (manually enter)</label>
+       <input id="ig-cancel-number" placeholder="MXP21801"
+              pattern="MXP[0-9]{4,10}" required></p>
+    <p><button type="button" id="ig-cancel-check">Check Invoice / Number Status</button></p>
+    <p><label for="ig-cancel-code">Reason category</label>
+       <select id="ig-cancel-code" required>
+         <option value="">Select reason</option>
+         <option value="NUMBER_UNUSED">Allocated invoice number not used</option>
+         <option value="ENTRY_ERROR">Invoice entry error</option>
+         <option value="CUSTOMER_REQUEST">Customer requested cancellation</option>
+         <option value="DUPLICATE_REQUEST">Duplicate invoice request</option>
+         <option value="OTHER">Other approved reason</option>
+       </select></p>
+    <p><label for="ig-cancel-reason">Cancellation details (minimum 10 characters)</label>
+       <textarea id="ig-cancel-reason" rows="3" maxlength="1000" required
+                 placeholder="Record why the number cannot be used or invoice must be cancelled"></textarea></p>
+    <p><label for="ig-cancel-review">Accounting review / approval reference (required if already finalized)</label>
+       <input id="ig-cancel-review" maxlength="120" placeholder="e.g. internal approval reference"></p>
+    <p><label><input id="ig-cancel-attest" type="checkbox">
+       Accounting reviewer has checked tax filing, payment and credit-note implications
+       (mandatory for a finalized invoice; not independent system verification).</label></p>
+    <p><button type="button" id="ig-cancel-submit" disabled>
+       Confirm Cancellation &amp; Write Permanent Audit Log</button></p>
+  </form>
+  <pre id="ig-cancel-message" role="status" aria-live="polite"
+       style="white-space:pre-wrap;overflow-wrap:anywhere">Check an invoice number first. Cancellation cannot be undone by editing records.</pre>
+  <p><button type="button" id="ig-cancel-log-refresh">View Recent Cancellation Log</button></p>
+  <div id="ig-cancel-log" role="region" aria-label="Invoice cancellation audit history">
+    Audit records load on request and are read-only.
+  </div>
+</section>
+
+<!-- Selected-Invoice Bulk Report: read-only database lookup; no financial writes. -->
+<section class="card" id="bulk-selected-report" aria-labelledby="bulk-selected-title">
+  <h2 id="bulk-selected-title">Bulk Report — Selected Invoice Numbers</h2>
+  <p>Upload an Excel file containing only one column, <strong>Invoice No</strong>.
+  Invoice numbers may be in any order. The system looks up exact matches from
+  verified saved invoice records and generates a combined Excel report with
+  full available 53-column details, plus a review tab for missing or conflicting numbers.
+  No reconciliation is performed and no financial records are changed.</p>
+  <form id="bulk-selected-form">
+    <label for="bulk-selected-file">Choose invoice number list (.xlsx, maximum 8 MiB)</label>
+    <input id="bulk-selected-file" type="file" accept=".xlsx" required
+           style="display:block;margin:12px 0;max-width:100%">
+    <button type="submit" id="bulk-selected-button">Generate Selected Invoice Report</button>
+  </form>
+  <p id="bulk-selected-message" role="status" aria-live="polite">
+    Requires an authorized report viewer and a verified invoice database connection.
+  </p>
+</section>
+<script>
+(() => {
+  "use strict";
+  const form = document.getElementById("bulk-selected-form");
+  const input = document.getElementById("bulk-selected-file");
+  const button = document.getElementById("bulk-selected-button");
+  const message = document.getElementById("bulk-selected-message");
+  let busy = false;
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (busy) return;
+    const file = input.files[0];
+    if (!file || !/\.xlsx$/i.test(file.name) ||
+        !file.size || file.size > 8 * 1024 * 1024) {
+      message.textContent = "Select an invoice number XLSX up to 8 MiB.";
+      return;
+    }
+    busy = true;
+    button.disabled = true;
+    input.disabled = true;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 180000);
+    message.textContent = "Checking selected invoice numbers against verified records...";
+    try {
+      const csrf = await fetch("/auth/csrf", {
+        credentials: "same-origin", cache: "no-store",
+        redirect: "error", signal: controller.signal
+      });
+      if (!csrf.ok) throw new Error("Sign in again to authorize this report.");
+      const token = (await csrf.json()).csrf_token || "";
+      if (!/^[a-f0-9]{64}$/.test(token))
+        throw new Error("Invalid report security token; refresh and retry.");
+      const body = new FormData();
+      body.append("file", file);
+      const response = await fetch("/api/bulk-report/select-invoices-excel", {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        redirect: "error",
+        headers: {"X-DIL-CSRF": token},
+        body,
+        signal: controller.signal
+      });
+      if (!response.ok) {
+        let reason = "Selected invoice report unavailable (HTTP " + response.status + ").";
+        if ((response.headers.get("Content-Type") || "").includes("application/json")) {
+          const errorData = await response.json();
+          reason = errorData.error || reason;
+        }
+        throw new Error(reason);
+      }
+      const contentType = (response.headers.get("Content-Type") || "").toLowerCase();
+      if (!contentType.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+        throw new Error("Expected Excel file, but server returned another format.");
+      const blob = await response.blob();
+      if (blob.size < 4) throw new Error("Excel report is empty.");
+      const signature = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
+      if (signature[0] !== 0x50 || signature[1] !== 0x4b)
+        throw new Error("Invalid Excel report signature.");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "SBI-Selected-Invoices-Combined.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      message.textContent =
+        "Selected invoice report downloaded. Check Lookup Review for missing or conflicting numbers. Not reconciled.";
+    } catch (error) {
+      message.textContent = error.name === "AbortError"
+        ? "Invoice lookup timed out; no download confirmed."
+        : error.message || "Invoice selection report unavailable.";
+    } finally {
+      clearTimeout(timer);
+      busy = false;
+      button.disabled = false;
+      input.disabled = false;
+    }
+  });
+})();
+</script>
+
 <!-- Bulk Report: source-only reporting; no financial database updates. -->
 <section class="card" id="bulk-report" aria-labelledby="bulk-report-title">
   <h2 id="bulk-report-title">Bulk Report</h2>
-  <p>Upload one approved Invoice Details. workbook (.xlsx, up to 8 MiB) to generate a source-only ZIP report. This does not reconcile payments or update the financial database.</p>
+  <p>Upload one approved Invoice Details. workbook (.xlsx, up to 8 MiB) to generate one source-only Excel workbook with six report worksheets. This does not reconcile payments or update the financial database.</p>
   <form id="bulk-report-form">
     <label for="bulk-report-file">Choose Excel workbook</label>
     <input id="bulk-report-file" type="file" accept=".xlsx" required
            style="display:block;margin:12px 0;max-width:100%">
-    <button id="bulk-report-generate" type="submit">Generate Bulk Report</button>
+    <button id="bulk-report-generate" type="submit">Generate Combined Excel Report</button>
   </form>
   <p id="bulk-report-message" role="status" aria-live="polite">Ready to generate a source-only report.</p>
 </section>
@@ -144,7 +379,7 @@ async function refreshDashboard() {
     event.preventDefault();
     if (busy) return;
     const file = input.files[0];
-    if (!file || !/\\.xlsx$/i.test(file.name) ||
+    if (!file || !/\.xlsx$/i.test(file.name) ||
         !file.size || file.size > 8 * 1024 * 1024) {
       message.textContent = "Select a non-empty .xlsx workbook up to 8 MiB.";
       return;
@@ -152,17 +387,31 @@ async function refreshDashboard() {
     busy = true;
     button.disabled = true;
     input.disabled = true;
-    message.textContent = "Generating source-only report...";
+    message.textContent = "Generating combined source-only Excel report...";
     const body = new FormData();
     body.append("file", file);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 120000);
     try {
-      const response = await fetch("/api/bulk-report/generate", {
+      const csrfResponse = await fetch("/auth/csrf", {
+        credentials: "same-origin",
+        cache: "no-store",
+        redirect: "error",
+        signal: controller.signal
+      });
+      if (!csrfResponse.ok) {
+        throw new Error("Unable to establish upload security. Sign in and retry.");
+      }
+      const csrfData = await csrfResponse.json();
+      if (!/^[a-f0-9]{64}$/.test(csrfData.csrf_token || "")) {
+        throw new Error("Upload security token missing. Refresh and retry.");
+      }
+      const response = await fetch("/api/bulk-report/generate-excel", {
         method: "POST",
         credentials: "same-origin",
         cache: "no-store",
         redirect: "error",
+        headers: {"X-DIL-CSRF": csrfData.csrf_token},
         body,
         signal: controller.signal
       });
@@ -179,25 +428,24 @@ async function refreshDashboard() {
         throw new Error(reason || "Bulk Report generation failed (HTTP " + response.status + ").");
       }
       const contentType = (response.headers.get("Content-Type") || "").toLowerCase();
-      if (!contentType.includes("application/zip") &&
-          !contentType.includes("application/octet-stream")) {
-        throw new Error("Unexpected response type; ZIP download cancelled.");
+      if (!contentType.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) {
+        throw new Error("Unexpected response type; Excel download cancelled.");
       }
       const blob = await response.blob();
-      if (blob.size < 4) throw new Error("Empty or invalid report archive.");
+      if (blob.size < 4) throw new Error("Empty or invalid Excel report.");
       const magic = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
       if (magic[0] !== 0x50 || magic[1] !== 0x4b) {
-        throw new Error("Response is not a ZIP archive.");
+        throw new Error("Response is not a valid XLSX archive.");
       }
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "sbi-bulk-report.zip";
+      link.download = "SBI-Bulk-Report-Combined.xlsx";
       document.body.appendChild(link);
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 60000);
-      message.textContent = "Source-only Bulk Report generated. Check browser downloads. Reconciliation has not run.";
+      message.textContent = "Combined Excel Report generated (6 worksheets). Check browser downloads. Reconciliation has not run.";
     } catch (error) {
       message.textContent = error.name === "AbortError"
         ? "Report generation timed out. No download was confirmed."
@@ -708,5 +956,8 @@ Reports include new invoices only after an import completes. Preview alone does 
 <script src="/account.js" defer></script>
 <!-- F01: single floating overlay across existing dashboard views; inert until authorized API is reviewed. -->
 <script src="/dil_floating_assistant.js" defer></script>
+<script src="/invoice_gst_ui.js" defer></script>
+<script src="/invoice_gst_cancellation_ui.js" defer></script>
+<script src="/credit_note_ui.js" defer></script>
 </body>
 </html>
