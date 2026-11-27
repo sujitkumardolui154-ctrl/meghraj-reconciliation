@@ -1,0 +1,38 @@
+name: SBI R31.11.4E private session binding readiness (source QA)
+on:
+  push:
+    branches: [feature/sbi-r31-11-4e-session-binding-readiness-20261127]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  session-contract-no-live-firebase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install only isolated test dependencies
+        run: python -m pip install --disable-pip-version-check 'Flask>=3.1,<4' 'firebase-admin>=6.5,<8'
+      - name: Verify static syntax
+        run: |
+          python -m py_compile \
+            staging/aws_login_v150/r31_11_4e_session_binding_readiness.py \
+            staging/aws_login_v150/test_r31_11_4e_session_binding_readiness.py \
+            staging/aws_login_v150/test_r31_11_4e_session_binding_contract.py
+      - name: Test safe readiness guard and Flask Firebase-session contract
+        run: |
+          python -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4e_*.py' -v
+          python -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4_mock_firebase_session_acceptance.py' -v
+          python -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4_separate_db_adapter.py' -v
+      - name: Assert this release cannot provision roles or ship passwords
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE=staging/aws_login_v150/r31_11_4e_session_binding_readiness.py
+          ! grep -Eq 'CREATE ROLE|ALTER ROLE|DROP ROLE|INSERT INTO|UPDATE sbi\.|DELETE FROM|docker run|docker network connect|set_custom_user_claims|SBI_R31_11_4_RUNTIME_ENABLED=' "$FILE"
+          grep -Fq 'DB_R31_11_4E_REAL_SESSION_E2E=NOT_TESTED' "$FILE"
+          grep -Fq 'DB_R31_11_4E_FINANCIAL_APPLY=LOCKED' "$FILE"
+          grep -Fq 'DB_R31_11_4E_R3112=QUARANTINED' "$FILE"
