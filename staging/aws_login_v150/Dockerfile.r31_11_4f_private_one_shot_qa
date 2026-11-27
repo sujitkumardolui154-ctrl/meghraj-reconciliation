@@ -1,0 +1,19 @@
+# DB-R31.11.4F: ephemeral, single-process acceptance image ONLY.
+# No public HTTP listener, no app.py, no uploads, no financial engine.
+# Exact private Firebase session middleware + existing R31.11.4 RLS adapter.
+FROM python:3.12-slim-bookworm
+WORKDIR /app
+RUN python -m pip install --no-cache-dir \
+    "Flask>=3.1,<4" \
+    "firebase-admin>=6.5,<8" \
+    "psycopg[binary]>=3.2,<4"
+COPY dashboard_source/dashboard_sessions.py /app/dashboard_sessions.py
+COPY staging/aws_login_v150/r31_11_4_runtime_rls_adapter.py /app/r31_11_4_runtime_rls_adapter.py
+COPY staging/aws_login_v150/r31_11_4_runtime_rls_blueprint.py /app/r31_11_4_runtime_rls_blueprint.py
+COPY staging/aws_login_v150/r31_11_4f_private_session_probe.py /app/r31_11_4f_private_session_probe.py
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+ARG SBI_SOURCE_SHA=UNVERIFIED
+LABEL org.opencontainers.image.revision="${SBI_SOURCE_SHA}"
+RUN chmod 0444 /app/*.py
+USER 10001:10001
+ENTRYPOINT ["python3","-I","/app/r31_11_4f_private_session_probe.py"]
