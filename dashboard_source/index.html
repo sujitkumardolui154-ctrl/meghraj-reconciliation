@@ -201,6 +201,10 @@ async function refreshDashboard() {
   </form>
   <pre id="ig-cancel-message" role="status" aria-live="polite"
        style="white-space:pre-wrap;overflow-wrap:anywhere">Check an invoice number first. Cancellation cannot be undone by editing records.</pre>
+  <p><button type="button" id="ig-cancel-log-refresh">View Recent Cancellation Log</button></p>
+  <div id="ig-cancel-log" role="region" aria-label="Invoice cancellation audit history">
+    Audit records load on request and are read-only.
+  </div>
 </section>
 
 <!-- Selected-Invoice Bulk Report: read-only database lookup; no financial writes. -->
