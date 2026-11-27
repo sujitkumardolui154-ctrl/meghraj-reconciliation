@@ -28,7 +28,7 @@ FROM sbi_invoice_gst.invoices i WHERE invoice_no = ANY(%s)
 
 
 def create_credit_note_blueprint(can_read, can_create, csrf_valid,
-                                 connection_factory=None):
+                                 connection_factory=None, historical_lookup=None):
     bp = Blueprint("sbi_credit_note_generation", __name__,
                    url_prefix="/api/credit-notes")
     connect = connection_factory or connect_private_db
@@ -105,44 +105,103 @@ def create_credit_note_blueprint(can_read, can_create, csrf_valid,
 
     @bp.post("/lookup")
     def lookup():
+        """Resolve isolated issued invoices; optionally show historical REVIEW-ONLY.
+
+        A Firestore report match is NOT an authorized invoice source for
+        issuing a credit note. Historical eligibility remains blocked.
+        """
         try:
             p = parse_body()
             nums = p.get("invoice_numbers")
-            if not isinstance(nums,list) or not 1 <= len(nums) <= 1000:
+            if not isinstance(nums, list) or not 1 <= len(nums) <= 1000:
                 raise CreditNoteError("INVOICE_NUMBER_LIST_REQUIRED")
             if len(nums) != len(set(nums)):
                 raise CreditNoteError("DUPLICATE_SOURCE_INVOICE_NUMBER")
-            if any(not isinstance(n,str) or not INVOICE_NUMBER.fullmatch(n) for n in nums):
+            if any(not isinstance(n, str) or not INVOICE_NUMBER.fullmatch(n)
+                   for n in nums):
                 raise CreditNoteError("INVALID_SOURCE_INVOICE_NO")
             with connect() as conn:
-                rows, prior = invoice_sources(conn,nums)
+                rows, prior = invoice_sources(conn, nums)
+            missing = [number for number in nums if number not in rows]
+            historical = {}
+            if missing and os.environ.get(
+                "SBI_CREDIT_NOTE_HISTORICAL_REPORT_REVIEW"
+            ) == "1":
+                from credit_note_historical_evidence import (
+                    HistoricalInvoiceEvidenceUnavailable,
+                    lookup_historical_evidence,
+                )
+                try:
+                    result = lookup_historical_evidence(
+                        missing, verified_lookup=historical_lookup
+                    )
+                    historical = {
+                        row["invoice_no"]: row for row in result["records"]
+                    }
+                except HistoricalInvoiceEvidenceUnavailable:
+                    return fail("HISTORICAL_READONLY_SOURCE_UNAVAILABLE", 503)
             out = []
+            from decimal import Decimal
             for num in nums:
                 row = rows.get(num)
                 if row is None:
-                    out.append({"invoice_no":num,
-                                "status":"SOURCE_INVOICE_NOT_FOUND_OR_NOT_IMPORTED"})
+                    proof = historical.get(num)
+                    if proof is None:
+                        out.append({
+                            "invoice_no": num,
+                            "status": "SOURCE_INVOICE_NOT_FOUND_OR_NOT_IMPORTED",
+                            "credit_note_eligible": False,
+                        })
+                    else:
+                        out.append({
+                            "invoice_no": num, "status": proof["status"],
+                            "source_kind": proof["source_kind"],
+                            "credit_note_eligible": False,
+                            "invoice_date": proof.get("invoice_date_source"),
+                            "service_month": proof.get("service_month_source"),
+                            "client_name": proof.get("client_name_source"),
+                            "sol_id": proof.get("sol_id_source"),
+                            "gstin": proof.get("customer_gstin_source"),
+                            "original_taxable": proof.get("taxable_source"),
+                            "previously_credited": None,
+                            "remaining_taxable": None,
+                            "review_flags": proof.get("source_review_flags", []),
+                            "blocked_because": proof["blocked_because"],
+                        })
                 else:
-                    from decimal import Decimal
                     total = Decimal(row["taxable"])
-                    previous = Decimal(str(prior.get(num,"0.00")))
-                    remaining = total-previous
+                    previous = Decimal(str(prior.get(num, "0.00")))
+                    remaining = total - previous
+                    eligible = (
+                        row["status"] == "FINALIZED"
+                        and not row["cancelled"]
+                        and row["verification_flags"] == ""
+                        and remaining > 0
+                    )
                     out.append({
-                        "invoice_no":num, "status":"CANCELLED" if row["cancelled"] else row["status"],
-                        "invoice_date":row["invoice_date"],
-                        "service_month":row["service_month"],
-                        "client_name":row["client_name"], "sol_id":row["sol_id"],
-                        "gstin":row["gstin"], "original_taxable":str(total),
-                        "previously_credited":str(previous),
-                        "remaining_taxable":str(remaining),
-                        "verified":row["verification_flags"]=="",
+                        "invoice_no": num,
+                        "status": "CANCELLED" if row["cancelled"] else row["status"],
+                        "invoice_date": row["invoice_date"],
+                        "service_month": row["service_month"],
+                        "client_name": row["client_name"], "sol_id": row["sol_id"],
+                        "gstin": row["gstin"], "original_taxable": str(total),
+                        "previously_credited": str(previous),
+                        "remaining_taxable": str(remaining),
+                        "verified": row["verification_flags"] == "",
+                        "credit_note_eligible": eligible,
+                        "source_kind": "ISOLATED_INVOICE_QA",
                     })
-            return jsonify(invoices=out, database_source="ISOLATED_INVOICE_QA",
-                           persisted=False, financial_writes=False)
+            return jsonify(
+                invoices=out, database_source="ISOLATED_INVOICE_QA",
+                historical_report_review=bool(historical),
+                historical_issuance_authorized=False,
+                persisted=False, financial_writes=False,
+            )
         except CreditNoteError as exc:
-            return fail(str(exc),422)
+            return fail(str(exc), 422)
         except Exception:
-            return fail("CREDIT_SOURCE_DATABASE_UNAVAILABLE",503)
+            return fail("CREDIT_SOURCE_DATABASE_UNAVAILABLE", 503)
+
 
     @bp.post("/preview")
     def preview():
