@@ -72,8 +72,23 @@ def check_source(sha):
           "SOURCE_SHA_INVALID")
     code,head=run("git","-C",str(PROJECT_ROOT),"rev-parse","HEAD")
     check(code==0 and head.strip()==sha,"SOURCE_COMMIT_CHANGED")
-    code,status=run("git","-C",str(PROJECT_ROOT),"status","--porcelain")
-    check(code==0 and status.strip()=="","SOURCE_DIRTY")
+    # A Python script importing this module may generate .pyc files in a
+    # pristine worktree *before* its first git status call. Validate tracked
+    # changes strictly; permit only untracked, ordinary __pycache__/*.pyc
+    # paths. No other unexpected file, staged diff or source modification
+    # is acceptable. Do not delete files or rewrite gitignore.
+    code,status=run("git","-C",str(PROJECT_ROOT),"status",
+                    "--porcelain=v1","--untracked-files=all")
+    check(code==0,"SOURCE_STATUS_UNAVAILABLE")
+    for entry in status.splitlines():
+        if not entry.startswith("?? "):
+            raise ReadOnlyBlocked("SOURCE_DIRTY")
+        path=entry[3:]
+        if (not re.fullmatch(
+                r"(?:[A-Za-z0-9_.-]+/)*__pycache__/[A-Za-z0-9_.-]+\.pyc",
+                path)
+                or path.startswith("/")):
+            raise ReadOnlyBlocked("SOURCE_UNEXPECTED_UNTRACKED_FILE")
     check(PLACEHOLDER.is_file() and not PLACEHOLDER.is_symlink(),
           "MTLS_REFERENCE_TEMPLATE_MISSING")
     src=PLACEHOLDER.read_text("utf-8")
