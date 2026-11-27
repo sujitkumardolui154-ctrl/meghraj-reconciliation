@@ -55,7 +55,7 @@
 
   function requestPayload() {
     const id = noteNo.value.trim();
-    if (!/^MXP\/[0-9]{4}-[0-9]{4}\/[0-9]{1,6}$/.test(id))
+    if (id.length > 16 || !/^MXP\/[0-9]{4}-[0-9]{4}\/[0-9]{1,6}$/.test(id))
       throw new Error("Enter a unique note number, e.g. MXP/2026-2027/01.");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(noteDate.value))
       throw new Error("Select the credit note date.");
