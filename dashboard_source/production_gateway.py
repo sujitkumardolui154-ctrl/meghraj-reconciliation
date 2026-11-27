@@ -446,6 +446,13 @@ def invoice_gst_ui_script():
     result.headers["X-Content-Type-Options"] = "nosniff"
     return result
 
+@app.get("/invoice_gst_cancellation_ui.js")
+def invoice_gst_cancellation_ui_script():
+    result = send_from_directory(".", "invoice_gst_cancellation_ui.js", mimetype="application/javascript")
+    result.headers["Cache-Control"] = "no-store"
+    result.headers["X-Content-Type-Options"] = "nosniff"
+    return result
+
 
 app.register_blueprint(
     create_invoice_gst_blueprint(
