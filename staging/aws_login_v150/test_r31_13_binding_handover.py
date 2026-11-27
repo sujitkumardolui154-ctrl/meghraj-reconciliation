@@ -19,7 +19,9 @@ class R3113BindingHandover(unittest.TestCase):
             ast.parse(value)
 
     def test_reuses_existing_security_evidence_instead_of_reprovisioning(self):
-        self.assertIn("existing.audit_baseline(args.source_sha)", SCRIPT)
+        self.assertIn("h.run_combined(args.source_sha)", SCRIPT)
+        self.assertIn("i.audit_local_receipt(PRIOR_4I_SOURCE_SHA)", SCRIPT)
+        self.assertIn("f5b3088b2306cd6b435f4e6f1cd3e107dc88879f", SCRIPT)
         self.assertIn("DB_R31_13_TWO_FIREBASE_TO_PG_SESSIONS=PASS_PRIOR_4I_LOCAL_OPERATOR_RECEIPT", SCRIPT)
         self.assertIn("APPROVED_4I_SOURCE_SHA", PRIOR)
         self.assertIn("audit_local_receipt(APPROVED_4I_SOURCE_SHA)", PRIOR)
