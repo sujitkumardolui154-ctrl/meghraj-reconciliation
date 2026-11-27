@@ -453,6 +453,13 @@ def invoice_gst_cancellation_ui_script():
     result.headers["X-Content-Type-Options"] = "nosniff"
     return result
 
+@app.get("/credit_note_ui.js")
+def credit_note_ui_script():
+    result = send_from_directory(".", "credit_note_ui.js", mimetype="application/javascript")
+    result.headers["Cache-Control"] = "no-store"
+    result.headers["X-Content-Type-Options"] = "nosniff"
+    return result
+
 
 app.register_blueprint(
     create_invoice_gst_blueprint(
@@ -493,3 +500,30 @@ app.register_blueprint(
     )
 )
 
+
+# Separate credit-note creation entitlement. Read-only credit-note report
+# module remains untouched. There is no payment/GST filing or production write.
+from credit_note_feature import create_credit_note_blueprint as _credit_note_generate
+
+
+def _credit_note_creator_authorized():
+    user = getattr(g, "dil_user", None)
+    identity = getattr(g, "dil_identity", None)
+    if user is None or not isinstance(identity, dict):
+        return False
+    if getattr(user, "disabled", True) or getattr(user, "uid", None) != identity.get("uid"):
+        return False
+    claims = getattr(user, "custom_claims", None) or {}
+    return (
+        claims.get("dil_dashboard") is True
+        and claims.get("sbi_credit_note_creator") is True
+    )
+
+
+app.register_blueprint(_credit_note_generate(
+    can_read=lambda: can_view_report(
+        getattr(g, "dil_user", None), getattr(g, "dil_identity", None)
+    ),
+    can_create=_credit_note_creator_authorized,
+    csrf_valid=_invoice_csrf_valid,
+))
