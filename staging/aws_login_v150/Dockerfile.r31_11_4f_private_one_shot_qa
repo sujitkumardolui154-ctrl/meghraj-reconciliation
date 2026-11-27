@@ -16,4 +16,4 @@ ARG SBI_SOURCE_SHA=UNVERIFIED
 LABEL org.opencontainers.image.revision="${SBI_SOURCE_SHA}"
 RUN chmod 0444 /app/*.py
 USER 10001:10001
-ENTRYPOINT ["python3","-I","/app/r31_11_4f_private_session_probe.py"]
+ENTRYPOINT ["python3","/app/r31_11_4f_private_session_probe.py"]
