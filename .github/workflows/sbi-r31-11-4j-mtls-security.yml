@@ -1,0 +1,56 @@
+name: SBI R31.11.4J synthetic mTLS security (offline CI only)
+on:
+  push:
+    branches: [feature/sbi-r31-11-4j-mtls-loopback-acceptance-20261127]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-mtls-loopback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install only offline test dependencies
+        run: python -m pip install --disable-pip-version-check 'Flask>=3,<4' 'firebase-admin>=6,<8' 'cryptography>=43,<49'
+      - name: Offline syntax, combined read-only gate and historical regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile \
+            staging/aws_login_v150/r31_11_4j_loopback_mtls.py \
+            staging/aws_login_v150/r31_11_4j_combined_mtls_gate.py
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4j_*.py' -v
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4i_*.py' -v
+      - name: Genuine TLS handshakes on localhost with disposable synthetic CA
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -B -u staging/aws_login_v150/r31_11_4j_loopback_mtls.py | tee /tmp/qa-r3114j-stdout.txt
+          for pass in \
+            'DB_R31_11_4J_VALID_CLIENT_CERT=PASS_TLS12_PLUS_LOOPBACK' \
+            'DB_R31_11_4J_NO_CLIENT_CERT=DENIED_PASS' \
+            'DB_R31_11_4J_WRONG_CLIENT_CA=DENIED_PASS' \
+            'DB_R31_11_4J_EXPIRED_CLIENT_CERT=DENIED_PASS' \
+            'DB_R31_11_4J_WRONG_SERVER_NAME=DENIED_PASS' \
+            'DB_R31_11_4J_WRONG_SERVER_CA=DENIED_PASS' \
+            'DB_R31_11_4J_SYNTHETIC_KEYS=DISCARDED_TEMP_DIRECTORY' \
+            'DB_R31_11_4J_LOOPBACK_MTLS=PASS_SYNTHETIC_ONLY' \
+            'DB_R31_11_4J_EXTERNAL_MTLS_HTTPS=NOT_TESTED' \
+            'DB_R31_11_4J_FINANCIAL_APPLY=LOCKED' \
+            'DB_R31_11_4J_PRODUCTION_RELEASE=BLOCKED'; do
+            grep -Fqx "$pass" /tmp/qa-r3114j-stdout.txt
+          done
+      - name: Reject implementation mutations or claimed live mTLS acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          S=staging/aws_login_v150/r31_11_4j_combined_mtls_gate.py
+          grep -Fq 'DB_R31_11_4J_EXTERNAL_MTLS_HTTPS=NOT_TESTED' "$S"
+          grep -Fq 'DB_R31_11_4J_FINANCIAL_APPLY=LOCKED' "$S"
+          grep -Fq 'DB_R31_11_4J_PRODUCTION_RELEASE=BLOCKED' "$S"
+          grep -Fq 'f5b3088b2306cd6b435f4e6f1cd3e107dc88879f' "$S"
+          ! grep -En 'docker.+(run|create|start|network connect)|FINANCIAL_APPLY=ENABLED|CREATE ROLE|DROP DATABASE|UPDATE sbi\.' "$S"
