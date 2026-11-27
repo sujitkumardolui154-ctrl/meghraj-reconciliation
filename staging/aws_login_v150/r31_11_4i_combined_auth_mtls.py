@@ -135,6 +135,67 @@ def prior_evidence_status():
           flush=True)
 
 
+def audit_local_receipt(sha: str):
+    """Read metadata and allowlisted results only; no trust escalation.
+
+    A local prior R31.11.4I receipt is evidence of what the operator script
+    reported, *not* a signed independent runtime attestation.
+    """
+    require(not RECEIPT_DIR.is_symlink(), "QA_RECEIPT_DIRECTORY_SYMLINK")
+    if not RECEIPT_DIR.exists():
+        require(not RECEIPT.exists() and not RECEIPT.is_symlink(),
+                "QA_RECEIPT_ORPHANED_OR_SYMLINK")
+        print("DB_R31_11_4I_LOCAL_QA_AUTH_RECEIPT=NOT_PRESENT", flush=True)
+        return
+    folder = RECEIPT_DIR.stat()
+    require(stat.S_ISDIR(folder.st_mode)
+            and folder.st_uid == os.geteuid()
+            and stat.S_IMODE(folder.st_mode) == 0o700,
+            "QA_RECEIPT_DIRECTORY_NOT_RESTRICTED")
+    require(not RECEIPT.is_symlink(), "QA_RECEIPT_SYMLINK")
+    if not RECEIPT.exists():
+        print("DB_R31_11_4I_LOCAL_QA_AUTH_RECEIPT=NOT_PRESENT", flush=True)
+        return
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(str(RECEIPT), flags)
+    try:
+        fstat = os.fstat(fd)
+        require(stat.S_ISREG(fstat.st_mode)
+                and stat.S_IMODE(fstat.st_mode) == 0o600
+                and fstat.st_uid == os.geteuid()
+                and 1 <= fstat.st_size <= 8192,
+                "QA_RECEIPT_FILE_NOT_RESTRICTED")
+        with os.fdopen(fd, "r", encoding="utf-8") as stream:
+            content = stream.read(8193)
+        fd = -1
+    finally:
+        if fd >= 0:
+            os.close(fd)
+    require(len(content) <= 8192, "QA_RECEIPT_FILE_TOO_LARGE")
+    try:
+        report=json.loads(content)
+    except (UnicodeError, ValueError):
+        raise Blocked("QA_RECEIPT_INVALID_JSON") from None
+    require(type(report) is dict
+            and report.get("schema") == "DB-R31.11.4I-OPERATOR-QA-RECEIPT-V1"
+            and report.get("classification") == "local_operator_execution_not_independent_attestation"
+            and report.get("status") == "PASS_PRIVATE_IN_PROCESS_QA_ONLY"
+            and report.get("source_sha") == sha
+            and report.get("qa_database") == g.QA_DB
+            and report.get("caddy_fingerprint_sha256") == h.EXPECTED_4G_CADDY_SHA256
+            and report.get("verified_results") == sorted(REQUIRED_4F)
+            and report.get("external_mtls") == "NOT_TESTED"
+            and report.get("prior_4f_execution") == "NOT_ATTESTED"
+            and report.get("financial_apply") == "LOCKED"
+            and report.get("r3112") == "ACTIVE_QA_DESIGN_RELEASE_GATED"
+            and report.get("production_release") == "BLOCKED",
+            "QA_RECEIPT_CONTENT_OR_SOURCE_UNEXPECTED")
+    print("DB_R31_11_4I_LOCAL_QA_AUTH_RECEIPT=PRESENT_OPERATOR_REPORT_NOT_INDEPENDENT",
+          flush=True)
+
+
 def receipt_preflight():
     """Never overwrite an existing receipt or follow a symlink."""
     require(not RECEIPT_DIR.is_symlink(), "QA_RECEIPT_DIRECTORY_SYMLINK")
@@ -191,6 +252,7 @@ def combined_readonly(sha):
     h.run_combined(sha)
     verify_mtls_design_only()
     prior_evidence_status()
+    audit_local_receipt(sha)
     print("DB_R31_11_4I_COMBINED_READONLY=PASS", flush=True)
 
 
@@ -251,6 +313,12 @@ def main(argv=None):
             "QA_RECEIPT_DIRECTORY_SYMLINK",
             "QA_RECEIPT_DIRECTORY_NOT_RESTRICTED",
             "QA_RECEIPT_ALREADY_EXISTS_REVIEW_REQUIRED",
+            "QA_RECEIPT_ORPHANED_OR_SYMLINK",
+            "QA_RECEIPT_SYMLINK",
+            "QA_RECEIPT_FILE_NOT_RESTRICTED",
+            "QA_RECEIPT_FILE_TOO_LARGE",
+            "QA_RECEIPT_INVALID_JSON",
+            "QA_RECEIPT_CONTENT_OR_SOURCE_UNEXPECTED",
             "QA_MTLS_REFERENCE_CHANGED",
             "QA_CADDY_NOT_VERIFIED_V2",
             "QA_CADDY_FINGERPRINT_CHANGED",
