@@ -475,6 +475,106 @@ class IsolatedPostgresCombinedTests(unittest.TestCase):
             else:
                 os.environ["SBI_INVOICE_GST_TEST_DSN"] = previous
 
+    def test_13_void_unused_invoice_number_and_block_reuse(self):
+        payload = {
+            "invoice_no": "MXP90002", "reason_code": "NUMBER_UNUSED",
+            "reason": "Number skipped before invoice issue in QA",
+        }
+        result = self.client.post("/api/invoice-gst/cancellations", json=payload)
+        self.assertEqual(result.status_code, 201, result.get_json())
+        self.assertEqual(result.get_json()["cancellation_kind"], "VOID_UNUSED")
+        self.assertFalse(result.get_json()["accounting_reversal_performed"])
+        duplicate = self.client.post("/api/invoice-gst/cancellations", json=payload)
+        self.assertEqual(duplicate.status_code, 409, duplicate.get_json())
+        attempted = deepcopy(SOURCE)
+        attempted["invoice_no"] = "MXP90002"
+        response = self.client.post("/api/invoice-gst/finalize", json=attempted)
+        self.assertEqual(response.status_code, 409, response.get_json())
+        self.assertEqual(response.get_json()["error"], "CANCELLED_INVOICE_NUMBER_CANNOT_BE_REUSED")
+        with self.connect() as conn:
+            self.assertEqual(conn.execute(
+                "SELECT count(*) AS n FROM sbi_invoice_gst.invoices WHERE invoice_no='MXP90002'"
+            ).fetchone()["n"], 0)
+            with self.assertRaises(self.psycopg.errors.RaiseException):
+                with conn.transaction():
+                    conn.execute(
+                        "DELETE FROM sbi_invoice_gst.invoice_number_cancellations "
+                        "WHERE invoice_no='MXP90002'"
+                    )
+
+    def test_14_cancel_finalized_invoice_with_review_and_gst_exclusion(self):
+        incomplete = {
+            "invoice_no": "MXP90001", "reason_code": "ENTRY_ERROR",
+            "reason": "Incorrect original invoice entry needs cancellation",
+        }
+        denied = self.client.post("/api/invoice-gst/cancellations", json=incomplete)
+        self.assertEqual(denied.status_code, 422, denied.get_json())
+        self.assertEqual(denied.get_json()["error"], "FINALIZED_INVOICE_REVIEW_REFERENCE_REQUIRED")
+        incomplete["review_reference"] = "QA-APPROVAL-001"
+        denied = self.client.post("/api/invoice-gst/cancellations", json=incomplete)
+        self.assertEqual(denied.status_code, 422, denied.get_json())
+        incomplete["accounting_review_confirmed"] = True
+        approved = self.client.post("/api/invoice-gst/cancellations", json=incomplete)
+        self.assertEqual(approved.status_code, 201, approved.get_json())
+        self.assertEqual(approved.get_json()["cancellation_kind"], "CANCEL_FINALIZED")
+        self.assertTrue(approved.get_json()["audit_logged"])
+        self.assertFalse(approved.get_json()["reconciliation_applied"])
+        lookup = self.client.get("/api/invoice-gst/invoices/MXP90001")
+        self.assertEqual(lookup.get_json()["invoice"]["status"], "CANCELLED")
+        pdf = self.client.get("/api/invoice-gst/invoices/MXP90001.pdf")
+        self.assertEqual(pdf.status_code, 409, pdf.get_json())
+        self.assertEqual(pdf.get_json()["error"], "CANCELLED_INVOICE_PDF_NOT_ACTIVE")
+        report = self.client.get("/api/invoice-gst/gst.xlsx?month=2026-02")
+        self.assertEqual(report.status_code, 200)
+        from openpyxl import load_workbook
+        wb = load_workbook(BytesIO(report.data), data_only=True)
+        self.assertEqual(wb.active.max_row, 1)
+        self.assertEqual(tuple(c.value for c in wb.active[1]), HEADERS)
+        register = self.client.get("/api/invoice-gst/cancellations?invoice_no=MXP90001")
+        self.assertEqual(register.status_code, 200)
+        self.assertEqual(register.get_json()["count"], 1)
+        self.assertEqual(register.get_json()["records"][0]["review_reference"], "QA-APPROVAL-001")
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT count(*) AS n FROM sbi_invoice_gst.invoice_lines "
+                "WHERE invoice_no='MXP90001'"
+            ).fetchone()["n"]
+            self.assertEqual(rows, 2)
+            with self.assertRaises(self.psycopg.errors.RaiseException):
+                with conn.transaction():
+                    conn.execute(
+                        "UPDATE sbi_invoice_gst.invoice_number_cancellations "
+                        "SET reason_text='Changed without audit' WHERE invoice_no='MXP90001'"
+                    )
+
+    def test_15_cancellation_flag_and_live_mode_are_locked(self):
+        initial = {
+            "invoice_no": "MXP90003", "reason_code": "NUMBER_UNUSED",
+            "reason": "Skipped invoice sequence number for QA",
+        }
+        os.environ["SBI_INVOICE_GST_CANCELLATION_ENABLED"] = "0"
+        try:
+            denied = self.client.post("/api/invoice-gst/cancellations", json=initial)
+            self.assertEqual(denied.status_code, 403)
+            self.assertEqual(denied.get_json()["error"], "INVOICE_CANCELLATION_LOCKED")
+        finally:
+            os.environ["SBI_INVOICE_GST_CANCELLATION_ENABLED"] = "1"
+        os.environ["SBI_INVOICE_GST_DEPLOYMENT_MODE"] = "APPROVED_LIVE"
+        try:
+            denied = self.client.post("/api/invoice-gst/cancellations", json=initial)
+            self.assertEqual(denied.status_code, 403)
+            self.assertEqual(
+                denied.get_json()["error"],
+                "LIVE_CANCELLATION_REQUIRES_EXTERNAL_LEDGER_INTEGRATION",
+            )
+        finally:
+            os.environ["SBI_INVOICE_GST_DEPLOYMENT_MODE"] = "ISOLATED_QA"
+        with self.connect() as conn:
+            self.assertEqual(conn.execute(
+                "SELECT count(*) AS n FROM sbi_invoice_gst.invoice_number_cancellations "
+                "WHERE invoice_no='MXP90003'"
+            ).fetchone()["n"], 0)
+
     def test_05_fy_conflict_and_review(self):
         response = self.client.get("/api/invoice-gst/gst.xlsx?month=2026-02&fy=2026-2027")
         self.assertEqual(response.status_code, 422)
