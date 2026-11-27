@@ -42,25 +42,56 @@ class R3114EReadinessTests(unittest.TestCase):
                 with self.assertRaises(stage.ReadinessBlocked):
                     stage._read_only_qa_catalog()
 
-    def test_private_secret_metadata_rejects_symlink_and_bad_mode(self):
-        with TemporaryDirectory() as d:
-            root=Path(d)/"secrets"
-            root.mkdir(mode=0o700)
-            for name in stage.FILES:
-                (root/name).write_text("test-only")
-                (root/name).chmod(0o600)
-            stage._secure_metadata  # no real secret reads
-            with (patch.object(stage,"SECRET_DIR",root),
-                  patch.object(stage,"APP_UID",root.stat().st_uid),
-                  patch.object(stage,"APP_GID",root.stat().st_gid)):
+    def test_private_metadata_uses_privileged_stat_without_reading(self):
+        valid = "\\n".join([
+            "700 10001 10001 4096 directory",
+            "600 10001 10001 155 regular file",
+            "600 10001 10001 155 regular file",
+            "600 10001 10001 500 regular file",
+        ]) + "\\n"
+        success=SimpleNamespace(returncode=0,stdout=valid,stderr="")
+        with patch.object(stage.subprocess,"run",return_value=success) as run:
+            stage._secure_metadata()
+            command=run.call_args.args[0]
+            self.assertEqual(command[:6],
+                             ["sudo","-n","stat","-c","%a %u %g %s %F","--"])
+            self.assertEqual(len(command),10)
+            self.assertNotIn("-L",command)
+            self.assertEqual(run.call_args.kwargs["capture_output"],True)
+        for broken in (
+            valid.replace("700 10001","755 10001",1),
+            valid.replace("600 10001","644 10001",1),
+            valid.replace("10001 10001","0 0",1),
+            valid.replace("155 regular file","155 symbolic link",1),
+            valid.replace("500 regular file","0 regular file",1),
+            valid.replace("500 regular file","8193 regular file",1),
+        ):
+            with patch.object(stage.subprocess,"run",
+                              return_value=SimpleNamespace(returncode=0,
+                                                           stdout=broken,stderr="")):
+                with self.assertRaises(stage.ReadinessBlocked):
+                    stage._secure_metadata()
+        with patch.object(stage.subprocess,"run",
+                          return_value=SimpleNamespace(returncode=1,stdout="",
+                                                       stderr="PRIVATE_AWS_KEY_SENTINEL")):
+            with self.assertRaises(stage.ReadinessBlocked) as reason:
                 stage._secure_metadata()
-                (root/stage.FILES[0]).chmod(0o644)
-                with self.assertRaises(stage.ReadinessBlocked):
-                    stage._secure_metadata()
-                (root/stage.FILES[0]).unlink()
-                (root/stage.FILES[0]).symlink_to(root/stage.FILES[1])
-                with self.assertRaises(stage.ReadinessBlocked):
-                    stage._secure_metadata()
+            self.assertNotIn("PRIVATE_AWS_KEY_SENTINEL",str(reason.exception))
+
+    def test_sensitive_metadata_error_does_not_leak(self):
+        with (patch.object(stage,"_candidate_source_guards",
+                           side_effect=stage.ReadinessBlocked(
+                               "QA_SECRET_METADATA_INSPECTION_UNAVAILABLE")),
+              redirect_stdout(StringIO()) as capture):
+            self.assertEqual(stage.main(),2)
+        self.assertIn("DB_R31_11_4E_BLOCK_REASON=QA_SECRET_METADATA_INSPECTION_UNAVAILABLE",
+                      capture.getvalue())
+        with (patch.object(stage,"_candidate_source_guards",
+                           side_effect=stage.ReadinessBlocked("SECRET_SENTINEL=123")),
+              redirect_stdout(StringIO()) as capture):
+            self.assertEqual(stage.main(),2)
+        self.assertNotIn("SECRET_SENTINEL",capture.getvalue())
+        self.assertIn("BLOCK_REASON=UNCLASSIFIED_READINESS_FAILURE",capture.getvalue())
 
     def test_blocks_public_private_candidate_and_observes_no_launch(self):
         allowed=SimpleNamespace(returncode=0,stdout="sbi-r3114-private-postgres\n")
