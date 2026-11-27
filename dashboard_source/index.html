@@ -164,6 +164,45 @@ async function refreshDashboard() {
        role="status" aria-live="polite">Invoice feature not verified yet.</pre>
 </section>
 
+<!-- Append-only invoice cancellation / unused number void registry, QA-only. -->
+<section class="card" id="ig-cancellation" aria-labelledby="ig-cancellation-title">
+  <h2 id="ig-cancellation-title">Invoice Cancellation / Number Void Register</h2>
+  <p>Cancel a finalized invoice or void a manually allocated but unused MXP number.
+     The invoice number will never be recycled. Finalized invoice and shipment
+     evidence remain immutable; the cancellation reason, reviewer reference,
+     authenticated operator and server timestamp are stored in PostgreSQL.</p>
+  <p><strong>Safety:</strong> Only available in isolated QA until independent
+     GST filing, payment and credit-note checks are integrated. This does not
+     automatically reverse reported tax or reconciled payments.</p>
+  <form id="ig-cancel-form">
+    <p><label for="ig-cancel-number">Invoice number (manually enter)</label>
+       <input id="ig-cancel-number" placeholder="MXP21801"
+              pattern="MXP[0-9]{4,10}" required></p>
+    <p><button type="button" id="ig-cancel-check">Check Invoice / Number Status</button></p>
+    <p><label for="ig-cancel-code">Reason category</label>
+       <select id="ig-cancel-code" required>
+         <option value="">Select reason</option>
+         <option value="NUMBER_UNUSED">Allocated invoice number not used</option>
+         <option value="ENTRY_ERROR">Invoice entry error</option>
+         <option value="CUSTOMER_REQUEST">Customer requested cancellation</option>
+         <option value="DUPLICATE_REQUEST">Duplicate invoice request</option>
+         <option value="OTHER">Other approved reason</option>
+       </select></p>
+    <p><label for="ig-cancel-reason">Cancellation details (minimum 10 characters)</label>
+       <textarea id="ig-cancel-reason" rows="3" maxlength="1000" required
+                 placeholder="Record why the number cannot be used or invoice must be cancelled"></textarea></p>
+    <p><label for="ig-cancel-review">Accounting review / approval reference (required if already finalized)</label>
+       <input id="ig-cancel-review" maxlength="120" placeholder="e.g. internal approval reference"></p>
+    <p><label><input id="ig-cancel-attest" type="checkbox">
+       Accounting reviewer has checked tax filing, payment and credit-note implications
+       (mandatory for a finalized invoice; not independent system verification).</label></p>
+    <p><button type="button" id="ig-cancel-submit" disabled>
+       Confirm Cancellation &amp; Write Permanent Audit Log</button></p>
+  </form>
+  <pre id="ig-cancel-message" role="status" aria-live="polite"
+       style="white-space:pre-wrap;overflow-wrap:anywhere">Check an invoice number first. Cancellation cannot be undone by editing records.</pre>
+</section>
+
 <!-- Selected-Invoice Bulk Report: read-only database lookup; no financial writes. -->
 <section class="card" id="bulk-selected-report" aria-labelledby="bulk-selected-title">
   <h2 id="bulk-selected-title">Bulk Report — Selected Invoice Numbers</h2>
@@ -868,5 +907,6 @@ Reports include new invoices only after an import completes. Preview alone does 
 <!-- F01: single floating overlay across existing dashboard views; inert until authorized API is reviewed. -->
 <script src="/dil_floating_assistant.js" defer></script>
 <script src="/invoice_gst_ui.js" defer></script>
+<script src="/invoice_gst_cancellation_ui.js" defer></script>
 </body>
 </html>
