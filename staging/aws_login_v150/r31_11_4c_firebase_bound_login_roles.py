@@ -530,8 +530,49 @@ def main(argv=None):
               flush=True)
         apply_roles(approved,caddy_before)
         return 0
-    except (ProvisionBlocked, schema.BootstrapBlocked, infra.ProvisionBlocked,
+    except ProvisionBlocked as reason:
+        # Static known reason codes only: no Firebase IDs, emails, tokens,
+        # passwords, raw SDK or PostgreSQL exceptions may escape this gate.
+        permitted={
+            "MISSING_OR_LINKED_PRIVATE_APPROVAL",
+            "PRIVATE_APPROVAL_FILE_PERMISSIONS",
+            "FIREBASE_PROJECT_MISMATCH",
+            "ADMIN_SDK_PROJECT_MISMATCH",
+            "FIREBASE_ADMIN_NOT_AVAILABLE",
+            "FIREBASE_TEST_ACCOUNT_NOT_APPROVED",
+            "SYNTHETIC_FIREBASE_UID_NOT_ALLOWED",
+            "APPROVAL_RECORD_INVALID",
+            "APPROVAL_ROLE_ORDER_INVALID",
+            "APPROVED_FIREBASE_USER_NOT_VERIFIABLE",
+            "TWO_DISTINCT_FIREBASE_USERS_REQUIRED",
+            "PRIVATE_APPROVAL_DIRECTORY_INVALID",
+            "PRIVATE_APPROVAL_DIRECTORY_PERMISSIONS",
+            "APPROVAL_RECEIPT_INVALID",
+            "PRIVATE_APPROVAL_ALREADY_EXISTS_REVIEW",
+            "TWO_DISTINCT_TEST_EMAILS_REQUIRED",
+            "LOCAL_APPROVAL_WRITE_VERIFY_FAILED",
+            "QA_RUNTIME_DOCKERFILE_UNAVAILABLE",
+            "QA_RUNTIME_UID_CHANGED",
+            "QA_RUNTIME_FLAG_REMOVED",
+            "QA_OPERATOR_TARGET_CHANGED",
+            "MUTUALLY_EXCLUSIVE_OPERATIONS",
+            "R3114B_SCHEMA_ONLY_NOT_VERIFIED",
+            "QA_DATA_OR_MAPPING_ALREADY_PRESENT",
+            "QA_ALREADY_MIGRATED_OR_UNEXPECTED",
+            "TWO_VERIFIED_USERS_REQUIRED",
+            "EXPLICIT_TWO_USER_QA_APPROVAL_REQUIRED",
+        }
+        code=str(reason)
+        if code not in permitted:
+            code="UNCLASSIFIED_PRIVATE_QA_FAILURE"
+        print("DB_R31_11_4C_PREPARE_BLOCK_REASON="+code,flush=True)
+        print("STOP=DB_R31_11_4C_FALLBACK_DENIED_MANUAL_REVIEW_REQUIRED",
+              flush=True)
+        return 2
+    except (schema.BootstrapBlocked, infra.ProvisionBlocked,
             ValueError, KeyError, TypeError, OSError, subprocess.TimeoutExpired):
+        print("DB_R31_11_4C_PREPARE_BLOCK_REASON=UNCLASSIFIED_PRIVATE_QA_FAILURE",
+              flush=True)
         print("STOP=DB_R31_11_4C_FALLBACK_DENIED_MANUAL_REVIEW_REQUIRED",
               flush=True)
         return 2
