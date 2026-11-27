@@ -50,6 +50,12 @@ class PureCreditNoteContract(unittest.TestCase):
         p=deepcopy(BASE);p["credit_note_no"]="MXP/2025-2026/01"
         with self.assertRaisesRegex(CreditNoteError,"FINANCIAL_YEAR_MISMATCH"):
             credit_note_request(p)
+    def test_manual_credit_note_number_must_not_exceed_16_chars(self):
+        p=deepcopy(BASE)
+        p["credit_note_no"]="MXP/2026-2027/100"
+        with self.assertRaisesRegex(CreditNoteError,"INVALID_CREDIT_NOTE_NUMBER"):
+            credit_note_request(p)
+
     def test_no_unverified_or_missing_historical_records(self):
         with self.assertRaisesRegex(CreditNoteError,"NOT_FOUND_OR_NOT_IMPORTED"):
             build_credit_note(BASE,{}, {})
