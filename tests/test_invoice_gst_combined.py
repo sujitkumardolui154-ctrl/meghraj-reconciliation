@@ -488,6 +488,9 @@ class IsolatedPostgresCombinedTests(unittest.TestCase):
         self.assertEqual(duplicate.status_code, 409, duplicate.get_json())
         attempted = deepcopy(SOURCE)
         attempted["invoice_no"] = "MXP90002"
+        preview = self.client.post("/api/invoice-gst/preview", json=attempted)
+        self.assertEqual(preview.status_code, 409, preview.get_json())
+        self.assertEqual(preview.get_json()["error"], "CANCELLED_INVOICE_NUMBER_CANNOT_BE_REUSED")
         response = self.client.post("/api/invoice-gst/finalize", json=attempted)
         self.assertEqual(response.status_code, 409, response.get_json())
         self.assertEqual(response.get_json()["error"], "CANCELLED_INVOICE_NUMBER_CANNOT_BE_REUSED")
