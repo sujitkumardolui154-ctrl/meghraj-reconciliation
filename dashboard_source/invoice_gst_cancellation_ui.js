@@ -14,6 +14,8 @@
   const check = $("ig-cancel-check");
   const submit = $("ig-cancel-submit");
   const notice = $("ig-cancel-message");
+  const logButton = $("ig-cancel-log-refresh");
+  const logArea = $("ig-cancel-log");
   let inspected = null;
   let busy = false;
 
@@ -86,6 +88,59 @@
       notice.textContent = error.message;
     } finally {
       busy = false; check.disabled = false;
+    }
+  });
+
+  logButton.addEventListener("click", async () => {
+    if (busy) return;
+    logButton.disabled = true;
+    try {
+      const result = await read("cancellations");
+      if (!result.response.ok)
+        throw new Error(result.data.error || "Audit register unavailable.");
+      const records = result.data.records || [];
+      if (!records.length) {
+        logArea.textContent = "No cancellation or void records in this database.";
+        return;
+      }
+      const table = document.createElement("table");
+      table.style.width = "100%";
+      table.style.borderCollapse = "collapse";
+      const thead = document.createElement("thead");
+      const headRow = document.createElement("tr");
+      const names = ["Invoice No", "Type", "Reason", "Date / Time", "Operator UID", "Review Ref"];
+      for (const name of names) {
+        const cell = document.createElement("th");
+        cell.textContent = name;
+        cell.style.textAlign = "left";
+        cell.style.padding = "6px";
+        headRow.appendChild(cell);
+      }
+      thead.appendChild(headRow);
+      table.appendChild(thead);
+      const tbody = document.createElement("tbody");
+      for (const record of records) {
+        const tr = document.createElement("tr");
+        const values = [record.invoice_no, record.cancellation_kind,
+          record.reason_code + ": " + record.reason_text,
+          record.cancelled_at, record.cancelled_by_uid,
+          record.review_reference || "—"];
+        for (const value of values) {
+          const td = document.createElement("td");
+          td.textContent = String(value || "");
+          td.style.padding = "6px";
+          td.style.borderTop = "1px solid #aaaaaa";
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      }
+      table.appendChild(tbody);
+      logArea.replaceChildren(table);
+      logArea.style.overflowX = "auto";
+    } catch (error) {
+      logArea.textContent = error.message;
+    } finally {
+      logButton.disabled = false;
     }
   });
 
