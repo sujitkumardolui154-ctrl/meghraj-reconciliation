@@ -1,0 +1,78 @@
+{
+  "schema": "DB-R31.11.4O-DOMAIN-OWNERSHIP-EVIDENCE-V1",
+  "classification": "NONSECRET_PROVENANCE_ONLY_NOT_CONTROL_PROOF",
+  "environment": "qa_isolated_external_mtls",
+  "deployment_authorization": "NOT_GRANTED",
+  "qa_fqdn": "PENDING",
+  "parent_dns_zone": "PENDING",
+  "source_4n_intake": "r31_11_4n_dns_pki_evidence_intake.json",
+  "source_4m_register": "r31_11_4m_evidence_register.json",
+  "source_4k_approval_packet": "r31_11_4k_external_mtls_approval_packet.json",
+  "evidence": [
+    {
+      "kind": "change_authorization",
+      "purpose": "Approved change request for QA DNS/hostname selection",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "independent_review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "kind": "registrant_ownership",
+      "purpose": "Owner-authorized registrant or organizational domain entitlement proof",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "independent_review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "kind": "dns_zone_administration",
+      "purpose": "Authorized DNS provider/zone administrator evidence",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "independent_review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "kind": "authoritative_delegation",
+      "purpose": "Authoritative nameserver delegation evidence reference",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "independent_review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "kind": "dns_record_change_control",
+      "purpose": "DNS test record change approval and controlled change evidence",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "independent_review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "kind": "independent_owner_review",
+      "purpose": "Independent authorized reviewer sign-off reference",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "independent_review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    }
+  ],
+  "security_position": {
+    "domain_registration_verified": "NOT_VERIFIED",
+    "dns_delegation_verified": "NOT_VERIFIED",
+    "dns_record_change_verified": "NOT_VERIFIED",
+    "owner_approval_verified": "NOT_VERIFIED",
+    "external_tls_test": "NOT_TESTED",
+    "financial_apply": "LOCKED",
+    "r3112": "ACTIVE_QA_DESIGN_RELEASE_GATED",
+    "production_release": "BLOCKED"
+  },
+  "warning": "Evidence references and checksums do not prove ownership. Actual registrar access, zone control, and reviewer authorization must be independently verified outside this repository."
+}
