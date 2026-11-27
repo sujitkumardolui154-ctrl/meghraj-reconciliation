@@ -164,6 +164,52 @@ async function refreshDashboard() {
        role="status" aria-live="polite">Invoice feature not verified yet.</pre>
 </section>
 
+<!-- Credit note generator: multi-invoice, DB-sourced immutable reference data. -->
+<section class="card" id="ig-credit-notes" aria-labelledby="ig-cn-title">
+  <h2 id="ig-cn-title">Generate Credit Note — Meghraj Express</h2>
+  <p>Enter the credit note number and date manually. The SBI original invoice
+     number, invoice date, service month, SOL, GSTIN and original taxable amount
+     are fetched from the verified PostgreSQL invoice database.
+     Credit-note values are entered per invoice and cannot exceed the
+     remaining uncredited taxable value.</p>
+  <p><strong>Reference format:</strong> Service Entry Modification Details,
+     including Sl. No., SAC Code, Invoice No., Invoice Date, Month and Amount;
+     Sub Total, CGST 9%, SGST 9%, Grand Total, amount in words and
+     Meghraj Express signatory. One credit note may include many invoices.</p>
+  <p><strong>Safety:</strong> The sample source is not automatically imported;
+     historical invoice records not yet verified in the isolated registry
+     cannot be credited. This module performs no financial or GST filing postings.</p>
+  <form id="ig-cn-form">
+    <p><label for="ig-cn-number">Credit Note Number — enter manually</label>
+       <input id="ig-cn-number" required placeholder="MXP/2026-2027/01"
+              pattern="MXP/[0-9]{4}-[0-9]{4}/[0-9]{1,6}" maxlength="25"></p>
+    <p><label for="ig-cn-date">Credit Note Date — select manually</label>
+       <input id="ig-cn-date" required type="date"></p>
+    <p><label for="ig-cn-reason">Reason for Credit Note (mandatory)</label>
+       <textarea id="ig-cn-reason" maxlength="1000" rows="2" required
+         placeholder="Courier charges deducted / cancelled by customer"></textarea></p>
+    <p><label for="ig-cn-entries">Invoice numbers and credit amounts from Excel
+       — 2 columns separated by a tab</label></p>
+    <p><small>Invoice No. | Credited Taxable Amount.
+       Original invoice date, month, SAC code and customer data are fetched
+       automatically; do NOT enter those fields manually.
+       Example: MXP18430 [TAB] 100.00. Maximum 1,000 invoice rows.</small></p>
+    <textarea id="ig-cn-entries" rows="7" required
+      placeholder="MXP18430&#9;100.00"
+      style="width:100%;padding:10px;border-radius:8px;resize:vertical"></textarea>
+    <p><button type="button" id="ig-cn-lookup">Fetch Original Invoice Details</button>
+       <button type="button" id="ig-cn-preview">Preview Credit Note &amp; GST</button>
+       <button type="button" id="ig-cn-finalize" disabled>
+         Finalize Credit Note &amp; Save to Database (QA only)</button>
+       <button type="button" id="ig-cn-download" disabled>
+         Download Finalized Credit Note PDF</button></p>
+  </form>
+  <pre id="ig-cn-message" role="status" aria-live="polite"
+       style="white-space:pre-wrap;overflow-wrap:anywhere">Enter a credit note number, date and source invoice rows to begin.</pre>
+  <div id="ig-cn-found" role="region" aria-label="Verified source invoice lookup"
+       style="overflow-x:auto"></div>
+</section>
+
 <!-- Append-only invoice cancellation / unused number void registry, QA-only. -->
 <section class="card" id="ig-cancellation" aria-labelledby="ig-cancellation-title">
   <h2 id="ig-cancellation-title">Invoice Cancellation / Number Void Register</h2>
@@ -912,5 +958,6 @@ Reports include new invoices only after an import completes. Preview alone does 
 <script src="/dil_floating_assistant.js" defer></script>
 <script src="/invoice_gst_ui.js" defer></script>
 <script src="/invoice_gst_cancellation_ui.js" defer></script>
+<script src="/credit_note_ui.js" defer></script>
 </body>
 </html>
