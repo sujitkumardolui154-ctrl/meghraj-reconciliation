@@ -13,6 +13,9 @@ on:
       - 'scripts/sbi_invoice_gst_private_qa_gate.py'
       - 'tests/test_invoice_gst_combined.py'
       - 'tests/test_credit_note_qa.py'
+      - 'tests/test_credit_note_history_catalog.py'
+      - 'dashboard_source/test_credit_note_historical_evidence.py'
+      - 'scripts/sbi_credit_note_history_catalog_preflight.py'
       - 'tests/test_invoice_gst_private_*.py'
       - 'tests/test_invoice_gst_master_workbook_gate.py'
       - 'tests/test_invoice_gst_private_qa_gate.py'
@@ -55,7 +58,7 @@ jobs:
         run: python -m pip install 'Flask>=3.1,<4' 'psycopg[binary]>=3.2,<4' 'openpyxl>=3.1,<4' 'Pillow>=11,<13' 'reportlab>=4.2,<5' 'pypdf>=5,<7'
       - name: Python and JS syntax checks
         run: |
-          python -m py_compile dashboard_source/invoice_gst_core.py dashboard_source/invoice_gst_feature.py dashboard_source/invoice_gst_cancellation.py dashboard_source/invoice_gst_pdf.py dashboard_source/credit_note_core.py dashboard_source/credit_note_feature.py dashboard_source/credit_note_pdf.py dashboard_source/production_gateway.py staging/invoice-gst/master_workbook_gate.py scripts/sbi_invoice_gst_aws_staging_readiness.py
+          python -m py_compile dashboard_source/invoice_gst_core.py dashboard_source/invoice_gst_feature.py dashboard_source/invoice_gst_cancellation.py dashboard_source/invoice_gst_pdf.py dashboard_source/credit_note_core.py dashboard_source/credit_note_feature.py dashboard_source/credit_note_historical_evidence.py dashboard_source/credit_note_pdf.py scripts/sbi_credit_note_history_catalog_preflight.py dashboard_source/production_gateway.py staging/invoice-gst/master_workbook_gate.py scripts/sbi_invoice_gst_aws_staging_readiness.py
           node --check dashboard_source/invoice_gst_ui.js
           node --check dashboard_source/invoice_gst_cancellation_ui.js
           node --check dashboard_source/credit_note_ui.js
@@ -63,6 +66,10 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_invoice_gst_combined.py' -v
       - name: Multi-invoice credit note + real isolated Postgres QA
         run: python -m unittest discover -s tests -p 'test_credit_note_qa.py' -v
+      - name: Credit note historical report evidence and PostgreSQL catalog read-only QA
+        run: |
+          python -m unittest discover -s dashboard_source -p 'test_credit_note_historical_evidence.py' -v
+          python -m unittest discover -s tests -p 'test_credit_note_history_catalog.py' -v
       - name: Private master and vendor source-import safeguards
         run: |
           python -m unittest discover -s tests -p 'test_invoice_gst_private_*.py' -v
