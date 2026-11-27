@@ -1,0 +1,21 @@
+# R31.11.4K APPROVAL REFERENCE ONLY — DO NOT IMPORT OR DEPLOY.
+# Deliberately unresolvable hostname, unapproved CA path, and 503 response.
+# Never use this as an actual public/prod Caddyfile.
+# Real QA hostname, DNS, CA, certificate lifecycle, firewall, isolated
+# QA backend, Firebase Origin, access logs and rollback require separate
+# approved engineering change. Review exact installed Caddy v2 syntax.
+https://qa-r3114k.example.invalid {
+    tls {
+        client_auth {
+            mode require_and_verify
+            trust_pool file /etc/caddy/qa-r3114k-UNAPPROVED-client-ca.pem
+        }
+    }
+
+    header {
+        Cache-Control "no-store"
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+    }
+    respond "QA ROUTE NOT APPROVED" 503
+}
