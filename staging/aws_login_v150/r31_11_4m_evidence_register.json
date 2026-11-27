@@ -1,0 +1,194 @@
+{
+  "schema": "DB-R31.11.4M-APPROVAL-EVIDENCE-REGISTER-V1",
+  "classification": "NONSECRET_METADATA_ONLY_NOT_AUTHORIZATION",
+  "environment": "qa_isolated_external_mtls",
+  "source_packet_schema": "DB-R31.11.4K-EXTERNAL-MTLS-APPROVAL-PACKET-V1",
+  "release_authorization": "NOT_GRANTED",
+  "entries": [
+    {
+      "field": "fqdn_owner_approved",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "dns_control_verified",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "qa_only_public_endpoint_scope_approved",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "firewall_cidr_scope_approved",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "qa_client_ca_owner_approved",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "qa_client_cert_inventory_approved",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "qa_client_revocation_mechanism_approved",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "server_certificate_lifecycle_approved",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "qa_proxy_isolation_peer_reviewed",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "qa_proxy_config_peer_reviewed",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "firebase_test_origin_approved",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "finance_routes_excluded_verified",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "rollback_owner_and_test_approved",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "monitoring_and_alerts_approved",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "external_negative_test_plan_approved",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "independent_security_reviewer_approved",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "change_ticket",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "qa_fqdn",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "approved_source_cidrs",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "server_certificate_provider",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "client_ca_metadata_reference",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "rollback_ticket",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "external_test_owner",
+      "status": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    }
+  ],
+  "disclaimer": "References and hashes are not independently verified evidence or release approvals. No secrets or personal data should be placed in this register."
+}
