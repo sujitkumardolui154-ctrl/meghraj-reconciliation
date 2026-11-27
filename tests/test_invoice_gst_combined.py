@@ -578,6 +578,37 @@ class IsolatedPostgresCombinedTests(unittest.TestCase):
                 "WHERE invoice_no='MXP90003'"
             ).fetchone()["n"], 0)
 
+    def test_16_cancellation_needs_separate_permission_and_csrf(self):
+        from flask import Flask, g
+        from invoice_gst_cancellation import create_invoice_cancellation_blueprint
+        request_payload = {
+            "invoice_no": "MXP90004", "reason_code": "NUMBER_UNUSED",
+            "reason": "Cancelled unused invoice number in QA",
+        }
+        def app_with_access(can_cancel, csrf_valid):
+            app = Flask(__name__)
+            @app.before_request
+            def set_identity():
+                g.dil_user = SimpleNamespace(uid="synthetic-qa-uid")
+            app.register_blueprint(create_invoice_cancellation_blueprint(
+                can_read=lambda: True, can_cancel=can_cancel,
+                csrf_valid=csrf_valid, connection_factory=self.connect,
+            ))
+            return app.test_client()
+        client = app_with_access(lambda: False, lambda: True)
+        result = client.post("/api/invoice-gst/cancellations", json=request_payload)
+        self.assertEqual(result.status_code, 403)
+        self.assertEqual(result.get_json()["error"], "INVOICE_CANCELLER_PERMISSION_REQUIRED")
+        client = app_with_access(lambda: True, lambda: False)
+        result = client.post("/api/invoice-gst/cancellations", json=request_payload)
+        self.assertEqual(result.status_code, 403)
+        self.assertEqual(result.get_json()["error"], "CSRF_VERIFICATION_FAILED")
+        with self.connect() as conn:
+            self.assertEqual(conn.execute(
+                "SELECT count(*) AS n FROM sbi_invoice_gst.invoice_number_cancellations "
+                "WHERE invoice_no='MXP90004'"
+            ).fetchone()["n"], 0)
+
     def test_05_fy_conflict_and_review(self):
         response = self.client.get("/api/invoice-gst/gst.xlsx?month=2026-02&fy=2026-2027")
         self.assertEqual(response.status_code, 422)
