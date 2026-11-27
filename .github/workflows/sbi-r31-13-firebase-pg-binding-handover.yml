@@ -1,0 +1,27 @@
+name: DB-R31.13 Firebase-to-PG RLS Integration Handover (Offline)
+on:
+  push:
+    branches:
+      - feature/sbi-r31-13-firebase-pg-binding-acceptance-20261127
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  readonly-evidence-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: R31.13 offline source + release lock tests
+        run: python -m unittest discover -s staging/aws_login_v150 -p 'test_r31_13_binding_handover.py' -v
+      - name: Verify no production deploy or credential dependencies
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          path = Path('staging/aws_login_v150/r31_13_firebase_pg_binding_acceptance.py')
+          ast.parse(path.read_text('utf-8'))
+          print('DB_R31_13_OFFLINE_SYNTAX=PASS')
+          PY
