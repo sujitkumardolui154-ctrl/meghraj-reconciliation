@@ -158,7 +158,7 @@ def main(argv=None):
         print("DB_R31_11_4G_QA_POSTGRES_NETWORK=PASS_PRIVATE_UNPUBLISHED",flush=True)
         print("DB_R31_11_4G_QA_DB_ROWS=ZERO_OWNER_MAPS_TWO",flush=True)
         checksum=caddy_preflight()
-        print("DB_R31_11_4G_CADDY_EXISTING_ROUTE=PASS_UNCHANGED_DESIGN",flush=True)
+        print("DB_R31_11_4G_CADDY_EXISTING_ROUTE=PASS_NO_PRIVATE_QA_ROUTE",flush=True)
         print("DB_R31_11_4G_CADDY_CONFIG_SHA256="+checksum,flush=True)
         ephemeral_cleanup()
         print("DB_R31_11_4G_4F_TEMP_RESOURCES=PASS_ABSENT",flush=True)
