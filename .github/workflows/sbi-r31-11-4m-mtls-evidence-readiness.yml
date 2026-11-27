@@ -1,0 +1,46 @@
+name: SBI R31.11.4M evidence register + combined security (offline QA)
+on:
+  push:
+    branches: [feature/sbi-r31-11-4m-mtls-evidence-closure-20261127]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  nonsecret-no-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install only offline mocked test dependencies
+        run: python -m pip install --disable-pip-version-check 'Flask>=3,<4' 'firebase-admin>=6,<8' 'cryptography>=43,<49'
+      - name: Compile and test evidence provenance and full predecessor regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -B -m py_compile staging/aws_login_v150/r31_11_4m_combined_evidence_preflight.py
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4m_*.py' -v
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4l_*.py' -v
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4k_*.py' -v
+      - name: Require a fully pending 23-item register and strict no-deploy status
+        shell: bash
+        run: |
+          set -euo pipefail
+          F=staging/aws_login_v150/r31_11_4m_combined_evidence_preflight.py
+          R=staging/aws_login_v150/r31_11_4m_evidence_register.json
+          python -m json.tool "$R" >/dev/null
+          python - <<'PY'
+          import json
+          p="staging/aws_login_v150/r31_11_4m_evidence_register.json"
+          j=json.load(open(p,encoding="utf-8"))
+          assert j["release_authorization"]=="NOT_GRANTED"
+          assert len(j["entries"])==23
+          assert all(x["status"]=="PENDING" for x in j["entries"])
+          assert all(x["evidence_ticket"]=="PENDING" for x in j["entries"])
+          PY
+          grep -Fq 'DB_R31_11_4M_EXTERNAL_MTLS_HTTPS=NOT_TESTED' "$F"
+          grep -Fq 'DB_R31_11_4M_FINANCIAL_APPLY=LOCKED' "$F"
+          grep -Fq 'DB_R31_11_4M_PRODUCTION_RELEASE=BLOCKED' "$F"
+          ! grep -En 'FINANCIAL_APPLY=ENABLED|DROP DATABASE|CREATE ROLE|docker.*--publish|CADDY_CONFIG_WRITE_ENABLED' "$F"
