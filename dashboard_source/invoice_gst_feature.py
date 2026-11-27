@@ -109,6 +109,15 @@ def create_invoice_gst_blueprint(can_read, can_create, csrf_valid,
             payload, key = validate_request()
             with private_db() as conn:
                 branch = read_branch(conn, key)
+                with conn.cursor() as cur:
+                    number = payload.get("invoice_no")
+                    if isinstance(number, str) and re.fullmatch(r"MXP[0-9]{4,10}", number):
+                        cur.execute(
+                            """SELECT 1 FROM sbi_invoice_gst.invoice_number_cancellations
+                               WHERE invoice_no=%s""", (number,),
+                        )
+                        if cur.fetchone() is not None:
+                            return failure("CANCELLED_INVOICE_NUMBER_CANNOT_BE_REUSED", 409)
             invoice = build_invoice(payload, branch)
             # Do not place the untrusted submitted annexure into logs.
             invoice.pop("shipments")
