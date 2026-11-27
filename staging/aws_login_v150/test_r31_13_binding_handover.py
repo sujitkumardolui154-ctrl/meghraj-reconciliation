@@ -32,7 +32,7 @@ class R3113BindingHandover(unittest.TestCase):
         self.assertIn('getattr(g, "dil_user", None)', BLUEPRINT)
         self.assertIn("r311_auth.current_tenant_uid()", ADAPTER)
         self.assertIn("if len(item) != 5 or item[0] != uid:", ADAPTER)
-        self.assertIn('client', 'client')  # deterministic smoke
+        self.assertIn('QA_DB = "sbi_r31_11_4_auth_qa_20261126"', ADAPTER)
         self.assertIn('SBI_R31_11_4_RUNTIME_ENABLED', APP)
         self.assertIn('SBI_R31_PRIVATE_STAGING_ENABLED', APP)
 
