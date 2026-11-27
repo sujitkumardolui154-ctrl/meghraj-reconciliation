@@ -159,6 +159,18 @@ def create_invoice_gst_blueprint(can_read, can_create, csrf_valid,
                 try:
                     with conn.transaction():
                         with conn.cursor() as cur:
+                            # Shares the same invoice-number advisory lock as
+                            # the append-only void/cancellation endpoint.
+                            cur.execute(
+                                "SELECT pg_advisory_xact_lock(hashtext(%s))",
+                                (invoice["invoice_no"],),
+                            )
+                            cur.execute(
+                                """SELECT 1 FROM sbi_invoice_gst.invoice_number_cancellations
+                                   WHERE invoice_no=%s""", (invoice["invoice_no"],),
+                            )
+                            if cur.fetchone() is not None:
+                                return failure("CANCELLED_INVOICE_NUMBER_CANNOT_BE_REUSED", 409)
                             cur.execute(
                                 """INSERT INTO sbi_invoice_gst.invoices
                                 (invoice_no, branch_key, service_from, service_to,
