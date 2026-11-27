@@ -44,3 +44,21 @@ Legal/tax/accounting review must decide how and when this actual credit note mod
 ## QA
 
 CI runs `tests/test_credit_note_qa.py` with synthetic PostgreSQL 16 under `invoice_qa` and verifies required manual inputs, source lookup, multiple invoice rows, full/partial credits, tax totals, PDF content, duplicate notes, immutable history, permission/CSRF and approved-live denial. No real source records are used.
+
+## Credit-note legal-document preflight (Rule 53)
+
+The applicable Indian CGST Rule 53(1A) specifies a serial no. **not exceeding 16 characters**, unique within the financial year; the system enforces this in the manual form, backend contract and PostgreSQL CHECK. Reference:
+https://cbic-gst.gov.in/gst-invoice-rules.html and
+https://taxinformation.cbic.gov.in/content-page/explore-rules/1000144/1000001.
+
+The owner's sample format `MXP/2026-2027/01` is 16 characters. The `/100`
+variant is too long and is rejected; a different *approved* shorter series is
+required if more than 99 notes are issued under that numbering scheme. No
+automatic numbering is applied.
+
+Before issuing a legally operative live document, verify the recipient's
+complete registered legal address and confirm all Rule 53 particulars
+(including supplier and recipient details, original invoice numbers/dates,
+taxable value and credited tax/rate, signatory). The supplied markdown credit
+note has no customer mailing/address line, so do not treat its layout as a
+complete legal certification without private verified address evidence.
