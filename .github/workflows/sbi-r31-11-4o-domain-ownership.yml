@@ -1,0 +1,52 @@
+name: SBI R31.11.4O domain-owner DNS evidence (offline full-combined regressions)
+on:
+  push:
+    branches: [feature/sbi-r31-11-4o-domain-owner-dns-evidence-20261127]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-only-no-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install only CI source-test imports
+        run: python -m pip install --disable-pip-version-check 'Flask>=3,<4' 'firebase-admin>=6,<8' 'cryptography>=43,<49'
+      - name: Compile and run 4O + 4N + 4M + 4L source regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -B -m py_compile staging/aws_login_v150/r31_11_4o_combined_domain_ownership.py
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4o_*.py' -v
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4n_*.py' -v
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4m_*.py' -v
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4l_*.py' -v
+      - name: Require all six domain owner evidence controls to remain pending
+        shell: bash
+        run: |
+          set -euo pipefail
+          SCRIPT=staging/aws_login_v150/r31_11_4o_combined_domain_ownership.py
+          FILE=staging/aws_login_v150/r31_11_4o_domain_ownership_dossier.json
+          python -m json.tool "$FILE" >/dev/null
+          python - <<'PY'
+          import json
+          f="staging/aws_login_v150/r31_11_4o_domain_ownership_dossier.json"
+          doc=json.load(open(f,encoding="utf-8"))
+          assert doc["deployment_authorization"]=="NOT_GRANTED"
+          assert doc["qa_fqdn"]=="PENDING"
+          assert doc["parent_dns_zone"]=="PENDING"
+          assert len(doc["evidence"])==6
+          assert all(e["state"]=="PENDING" for e in doc["evidence"])
+          assert all(e["evidence_ticket"]=="PENDING" for e in doc["evidence"])
+          assert doc["security_position"]["financial_apply"]=="LOCKED"
+          assert doc["security_position"]["production_release"]=="BLOCKED"
+          PY
+          grep -Fq 'DB_R31_11_4O_REAL_DNS_OWNER_VERIFICATION=NOT_PERFORMED' "$SCRIPT"
+          grep -Fq 'DB_R31_11_4O_EXTERNAL_MTLS_HTTPS=NOT_TESTED' "$SCRIPT"
+          grep -Fq 'DB_R31_11_4O_FINANCIAL_APPLY=LOCKED' "$SCRIPT"
+          grep -Fq 'DB_R31_11_4O_PRODUCTION_RELEASE=BLOCKED' "$SCRIPT"
+          ! grep -En 'FINANCIAL_APPLY=ENABLED|DROP DATABASE|CREATE ROLE|docker.*--publish|CADDY_CONFIG_WRITE_ENABLED|dns\.update|subprocess.*curl' "$SCRIPT"
