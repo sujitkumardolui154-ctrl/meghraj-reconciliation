@@ -53,8 +53,9 @@ jobs:
         run: python -m pip install 'Flask>=3.1,<4' 'psycopg[binary]>=3.2,<4' 'openpyxl>=3.1,<4' 'Pillow>=11,<13' 'reportlab>=4.2,<5' 'pypdf>=5,<7'
       - name: Python and JS syntax checks
         run: |
-          python -m py_compile dashboard_source/invoice_gst_core.py dashboard_source/invoice_gst_feature.py dashboard_source/invoice_gst_pdf.py dashboard_source/production_gateway.py staging/invoice-gst/master_workbook_gate.py scripts/sbi_invoice_gst_aws_staging_readiness.py
+          python -m py_compile dashboard_source/invoice_gst_core.py dashboard_source/invoice_gst_feature.py dashboard_source/invoice_gst_cancellation.py dashboard_source/invoice_gst_pdf.py dashboard_source/production_gateway.py staging/invoice-gst/master_workbook_gate.py scripts/sbi_invoice_gst_aws_staging_readiness.py
           node --check dashboard_source/invoice_gst_ui.js
+          node --check dashboard_source/invoice_gst_cancellation_ui.js
       - name: Combined invoice and real isolated Postgres test
         run: python -m unittest discover -s tests -p 'test_invoice_gst_combined.py' -v
       - name: Private master and vendor source-import safeguards
