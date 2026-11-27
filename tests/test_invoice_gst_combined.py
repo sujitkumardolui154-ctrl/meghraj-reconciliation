@@ -159,6 +159,10 @@ class IsolatedPostgresCombinedTests(unittest.TestCase):
                 ROOT / "staging/invoice-gst/003_verified_sol_uniqueness.sql"
             ).read_text()
             conn.execute(verified_sol_index)
+            cancellations_sql = (
+                ROOT / "staging/invoice-gst/004_invoice_cancellation_ledger.sql"
+            ).read_text()
+            conn.execute(cancellations_sql)
             conn.execute(
                 """INSERT INTO sbi_invoice_gst.verified_branches
                    (branch_key,client_name,invoice_branch,invoice_generate_location,
@@ -198,17 +202,26 @@ class IsolatedPostgresCombinedTests(unittest.TestCase):
             csrf_valid=lambda: True,
             connection_factory=connect
         ))
+        from invoice_gst_cancellation import create_invoice_cancellation_blueprint
+        cls.app.register_blueprint(create_invoice_cancellation_blueprint(
+            can_read=lambda: True,
+            can_cancel=lambda: True,
+            csrf_valid=lambda: True,
+            connection_factory=connect
+        ))
         cls.client = cls.app.test_client()
         cls.original_env = {
             key: os.environ.get(key) for key in (
                 "SBI_INVOICE_GST_ENABLED", "SBI_INVOICE_GST_FINALIZE_ENABLED",
-                "SBI_INVOICE_GST_DEPLOYMENT_MODE"
+                "SBI_INVOICE_GST_DEPLOYMENT_MODE",
+                "SBI_INVOICE_GST_CANCELLATION_ENABLED"
             )
         }
         os.environ.update({
             "SBI_INVOICE_GST_ENABLED": "1",
             "SBI_INVOICE_GST_FINALIZE_ENABLED": "1",
             "SBI_INVOICE_GST_DEPLOYMENT_MODE": "ISOLATED_QA",
+            "SBI_INVOICE_GST_CANCELLATION_ENABLED": "1",
         })
 
     @classmethod
