@@ -1,0 +1,93 @@
+{
+  "schema": "DB-R31.11.4N-DNS-PKI-EVIDENCE-INTAKE-V1",
+  "classification": "NONSECRET_REVIEW_METADATA_NOT_APPROVAL",
+  "environment": "qa_isolated_external_mtls",
+  "qa_hostname": "PENDING",
+  "dns_zone": "PENDING",
+  "source_4m_register": "r31_11_4m_evidence_register.json",
+  "source_4k_packet": "r31_11_4k_external_mtls_approval_packet.json",
+  "release_authorization": "NOT_GRANTED",
+  "items": [
+    {
+      "field": "change_ticket",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "reviewer_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "qa_fqdn",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "reviewer_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "fqdn_owner_approved",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "reviewer_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "dns_control_verified",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "reviewer_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "qa_client_ca_owner_approved",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "reviewer_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "qa_client_cert_inventory_approved",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "reviewer_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "qa_client_revocation_mechanism_approved",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "reviewer_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "server_certificate_lifecycle_approved",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "reviewer_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "server_certificate_provider",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "reviewer_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "client_ca_metadata_reference",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "reviewer_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    }
+  ],
+  "warning": "Evidence tickets and hashes are references only. The original 4K/4M approvals stay PENDING; external DNS, CA custody, revocation and HTTPS/mTLS have NOT been independently verified."
+}
