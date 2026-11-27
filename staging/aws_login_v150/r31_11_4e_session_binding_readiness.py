@@ -10,9 +10,7 @@ A PASS proves readiness to request separate approval for live session tests.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
-import stat
 import subprocess
 
 import r31_11_4a_isolated_postgres_provision as infra
@@ -35,22 +33,38 @@ class ReadinessBlocked(RuntimeError):
 
 
 def _secure_metadata():
-    if SECRET_DIR.is_symlink() or not SECRET_DIR.is_dir():
-        raise ReadinessBlocked("QA_SECRET_DIR_NOT_RESTRICTED")
-    s = SECRET_DIR.stat()
-    if (stat.S_IMODE(s.st_mode) != 0o700
-            or s.st_uid != APP_UID or s.st_gid != APP_GID):
-        raise ReadinessBlocked("QA_SECRET_DIR_NOT_RESTRICTED")
-    for name in FILES:
-        file = SECRET_DIR / name
-        if file.is_symlink() or not file.is_file():
-            raise ReadinessBlocked("QA_SECRET_FILE_NOT_RESTRICTED")
-        s = file.stat()
-        if (not stat.S_ISREG(s.st_mode)
-                or stat.S_IMODE(s.st_mode) != 0o600
-                or s.st_uid != APP_UID or s.st_gid != APP_GID
-                or not 1 <= s.st_size <= 8192):
-            raise ReadinessBlocked("QA_SECRET_FILE_NOT_RESTRICTED")
+    """Inspect UID-10001 private files via sudo stat; NEVER read file contents.
+
+    Ubuntu cannot traverse mode-0700 directory owned by UID 10001.
+    Calling Path.is_file()/stat() as Ubuntu is not evidence of bad permissions.
+    GNU stat without -L reports symlinks as symlinks; refuse them.
+    """
+    paths = [SECRET_DIR] + [SECRET_DIR / name for name in FILES]
+    try:
+        inspected = subprocess.run(
+            ["sudo", "-n", "stat", "-c", "%a %u %g %s %F",
+             "--", *(str(p) for p in paths)],
+            check=False, capture_output=True, text=True, timeout=15,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        raise ReadinessBlocked("QA_SECRET_METADATA_INSPECTION_UNAVAILABLE") from None
+    if inspected.returncode != 0:
+        raise ReadinessBlocked("QA_SECRET_METADATA_INSPECTION_UNAVAILABLE")
+    rows = inspected.stdout.strip().splitlines()
+    if len(rows) != len(paths):
+        raise ReadinessBlocked("QA_SECRET_METADATA_UNEXPECTED")
+    for position, line in enumerate(rows):
+        parts = line.split(" ", 4)
+        if len(parts) != 5:
+            raise ReadinessBlocked("QA_SECRET_METADATA_UNEXPECTED")
+        mode, uid, gid, size, kind = parts
+        expected_mode = "700" if position == 0 else "600"
+        expected_type = "directory" if position == 0 else "regular file"
+        if (mode != expected_mode or uid != str(APP_UID)
+                or gid != str(APP_GID) or kind != expected_type
+                or not size.isdecimal()
+                or (position != 0 and not 1 <= int(size) <= 8192)):
+            raise ReadinessBlocked("QA_SECRET_METADATA_NOT_RESTRICTED")
 
 
 def _candidate_source_guards():
@@ -136,9 +150,35 @@ def main():
     try:
         run_checks()
         return 0
+    except ReadinessBlocked as reason:
+        # Exactly allowlisted static codes. No paths, Firebase UIDs, emails,
+        # tokens, raw Google SDK, Docker, SQL or sudo errors can leak.
+        allowed = {
+            "QA_SECRET_METADATA_INSPECTION_UNAVAILABLE",
+            "QA_SECRET_METADATA_UNEXPECTED",
+            "QA_SECRET_METADATA_NOT_RESTRICTED",
+            "QA_RUNTIME_DEPLOYMENT_NOT_AUTHORIZED",
+            "QA_DOCKER_INSPECT_UNAVAILABLE",
+            "QA_CANDIDATE_SOURCE_GUARD_FAILED",
+            "QA_TARGET_CHANGED",
+            "QA_TOPOLOGY_NOT_ISOLATED",
+            "QA_DATABASE_ISOLATION_CHANGED",
+            "QA_RLS_SCHEMA_MISSING",
+            "QA_ROLE_RESTRICTIONS_CHANGED",
+            "QA_ROLE_MAP_OR_DATA_CHANGED",
+            "QA_APPROVED_USERS_NOT_DISTINCT",
+        }
+        code = str(reason)
+        if code not in allowed:
+            code = "UNCLASSIFIED_READINESS_FAILURE"
+        print("DB_R31_11_4E_BLOCK_REASON=" + code, flush=True)
+        print("STOP=DB_R31_11_4E_PRIVATE_ACCEPTANCE_REVIEW_REQUIRED",
+              flush=True)
+        return 2
     except Exception:
-        # Fail closed. Never print a raw Google SDK, DB, Docker, secret or
-        # filesystem exception, or any user-identifying error string.
+        # Unexpected errors also fail closed; never display raw exceptions.
+        print("DB_R31_11_4E_BLOCK_REASON=UNCLASSIFIED_READINESS_FAILURE",
+              flush=True)
         print("STOP=DB_R31_11_4E_PRIVATE_ACCEPTANCE_REVIEW_REQUIRED",
               flush=True)
         return 2
