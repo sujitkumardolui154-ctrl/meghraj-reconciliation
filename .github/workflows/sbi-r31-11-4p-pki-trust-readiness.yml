@@ -1,0 +1,54 @@
+name: SBI R31.11.4P PKI trust and revocation planning (offline no-deploy QA)
+on:
+  push:
+    branches: [feature/sbi-r31-11-4p-pki-trust-revocation-design-20261128]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fail-closed-pki-design:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install mock-only predecessor test imports
+        run: python -m pip install --disable-pip-version-check 'Flask>=3,<4' 'firebase-admin>=6,<8' 'cryptography>=43,<49'
+      - name: Compile and test 4P through 4M security regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -B -m py_compile staging/aws_login_v150/r31_11_4p_combined_pki_preflight.py
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4p_*.py' -v
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4o_*.py' -v
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4n_*.py' -v
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4m_*.py' -v
+      - name: Fail if trust planning claims real issuance or financial authorization
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLAN=staging/aws_login_v150/r31_11_4p_pki_trust_lifecycle_plan.json
+          PY=staging/aws_login_v150/r31_11_4p_combined_pki_preflight.py
+          python -m json.tool "$PLAN" >/dev/null
+          python - <<'PY'
+          import json
+          f="staging/aws_login_v150/r31_11_4p_pki_trust_lifecycle_plan.json"
+          d=json.load(open(f,encoding="utf-8"))
+          assert d["deployment_authorization"]=="NOT_GRANTED"
+          assert d["qa_fqdn"]=="PENDING"
+          assert d["revocation_enforcement"]=="NOT_SELECTED_OR_TESTED"
+          assert len(d["evidence_requirements"])==6
+          assert all(x["state"]=="PENDING" for x in d["evidence_requirements"])
+          assert len(d["lifecycle_workflow"])==8
+          assert all(x["status"]=="NOT_IMPLEMENTED_OR_TESTED" for x in d["lifecycle_workflow"])
+          assert d["status"]["financial_apply"]=="LOCKED"
+          assert d["status"]["external_mtls"]=="NOT_TESTED"
+          assert d["status"]["production_release"]=="BLOCKED"
+          PY
+          grep -Fq 'DB_R31_11_4P_REAL_CLIENT_CERT_REVOCATION=NOT_TESTED' "$PY"
+          grep -Fq 'DB_R31_11_4P_REAL_EXTERNAL_MTLS_HTTPS=NOT_TESTED' "$PY"
+          grep -Fq 'DB_R31_11_4P_FINANCIAL_APPLY=LOCKED' "$PY"
+          grep -Fq 'DB_R31_11_4P_PRODUCTION_RELEASE=BLOCKED' "$PY"
+          ! grep -En 'FINANCIAL_APPLY=ENABLED|DROP DATABASE|CREATE ROLE|docker.*--publish|CADDY_CONFIG_WRITE_ENABLED|certbot.*issue' "$PY"
