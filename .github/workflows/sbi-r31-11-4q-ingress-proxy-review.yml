@@ -1,0 +1,59 @@
+name: SBI R31.11.4Q restricted ingress and QA proxy isolation (offline)
+on:
+  push:
+    branches: [feature/sbi-r31-11-4q-ingress-proxy-isolation-20261128]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  strict-no-deploy-ingress-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source-test dependencies only; no cloud credentials
+        run: python -m pip install --disable-pip-version-check 'Flask>=3,<4' 'firebase-admin>=6,<8' 'cryptography>=43,<49'
+      - name: Strict source compile and offline regressions from 4Q to 4N
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -B -m py_compile staging/aws_login_v150/r31_11_4q_combined_ingress_preflight.py
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4q_*.py' -v
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4p_*.py' -v
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4o_*.py' -v
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4n_*.py' -v
+      - name: Assert no new deployable route, minted approval or financial access
+        shell: bash
+        run: |
+          set -euo pipefail
+          CODE=staging/aws_login_v150/r31_11_4q_combined_ingress_preflight.py
+          POLICY=staging/aws_login_v150/r31_11_4q_ingress_isolation_policy.json
+          python -m json.tool "$POLICY" >/dev/null
+          python - <<'PY'
+          import json
+          path="staging/aws_login_v150/r31_11_4q_ingress_isolation_policy.json"
+          doc=json.load(open(path,encoding="utf-8"))
+          assert doc["deployment_authorization"]=="NOT_GRANTED"
+          assert doc["topology"]["tls_listener"]=="NOT_DEPLOYED"
+          assert doc["topology"]["dedicated_qa_proxy"]=="NOT_DEPLOYED"
+          assert doc["topology"]["qa_hostname"]=="PENDING"
+          assert doc["topology"]["approved_source_cidrs"]=="PENDING"
+          assert len(doc["controls"])==14
+          assert all(i["status"]=="DESIGN_REQUIRED_NOT_ACCEPTED" for i in doc["controls"])
+          assert len(doc["routes"])==5
+          assert all(i["status"]=="PROPOSED_NOT_EXPOSED" for i in doc["routes"])
+          assert len(doc["linked_approval_requirements"])==13
+          assert all(i["status"]=="PENDING" for i in doc["linked_approval_requirements"])
+          assert doc["acceptance"]["external_case_count"]==22
+          assert doc["acceptance"]["external_cases"]=="NOT_TESTED"
+          assert doc["financial_apply"]=="LOCKED"
+          assert doc["production_release"]=="BLOCKED"
+          PY
+          grep -Fq 'DB_R31_11_4Q_REAL_QA_MTLS_ENDPOINT=NOT_DEPLOYED' "$CODE"
+          grep -Fq 'DB_R31_11_4Q_EXTERNAL_ACCEPTANCE=22_NOT_TESTED' "$CODE"
+          grep -Fq 'DB_R31_11_4Q_FINANCIAL_APPLY=LOCKED' "$CODE"
+          grep -Fq 'DB_R31_11_4Q_PRODUCTION_RELEASE=BLOCKED' "$CODE"
+          ! grep -En 'FINANCIAL_APPLY=ENABLED|DROP DATABASE|CREATE ROLE|docker.*--publish|CADDY_CONFIG_WRITE_ENABLED|certbot.*issue' "$CODE"
