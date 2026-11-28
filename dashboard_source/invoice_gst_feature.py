@@ -158,6 +158,20 @@ def create_invoice_gst_blueprint(can_read, can_create, csrf_valid,
                     r"MXP[0-9]{4,10}", correction_source
                 ) is None or correction_source == invoice["invoice_no"]:
                     return failure("INVALID_CORRECTION_SOURCE_NUMBER", 422)
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """SELECT i.status,
+                                  EXISTS (
+                                      SELECT 1 FROM sbi_invoice_gst.invoice_number_cancellations c
+                                      WHERE c.invoice_no=i.invoice_no
+                                  ) AS cancelled
+                           FROM sbi_invoice_gst.invoices i
+                           WHERE i.invoice_no=%s""",
+                        (correction_source,),
+                    )
+                    original = cur.fetchone()
+                if not original or original["status"] != "FINALIZED" or original["cancelled"]:
+                    return failure("CORRECTION_SOURCE_NOT_VERIFIED_FINALIZED", 409)
                 invoice["correction_review_only"] = True
                 invoice["correction_source_invoice_no"] = correction_source
             # Do not place the untrusted submitted annexure into logs.
@@ -421,6 +435,26 @@ def create_invoice_gst_blueprint(can_read, can_create, csrf_valid,
             return failure("FY_SERVICE_MONTH_CONFLICT", 422)
         try:
             with private_db() as conn, conn.cursor() as cur:
+                # An invoice spanning Sept-Oct must not silently enter only
+                # September GST, nor be duplicated in October. Until an
+                # accounting policy allocates the service period, block the
+                # affected monthly report rather than misrepresenting it.
+                cur.execute(
+                    """SELECT 1 FROM sbi_invoice_gst.invoices i
+                       WHERE i.status='FINALIZED'
+                         AND date_trunc('month',i.service_from)
+                             <> date_trunc('month',i.service_to)
+                         AND i.service_from < (CAST(%s AS date) + INTERVAL '1 month')
+                         AND i.service_to >= CAST(%s AS date)
+                         AND NOT EXISTS (
+                             SELECT 1 FROM sbi_invoice_gst.invoice_number_cancellations c
+                             WHERE c.invoice_no=i.invoice_no
+                         )
+                       LIMIT 1""",
+                    (month + "-01", month + "-01"),
+                )
+                if cur.fetchone() is not None:
+                    return failure("MULTI_MONTH_GST_REPORT_PERIOD_POLICY_PENDING", 409)
                 cur.execute(
                     """SELECT invoice_no, service_month, fy,
                               invoice_branch, invoice_generate_location,
