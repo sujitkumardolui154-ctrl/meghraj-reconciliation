@@ -190,8 +190,10 @@ def create_invoice_gst_blueprint(can_read, can_create, csrf_valid,
     def finalize():
         if os.environ.get("SBI_INVOICE_GST_FINALIZE_ENABLED") != "1":
             return failure("INVOICE_FINALIZATION_LOCKED", 403)
-        if os.environ.get("SBI_INVOICE_GST_DEPLOYMENT_MODE") not in ("ISOLATED_QA", "APPROVED_LIVE"):
-            return failure("INVOICE_DATABASE_MODE_UNAPPROVED", 403)
+        # Owner approved UI v2 engineering only. All production invoice
+        # financial writes remain blocked until separate release approval.
+        if os.environ.get("SBI_INVOICE_GST_DEPLOYMENT_MODE") != "ISOLATED_QA":
+            return failure("INVOICE_UI_V2_PRODUCTION_FINALIZATION_LOCKED", 403)
         user_uid = getattr(getattr(g, "dil_user", None), "uid", None)
         if not isinstance(user_uid, str) or not user_uid:
             return failure("AUTHENTICATED_INVOICE_OWNER_REQUIRED", 403)
@@ -202,9 +204,6 @@ def create_invoice_gst_blueprint(can_read, can_create, csrf_valid,
             with private_db() as conn:
                 branch = read_branch(conn, key)
                 invoice = build_invoice(payload, branch)
-                if (invoice["multi_month_period"]
-                        and os.environ.get("SBI_INVOICE_GST_DEPLOYMENT_MODE") != "ISOLATED_QA"):
-                    return failure("MULTI_MONTH_GST_PERIOD_POLICY_NOT_APPROVED", 403)
                 # Exact source logo/company details must be approved privately
                 # before permitting finalized invoices.
                 with conn.cursor() as cur:
