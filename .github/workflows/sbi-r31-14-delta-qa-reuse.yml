@@ -1,0 +1,50 @@
+name: SBI R31.14 Cross-Module QA Evidence Reuse (Targeted Offline Only)
+
+on:
+  push:
+    branches:
+      - feature/sbi-r31-14-delta-qa-reuse-20261128
+    paths:
+      - development/qa_reuse/**
+      - .github/workflows/sbi-r31-14-delta-qa-reuse.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  targeted-development-policy-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout only QA policy source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run ONLY new QA reuse policy unit tests
+        run: |
+          python -B -m unittest discover \
+            -s development/qa_reuse \
+            -p 'test_delta_qa_gate.py' -v
+      - name: Validate policy registry structure without GitHub or AWS credentials
+        run: |
+          python -B - <<'PY'
+          import importlib.util
+          from pathlib import Path
+          path=Path("development/qa_reuse/delta_qa_gate.py")
+          import ast
+          ast.parse(path.read_text("utf-8"))
+          spec=importlib.util.spec_from_file_location("qa_gate",path)
+          module=importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          manifest=module.load_registry()
+          assert len(manifest["source_evidence"])==3
+          assert manifest["release"]["financial_apply"]=="LOCKED"
+          assert manifest["release"]["external_mtls"]=="NOT_TESTED"
+          print("DB_R31_14_OFFLINE_POLICY_CONTRACT=PASS")
+          print("DB_R31_14_FINANCIAL_APPLY=LOCKED")
+          print("DB_R31_14_EXTERNAL_HTTPS_MTLS=NOT_TESTED")
+          PY
