@@ -6,6 +6,8 @@ on:
       - feature/sbi-r31-14-delta-qa-reuse-20261128
     paths:
       - development/qa_reuse/**
+      - AGENTS.md
+      - .github/copilot-instructions.md
       - .github/workflows/sbi-r31-14-delta-qa-reuse.yml
   workflow_dispatch:
 
