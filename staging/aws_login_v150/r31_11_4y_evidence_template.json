@@ -1,0 +1,52 @@
+{
+  "schema": "DB-R31.11.4Y-INDEPENDENT-EVIDENCE-INTAKE-V1",
+  "classification": "NONSECRET_PROVENANCE_METADATA_NOT_APPROVAL",
+  "environment": "qa_isolated_external_mtls",
+  "release_authorization": "NOT_GRANTED",
+  "financial_apply": "LOCKED",
+  "production_release": "BLOCKED",
+  "external_acceptance": "NOT_TESTED",
+  "evidence_groups": [
+    {
+      "id": "DOMAIN_DNS_OWNERSHIP",
+      "state": "PENDING",
+      "change_ticket": "PENDING",
+      "evidence_reference": "PENDING",
+      "evidence_sha256": "PENDING",
+      "owner_review_ticket": "PENDING",
+      "independent_security_review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "id": "INGRESS_FIREWALL_AND_ROUTE_ISOLATION",
+      "state": "PENDING",
+      "change_ticket": "PENDING",
+      "evidence_reference": "PENDING",
+      "evidence_sha256": "PENDING",
+      "owner_review_ticket": "PENDING",
+      "independent_security_review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "id": "TLS_SERVER_CERT_AND_CLIENT_CA_REVOCATION",
+      "state": "PENDING",
+      "change_ticket": "PENDING",
+      "evidence_reference": "PENDING",
+      "evidence_sha256": "PENDING",
+      "owner_review_ticket": "PENDING",
+      "independent_security_review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "id": "CHANGE_ROLLBACK_MONITORING_AND_SECURITY_REVIEW",
+      "state": "PENDING",
+      "change_ticket": "PENDING",
+      "evidence_reference": "PENDING",
+      "evidence_sha256": "PENDING",
+      "owner_review_ticket": "PENDING",
+      "independent_security_review_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    }
+  ],
+  "notice": "Metadata only. A submitted record is not independent verification, issuance authorization, ingress approval, external acceptance or production release. Do not put credentials, private keys, cookies, tokens, real customer or bank data here."
+}
