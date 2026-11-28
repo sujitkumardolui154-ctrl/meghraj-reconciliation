@@ -1,0 +1,31 @@
+name: R31 Firebase PG owner mapping (targeted offline)
+on:
+  push:
+    branches:
+      - feature/sbi-r31-firebase-postgres-mapping-readonly-20261128
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-owner-map-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Checkout review branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run only new synthetic owner mapping tests
+        run: |
+          python3 -B -m unittest discover \
+            -s staging/existing_preview_deployment \
+            -p 'test_firebase_pg_owner_binding_readonly.py' -v
+      - name: Preserve financial and runtime acceptance boundaries
+        run: |
+          echo "R31_BINDING_REAL_FIREBASE=NOT_TESTED_IN_CI"
+          echo "R31_BINDING_REAL_POSTGRES=NOT_TESTED_IN_CI"
+          echo "R31_BINDING_CROSS_TENANT_HTTPS=NOT_TESTED"
+          echo "R31_BINDING_FINANCIAL_APPLY=LOCKED"
+          echo "R31_BINDING_PRODUCTION_RELEASE=BLOCKED"
