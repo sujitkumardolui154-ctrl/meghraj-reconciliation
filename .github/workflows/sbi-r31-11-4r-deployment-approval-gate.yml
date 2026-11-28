@@ -1,0 +1,57 @@
+name: SBI R31.11.4R QA endpoint deployment approval preflight (offline)
+on:
+  push:
+    branches: [feature/sbi-r31-11-4r-external-qa-deployment-approval-20261128]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  nondeployable-release-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install source test dependencies only (no AWS/Firebase credentials)
+        run: python -m pip install --disable-pip-version-check 'Flask>=3,<4' 'firebase-admin>=6,<8' 'cryptography>=43,<49'
+      - name: Compile and execute 4R plus 4Q/4P/4O regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -B -m py_compile staging/aws_login_v150/r31_11_4r_combined_approval_preflight.py
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4r_*.py' -v
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4q_*.py' -v
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4p_*.py' -v
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4o_*.py' -v
+      - name: Assert all 23 approvals and deployment remain BLOCKED
+        shell: bash
+        run: |
+          set -euo pipefail
+          P=staging/aws_login_v150/r31_11_4r_deployment_gate.json
+          S=staging/aws_login_v150/r31_11_4r_combined_approval_preflight.py
+          python -m json.tool "$P" >/dev/null
+          python - <<'PY'
+          import json
+          obj=json.load(open("staging/aws_login_v150/r31_11_4r_deployment_gate.json"))
+          assert obj["deployment_authorization"]=="NOT_GRANTED"
+          assert obj["release_decision"]=="BLOCKED_NO_DEPLOYMENT_PERMISSION"
+          assert obj["approved_qa_fqdn"]=="PENDING"
+          assert len(obj["linked_approvals"])==23
+          assert all(x["state"]=="PENDING" for x in obj["linked_approvals"])
+          assert len(obj["independent_prerequisites"])==8
+          assert all(x["state"]=="NOT_APPROVED_OR_VERIFIED" for x in obj["independent_prerequisites"])
+          assert len(obj["reviewed_rollback"])==9
+          assert all(x["state"]=="DESIGNED_NOT_EXECUTED" for x in obj["reviewed_rollback"])
+          assert obj["remote_acceptance"]["executed_case_count"]==0
+          assert obj["policy_constraints"]["qa_ingress"]=="NOT_DEPLOYED"
+          assert obj["policy_constraints"]["public_caddy_change"]=="FORBIDDEN"
+          assert obj["financial_apply"]=="LOCKED"
+          assert obj["production_release"]=="BLOCKED"
+          PY
+          grep -Fq 'DB_R31_11_4R_DEPLOYMENT_GATE=BLOCKED_MISSING_APPROVALS' "$S"
+          grep -Fq 'DB_R31_11_4R_EXTERNAL_HTTPS_MTLS=NOT_TESTED' "$S"
+          grep -Fq 'DB_R31_11_4R_FINANCIAL_APPLY=LOCKED' "$S"
+          grep -Fq 'DB_R31_11_4R_PRODUCTION_RELEASE=BLOCKED' "$S"
+          ! grep -En 'FINANCIAL_APPLY=ENABLED|DROP DATABASE|CREATE ROLE|docker.*--publish|CADDY_CONFIG_WRITE_ENABLED|certbot.*issue' "$S"
