@@ -61,6 +61,27 @@ def financial_year(month):
     return str(start) + "-" + str(start + 1)
 
 
+# User-approved service labels: Sept (not Sep) To Oct, within one financial year.
+SHORT_SERVICE_MONTHS = (
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sept", "Oct", "Nov", "Dec",
+)
+
+
+def service_period_label(first, last):
+    if first > last:
+        raise InvoiceError("SERVICE_PERIOD_REVIEW_REQUIRED")
+    if financial_year(first) != financial_year(last):
+        raise InvoiceError("CROSS_FINANCIAL_YEAR_REVIEW_REQUIRED")
+    if first.year == last.year and first.month == last.month:
+        return first.strftime("%B %Y")
+    a = SHORT_SERVICE_MONTHS[first.month - 1]
+    b = SHORT_SERVICE_MONTHS[last.month - 1]
+    if first.year == last.year:
+        return a + " To " + b + " " + str(last.year)
+    return a + " " + str(first.year) + " To " + b + " " + str(last.year)
+
+
 def verified_snapshot(branch):
     if not isinstance(branch, dict) or branch.get("verified") is not True:
         raise InvoiceError("BRANCH_MASTER_NOT_VERIFIED")
@@ -106,8 +127,9 @@ def build_invoice(source, branch):
     first = date_value(source.get("service_from"), "service_from")
     last = date_value(source.get("service_to"), "service_to")
     issued = date_value(source.get("invoice_date"), "invoice_date")
-    if first > last or first.year != last.year or first.month != last.month:
-        raise InvoiceError("SERVICE_PERIOD_REVIEW_REQUIRED")
+    # Cross-month billing is supported only within a single Indian FY.
+    # A cross-FY period requires a separately approved GST/accounting rule.
+    service_label = service_period_label(first, last)
     if issued < last:
         raise InvoiceError("INVOICE_DATE_BEFORE_SERVICE_END")
     shipments = source.get("shipments")
@@ -137,7 +159,9 @@ def build_invoice(source, branch):
             weight = Decimal(str(item.get("weight_kg")))
         except (InvalidOperation, ValueError):
             raise InvoiceError("INVALID_WEIGHT") from None
-        if not weight.is_finite() or weight <= 0 or weight.as_tuple().exponent < -3:
+        if (not weight.is_finite() or weight <= 0
+                or weight.as_tuple().exponent < -3
+                or weight > Decimal("999999999.999")):
             raise InvoiceError("INVALID_WEIGHT")
         amount = money(item.get("amount"), "shipment_amount", positive=True)
         taxable += amount
@@ -156,8 +180,16 @@ def build_invoice(source, branch):
         **snapshot, "invoice_no": invoice_no,
         "service_from": first.isoformat(), "service_to": last.isoformat(),
         "invoice_date": issued.isoformat(),
-        "service_month": first.strftime("%B %Y"),
+        "service_month": service_label,
+        # Stable start-month report index for backward compatibility.
+        # Never duplicate a multi-month invoice into both GST months.
         "service_month_key": first.strftime("%Y-%m"),
+        "multi_month_period": (first.year, first.month) != (last.year, last.month),
+        "gst_period_policy": (
+            "MULTI_MONTH_REVIEW_REQUIRED"
+            if (first.year, first.month) != (last.year, last.month)
+            else "SINGLE_MONTH"
+        ),
         "fy": financial_year(first),
         "taxable": str(taxable.quantize(CENT)),
         "cgst": str(cgst), "sgst": str(sgst), "total": str(total),

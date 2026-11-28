@@ -615,5 +615,158 @@ class IsolatedPostgresCombinedTests(unittest.TestCase):
         self.assertEqual(response.get_json()["error"], "FY_SERVICE_MONTH_CONFLICT")
 
 
+    def test_17_verified_branch_lookup_by_sol_and_name(self):
+        for query in ("03970", "SAMPLE VERIFIED"):
+            response=self.client.get("/api/invoice-gst/branches?search="+
+                                     query.replace(" ","%20"))
+            self.assertEqual(response.status_code,200,response.get_json())
+            self.assertTrue(any(row["branch_key"]==BRANCH["branch_key"]
+                                for row in response.get_json()["branches"]))
+        absent=self.client.get("/api/invoice-gst/branches?search=999999")
+        self.assertEqual(absent.status_code,200)
+        self.assertEqual(absent.get_json()["count"],0)
+
+    def test_18_xlsx_awb_upload_is_readonly_and_formulas_denied(self):
+        from openpyxl import Workbook
+        wb=Workbook();ws=wb.active
+        ws.append(["Dispatch Date","AWB No","Packet Ref No",
+                   "Consignee","Weight (kg)","Amount ₹"])
+        ws.append(["01/09/2026","QA-AWB5","","QA CONSIGNEE",0.250,150])
+        raw=BytesIO();wb.save(raw);wb.close()
+        response=self.client.post("/api/invoice-gst/annexure/parse",
+            data={"file":(BytesIO(raw.getvalue()),"qa_annexure.xlsx")},
+            content_type="multipart/form-data")
+        self.assertEqual(response.status_code,200,response.get_json())
+        self.assertEqual(response.get_json()["shipments"][0]["lr_no"],"QA-AWB5")
+        self.assertFalse(response.get_json()["persisted"])
+        self.assertFalse(response.get_json()["financial_writes"])
+        with self.connect() as conn:
+            self.assertEqual(conn.execute(
+                "SELECT count(*) AS n FROM sbi_invoice_gst.invoice_lines "
+                "WHERE lr_no='QA-AWB5'"
+            ).fetchone()["n"],0)
+        wb=Workbook();ws=wb.active
+        ws.append(["Dispatch Date","AWB No","Packet Ref No",
+                   "Consignee","Weight (kg)","Amount ₹"])
+        ws.append(["01/09/2026","QA-AWB6","","QA CONSIGNEE",0.250,"=1+2"])
+        raw=BytesIO();wb.save(raw);wb.close()
+        denied=self.client.post("/api/invoice-gst/annexure/parse",
+            data={"file":(BytesIO(raw.getvalue()),"qa_formula.xlsx")},
+            content_type="multipart/form-data")
+        self.assertEqual(denied.status_code,422,denied.get_json())
+        self.assertEqual(denied.get_json()["error"],"EXCEL_FORMULA_OR_ERROR_NOT_ALLOWED")
+
+    def test_19_multimonth_preview_finalize_isolated_only(self):
+        data=deepcopy(SOURCE)
+        data["invoice_no"]="MXP90070"
+        data["service_from"]="2026-09-01"
+        data["service_to"]="2026-10-31"
+        data["invoice_date"]="2026-11-05"
+        data["shipments"][0]["dispatch_date"]="2026-09-01"
+        data["shipments"][1]["dispatch_date"]="2026-10-31"
+        data["shipments"][0]["packet_ref_no"]="UI-V2-EDIT"
+        data["shipments"][1]["consignee"]="QA EDITED USER CONSIGNEE"
+        data["shipments"][1]["amount"]="75.00"
+        self.__class__.multimonth_source=data
+        preview=self.client.post("/api/invoice-gst/preview",json=data)
+        self.assertEqual(preview.status_code,200,preview.get_json())
+        self.assertEqual(preview.get_json()["invoice"]["service_month"],
+                         "Sept To Oct 2026")
+        self.assertEqual(preview.get_json()["invoice"]["taxable"],"1075.00")
+        issued=self.client.post("/api/invoice-gst/finalize",json=data)
+        self.assertEqual(issued.status_code,201,issued.get_json())
+        self.assertEqual(issued.get_json()["shipment_count"],2)
+        for month in ("2026-09","2026-10"):
+            # Until accountants approve period allocation, neither month can
+            # silently omit or double-count this multi-month invoice.
+            gst=self.client.get("/api/invoice-gst/gst.xlsx?month="+month)
+            self.assertEqual(gst.status_code,409,gst.get_json())
+            self.assertEqual(gst.get_json()["error"],
+                "MULTI_MONTH_GST_REPORT_PERIOD_POLICY_PENDING")
+
+    def test_20_full_invoice_reload_is_immutable(self):
+        r=self.client.get(
+            "/api/invoice-gst/invoices/MXP90070?include_lines=1"
+        )
+        self.assertEqual(r.status_code,200,r.get_json())
+        self.assertTrue(r.get_json()["original_immutable"])
+        self.assertTrue(r.get_json()["correction_requires_separate_approval"])
+        invoice=r.get_json()["invoice"];rows=r.get_json()["shipments"]
+        self.assertEqual(invoice["service_month"],"Sept To Oct 2026")
+        self.assertEqual(invoice["service_from"],"2026-09-01")
+        self.assertEqual(invoice["service_to"],"2026-10-31")
+        self.assertEqual(invoice["branch_key"],BRANCH["branch_key"])
+        self.assertEqual(len(rows),invoice["shipment_count"])
+        self.assertEqual(rows[0]["packet_ref_no"],"UI-V2-EDIT")
+        self.assertEqual(rows[1]["consignee"],"QA EDITED USER CONSIGNEE")
+        self.assertEqual(rows[1]["amount"],"75.00")
+        with self.connect() as conn:
+            with self.assertRaises(self.psycopg.errors.RaiseException):
+                conn.execute("UPDATE sbi_invoice_gst.invoice_lines "
+                             "SET amount=1 WHERE invoice_no='MXP90070'")
+
+    def test_21_correction_draft_can_preview_never_finalize(self):
+        copy=deepcopy(self.multimonth_source)
+        copy["invoice_no"]="MXP90071"
+        copy["replaces_invoice_no"]="MXP90070"
+        response=self.client.post("/api/invoice-gst/preview",json=copy)
+        self.assertEqual(response.status_code,200,response.get_json())
+        self.assertTrue(response.get_json()["invoice"]["correction_review_only"])
+        self.assertEqual(response.get_json()["invoice"]["correction_source_invoice_no"],
+                         "MXP90070")
+        denied=self.client.post("/api/invoice-gst/finalize",json=copy)
+        self.assertEqual(denied.status_code,403,denied.get_json())
+        self.assertEqual(denied.get_json()["error"],
+                         "CORRECTION_REQUIRES_APPROVED_REVISION_WORKFLOW")
+        missing=deepcopy(copy);missing["replaces_invoice_no"]="MXP999999"
+        failed=self.client.post("/api/invoice-gst/preview",json=missing)
+        self.assertEqual(failed.status_code,409,failed.get_json())
+        with self.connect() as conn:
+            n=conn.execute("SELECT count(*) AS n FROM sbi_invoice_gst.invoices "
+                           "WHERE invoice_no='MXP90071'").fetchone()["n"]
+        self.assertEqual(n,0)
+
+    def test_22_live_multimonth_finalization_remains_blocked(self):
+        data=deepcopy(self.multimonth_source)
+        data["invoice_no"]="MXP90072"
+        original=os.environ["SBI_INVOICE_GST_DEPLOYMENT_MODE"]
+        try:
+            os.environ["SBI_INVOICE_GST_DEPLOYMENT_MODE"]="APPROVED_LIVE"
+            denied=self.client.post("/api/invoice-gst/finalize",json=data)
+            self.assertEqual(denied.status_code,403,denied.get_json())
+            self.assertEqual(denied.get_json()["error"],
+                             "INVOICE_UI_V2_PRODUCTION_FINALIZATION_LOCKED")
+            one_month=deepcopy(SOURCE)
+            one_month["invoice_no"]="MXP90073"
+            denied_single=self.client.post("/api/invoice-gst/finalize",json=one_month)
+            self.assertEqual(denied_single.status_code,403,denied_single.get_json())
+            self.assertEqual(denied_single.get_json()["error"],
+                             "INVOICE_UI_V2_PRODUCTION_FINALIZATION_LOCKED")
+        finally:
+            os.environ["SBI_INVOICE_GST_DEPLOYMENT_MODE"]=original
+
+    def test_23_annexure_upload_requires_creator_and_csrf(self):
+        from flask import Flask, g
+        from invoice_gst_feature import create_invoice_gst_blueprint
+        def check_client(can_create,csrf):
+            app=Flask(__name__)
+            @app.before_request
+            def identity():
+                g.dil_user=SimpleNamespace(uid="synthetic-qa-uid")
+            app.register_blueprint(create_invoice_gst_blueprint(
+                can_read=lambda:True,can_create=can_create,
+                csrf_valid=csrf,connection_factory=self.connect
+            ))
+            return app.test_client()
+        unauth=check_client(lambda:False,lambda:True).post(
+            "/api/invoice-gst/annexure/parse",data={})
+        self.assertEqual(unauth.status_code,403)
+        self.assertEqual(unauth.get_json()["error"],"INVOICE_CREATOR_PERMISSION_REQUIRED")
+        no_csrf=check_client(lambda:True,lambda:False).post(
+            "/api/invoice-gst/annexure/parse",data={})
+        self.assertEqual(no_csrf.status_code,403)
+        self.assertEqual(no_csrf.get_json()["error"],"CSRF_VERIFICATION_FAILED")
+
+
 if __name__ == "__main__":
     unittest.main()
