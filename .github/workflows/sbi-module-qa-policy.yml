@@ -1,0 +1,39 @@
+name: SBI Module QA Policy (offline, no deployment)
+on:
+  pull_request:
+    paths:
+      - 'tools/qa_module_policy.py'
+      - 'tests/test_qa_module_policy.py'
+      - 'docs/SBI_MODULE_DEVELOPMENT_QA_RULES_20261128.md'
+      - '.github/workflows/sbi-module-qa-policy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  module-policy-unit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact PR source without token persistence
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate GitHub QA selection and exact-SHA evidence
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p 'test_qa_module_policy.py' -v
+          python -m py_compile tools/qa_module_policy.py
+          test -f .github/workflows/sbi-invoice-gst-combined-qa.yml
+          test -f .github/workflows/migration-safety.yml
+          test -f .github/workflows/aws-lightsail-preview-check.yml
+          test -f .github/workflows/railway-preview-safety.yml
+          echo 'QA_POLICY_MODULE=PASS'
+          echo 'FINANCIAL_RECONCILIATION_WRITES=NONE'
+          echo 'PRODUCTION_DEPLOYMENT=NOT_PERFORMED'
