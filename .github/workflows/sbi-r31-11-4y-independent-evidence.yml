@@ -1,0 +1,20 @@
+name: SBI R31.11.4Y nonsecret evidence intake QA (no deploy)
+on:
+  push:
+    branches:
+      - feature/sbi-r31-11-4y-independent-evidence-intake-20261128
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evidence-screen-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Source scanner unchanged
+        run: python3 migration/check_public_tree.py
+      - name: Validate pending-only nonsecret template
+        run: python3 -B staging/aws_login_v150/r31_11_4y_nonsecret_evidence_screen.py
+      - name: Run only new 4Y validator tests
+        run: python3 -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4y_nonsecret_evidence_screen.py' -v
