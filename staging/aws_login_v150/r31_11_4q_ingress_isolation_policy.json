@@ -1,0 +1,249 @@
+{
+  "schema": "DB-R31.11.4Q-QA-INGRESS-ISOLATION-V1",
+  "classification": "NONDEPLOYABLE_SECURITY_DESIGN_ONLY",
+  "deployment_authorization": "NOT_GRANTED",
+  "topology": {
+    "public_caddy": "UNCHANGED_SHA256_61d14b20bd57ce7ba4e6150324bddacefa186e5196b40c19fd57827907b0877b",
+    "dedicated_qa_proxy": "NOT_DEPLOYED",
+    "dedicated_qa_http_adapter": "NOT_DEPLOYED",
+    "qa_hostname": "PENDING",
+    "approved_source_cidrs": "PENDING",
+    "client_ca": "NOT_APPROVED",
+    "tls_listener": "NOT_DEPLOYED",
+    "qa_postgres": "PRIVATE_INTERNAL_NO_PUBLISHED_PORTS",
+    "qa_proxy_docker_socket": "FORBIDDEN",
+    "qa_proxy_direct_postgres": "FORBIDDEN",
+    "qa_proxy_production_financial_network": "FORBIDDEN",
+    "financial_apply": "LOCKED"
+  },
+  "controls": [
+    {
+      "id": "RESTRICTED_SOURCE_CIDRS",
+      "status": "DESIGN_REQUIRED_NOT_ACCEPTED"
+    },
+    {
+      "id": "SEPARATE_QA_PROXY_WITH_NO_PUBLIC_CADDY_CHANGE",
+      "status": "DESIGN_REQUIRED_NOT_ACCEPTED"
+    },
+    {
+      "id": "QA_HOSTNAME_DNS_AND_CLIENT_CA_APPROVED",
+      "status": "DESIGN_REQUIRED_NOT_ACCEPTED"
+    },
+    {
+      "id": "MTLS_REQUIRE_AND_VERIFY_AT_QA_EDGE",
+      "status": "DESIGN_REQUIRED_NOT_ACCEPTED"
+    },
+    {
+      "id": "SNI_HOST_MATCH_ENFORCED",
+      "status": "DESIGN_REQUIRED_NOT_ACCEPTED"
+    },
+    {
+      "id": "REJECT_UNTRUSTED_CLIENT_IP_FORWARDED_HEADERS",
+      "status": "DESIGN_REQUIRED_NOT_ACCEPTED"
+    },
+    {
+      "id": "DROP_FORGED_UID_ROLE_AND_CERT_IDENTITY_HEADERS",
+      "status": "DESIGN_REQUIRED_NOT_ACCEPTED"
+    },
+    {
+      "id": "EXACT_METHOD_AND_PATH_ALLOWLIST",
+      "status": "DESIGN_REQUIRED_NOT_ACCEPTED"
+    },
+    {
+      "id": "FIREBASE_SIGNED_SESSION_IN_QA_ADAPTER",
+      "status": "DESIGN_REQUIRED_NOT_ACCEPTED"
+    },
+    {
+      "id": "SESSION_ORIGIN_AND_CSRF_GUARDS",
+      "status": "DESIGN_REQUIRED_NOT_ACCEPTED"
+    },
+    {
+      "id": "PRODUCTION_FINANCIAL_ROUTES_DENIED",
+      "status": "DESIGN_REQUIRED_NOT_ACCEPTED"
+    },
+    {
+      "id": "NO_PROXY_DIRECT_PG_OR_PRODUCTION_FINANCIAL_NETWORK",
+      "status": "DESIGN_REQUIRED_NOT_ACCEPTED"
+    },
+    {
+      "id": "RATE_LIMITS_AND_SAFE_AUDIT_LOGS",
+      "status": "DESIGN_REQUIRED_NOT_ACCEPTED"
+    },
+    {
+      "id": "APPROVED_ROLLBACK_AND_INDEPENDENT_REVIEW",
+      "status": "DESIGN_REQUIRED_NOT_ACCEPTED"
+    }
+  ],
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/healthz",
+      "auth_gate": "MTLS_ONLY",
+      "status": "PROPOSED_NOT_EXPOSED"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/csrf",
+      "auth_gate": "MTLS_ONLY",
+      "status": "PROPOSED_NOT_EXPOSED"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/session",
+      "auth_gate": "MTLS_ORIGIN_CSRF_REQUIRED",
+      "status": "PROPOSED_NOT_EXPOSED"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "auth_gate": "MTLS_FIREBASE_SESSION_REQUIRED",
+      "status": "PROPOSED_NOT_EXPOSED"
+    },
+    {
+      "method": "GET",
+      "path": "/api/r31-private-qa/tenant-rls-source-r3114",
+      "auth_gate": "MTLS_FIREBASE_SESSION_REQUIRED",
+      "status": "PROPOSED_NOT_EXPOSED"
+    }
+  ],
+  "forbidden_prefixes": [
+    "/admin",
+    "/api/payment-evidence",
+    "/api/reconciliation",
+    "/api/invoice",
+    "/api/gst",
+    "/api/credit",
+    "/api/financial",
+    "/api/finance",
+    "/api/bulk"
+  ],
+  "logging_policy": {
+    "permitted_fields": [
+      "timestamp_utc",
+      "event_code",
+      "correlation_id",
+      "method",
+      "route_template",
+      "decision"
+    ],
+    "prohibited_fields": [
+      "Authorization",
+      "Cookie",
+      "Set-Cookie",
+      "X-Firebase-UID",
+      "X-DB-Role",
+      "X-Forwarded-For",
+      "client_certificate_PEM",
+      "client_private_key",
+      "firebase_id_token",
+      "email",
+      "raw_ip"
+    ],
+    "status": "NOT_IMPLEMENTED_OR_TESTED"
+  },
+  "rollback": [
+    {
+      "id": "VERIFY_APPROVED_CHANGE_TICKET_AND_ROLLBACK_OWNER",
+      "status": "NOT_EXECUTED"
+    },
+    {
+      "id": "CAPTURE_PUBLIC_CADDY_SHA256_AND_PRIVATE_PG_QA_ROW_COUNTS",
+      "status": "NOT_EXECUTED"
+    },
+    {
+      "id": "STOP_ONLY_LABELED_ISOLATED_QA_INGRESS_AFTER_APPROVAL",
+      "status": "NOT_EXECUTED"
+    },
+    {
+      "id": "REVOKE_ONLY_APPROVED_QA_CLIENT_CERT_ACCESS",
+      "status": "NOT_EXECUTED"
+    },
+    {
+      "id": "RESTORE_RESTRICTED_INGRESS_AND_DNS_VIA_SEPARATE_CHANGE",
+      "status": "NOT_EXECUTED"
+    },
+    {
+      "id": "VERIFY_ORIGINAL_PUBLIC_CADDY_ROUTE_AND_SHA256_UNCHANGED",
+      "status": "NOT_EXECUTED"
+    },
+    {
+      "id": "VERIFY_QA_PG_RLS_ROWS_ZERO_AND_TWO_OWNER_MAPS",
+      "status": "NOT_EXECUTED"
+    },
+    {
+      "id": "VERIFY_NO_EPHEMERAL_ADC_OR_UNAPPROVED_LISTENER",
+      "status": "NOT_EXECUTED"
+    },
+    {
+      "id": "RECORD_ROLLBACK_REVIEW_SIGNOFF",
+      "status": "NOT_EXECUTED"
+    }
+  ],
+  "linked_approval_requirements": [
+    {
+      "field": "qa_only_public_endpoint_scope_approved",
+      "status": "PENDING"
+    },
+    {
+      "field": "firewall_cidr_scope_approved",
+      "status": "PENDING"
+    },
+    {
+      "field": "qa_proxy_isolation_peer_reviewed",
+      "status": "PENDING"
+    },
+    {
+      "field": "qa_proxy_config_peer_reviewed",
+      "status": "PENDING"
+    },
+    {
+      "field": "firebase_test_origin_approved",
+      "status": "PENDING"
+    },
+    {
+      "field": "finance_routes_excluded_verified",
+      "status": "PENDING"
+    },
+    {
+      "field": "rollback_owner_and_test_approved",
+      "status": "PENDING"
+    },
+    {
+      "field": "monitoring_and_alerts_approved",
+      "status": "PENDING"
+    },
+    {
+      "field": "external_negative_test_plan_approved",
+      "status": "PENDING"
+    },
+    {
+      "field": "independent_security_reviewer_approved",
+      "status": "PENDING"
+    },
+    {
+      "field": "approved_source_cidrs",
+      "status": "PENDING"
+    },
+    {
+      "field": "rollback_ticket",
+      "status": "PENDING"
+    },
+    {
+      "field": "external_test_owner",
+      "status": "PENDING"
+    }
+  ],
+  "acceptance": {
+    "external_case_count": 22,
+    "external_cases": "NOT_TESTED",
+    "actual_remote_mtls": "NOT_TESTED",
+    "actual_rate_limit_and_logging": "NOT_TESTED",
+    "real_firebase_session_expiry_revocation": "NOT_TESTED",
+    "client_certificate_revocation": "NOT_TESTED",
+    "qa_ingress_firewall": "NOT_DEPLOYED"
+  },
+  "r3112": "ACTIVE_QA_DESIGN_RELEASE_GATED",
+  "financial_apply": "LOCKED",
+  "production_release": "BLOCKED",
+  "notice": "This policy is an offline design and simulated decision model, not a Caddy configuration, live HTTP proxy, authenticated traffic inspection, DNS validation, or permission to deploy."
+}
