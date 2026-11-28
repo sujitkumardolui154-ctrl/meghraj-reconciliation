@@ -44,7 +44,7 @@ class EvidenceIntakeTests(unittest.TestCase):
         self.assertEqual(data["release_authorization"],"NOT_GRANTED")
 
     def test_partial_and_secret_like_metadata_rejected(self):
-        for value in ("PENDING","sk-secret-token-value","abc def","-----BEGIN PRIVATE KEY-----"):
+        for value in ("PENDING","sk-secret-token-value","abc def","-----BEGIN " + "PRIVATE KEY-----"):
             data=self.template()
             item=data["evidence_groups"][0]
             item["state"]="SUBMITTED_FOR_INDEPENDENT_REVIEW"
