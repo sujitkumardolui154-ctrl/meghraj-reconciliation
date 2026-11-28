@@ -3,6 +3,17 @@ on:
   push:
     branches: ['aws/lightsail-preview-20261102']
   pull_request:
+    paths:
+      - 'staging/railway_public/**'
+      - 'staging/aws_lightsail/**'
+      - 'staging/aws_backend_readonly/**'
+      - 'deployment/reporting_staging/**'
+      - 'dashboard_source/production_gateway.py'
+      - 'dashboard_source/dashboard_sessions.py'
+      - 'dashboard_source/index.html'
+      - 'dashboard_source/invoice_gst_ui.js'
+      - 'dashboard_source/credit_note_ui.js'
+      - '.github/workflows/aws-lightsail-preview-check.yml'
   workflow_dispatch:
 permissions:
   contents: read
