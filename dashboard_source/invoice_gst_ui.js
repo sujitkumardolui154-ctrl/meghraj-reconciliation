@@ -266,7 +266,7 @@
       if (awbs.length+pending.length>=5000)
         throw new Error("Maximum 5,000 AWBs per draft. No rows from this upload were merged.");
       keys.add(key);
-      row.selected=inPeriod(row);
+      row.selected=validateRow(row)==="";
       if(!row.selected)outside++;
       pending.push(row);added++;
     }
@@ -379,7 +379,7 @@
   });
   $("ig-select-all").addEventListener("click",()=>{
     if(busy||mode==="view")return;
-    for(const row of awbs)row.selected=inPeriod(row);
+    for(const row of awbs)row.selected=validateRow(row)==="";
     invalidate();paintRows();
   });
   $("ig-deselect-all").addEventListener("click",()=>{
