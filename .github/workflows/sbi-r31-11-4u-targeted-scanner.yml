@@ -21,6 +21,8 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check 'Flask>=3,<4' 'firebase-admin>=6,<8' 'cryptography>=43,<49'
       - name: Run only affected 4K approval packet unit tests
         run: python3 -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4k_external_mtls_readiness.py' -v
+      - name: Run only affected 4S acceptance matrix unit tests
+        run: python3 -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4s_combined_external_acceptance.py' -v
       - name: Assert forbidden real deploy and financial changes absent
         shell: bash
         run: |
