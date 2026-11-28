@@ -139,5 +139,22 @@ class QAReusePolicyTests(unittest.TestCase):
                 gate.load_registry(p)
 
 
+
+    def test_repository_development_instructions_require_preexecution_reuse(self):
+        root = HERE.parents[1]
+        agents = (root / "AGENTS.md").read_text("utf-8")
+        copilot = (root / ".github/copilot-instructions.md").read_text("utf-8")
+        dev_policy = (HERE / "QA_EXECUTION_RULES.md").read_text("utf-8")
+        for text in (agents, copilot, dev_policy):
+            self.assertIn("GitHub", text)
+            self.assertIn("QA", text)
+            self.assertIn("reuse", text.lower())
+        self.assertIn("BEFORE running", agents)
+        self.assertIn("financial", agents.lower())
+        self.assertIn("LOCKED", agents)
+        self.assertIn("Do not skip failed scanner", copilot)
+        self.assertIn("Do not rerun an entire historical combined suite", agents)
+
+
 if __name__ == "__main__":
     unittest.main()
