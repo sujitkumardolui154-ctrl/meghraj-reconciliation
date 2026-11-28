@@ -135,33 +135,156 @@ async function refreshDashboard() {
 </section>
 
 <section class="card" id="ig-invoice-generator" aria-labelledby="ig-invoice-title">
-  <h2 id="ig-invoice-title">Generate Tax Invoice — Meghraj Express</h2>
-  <p>Uses verified SBI branch data and a shipment annexure. The original company logo,
-  declaration, bank details and signature must be approved and stored privately
-  before finalizing invoices. This is separate from payment reconciliation.</p>
+  <style>
+    #ig-invoice-generator .ig-v2-panel {border:1px solid #dce5f0;border-radius:10px;margin:13px 0;padding:15px;background:#fff}
+    #ig-invoice-generator .ig-v2-panel h3 {margin:0 0 10px;font-size:16px;color:#183a62}
+    #ig-invoice-generator .ig-v2-row {display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:12px 0}
+    #ig-invoice-generator .ig-v2-field {display:flex;flex-direction:column;gap:5px;min-width:175px;flex:1}
+    #ig-invoice-generator .ig-v2-field label {font-size:12px;font-weight:650}
+    #ig-invoice-generator .ig-v2-field input,#ig-invoice-generator .ig-v2-field select,#ig-invoice-generator textarea {width:100%;padding:9px;border:1px solid #cbd7e4;border-radius:7px}
+    #ig-invoice-generator input[readonly] {background:#f1f5fa}
+    #ig-invoice-generator .ig-v2-scroll {overflow:auto;max-height:510px;border:1px solid #dae3ee;border-radius:9px}
+    #ig-invoice-generator .ig-v2-grid {width:100%;min-width:920px;border-collapse:collapse;font-size:12px}
+    #ig-invoice-generator .ig-v2-grid th,#ig-invoice-generator .ig-v2-grid td {border-bottom:1px solid #e5ebf3;padding:7px;text-align:left}
+    #ig-invoice-generator .ig-v2-grid th {position:sticky;top:0;background:#edf3fb;z-index:1}
+    #ig-invoice-generator .ig-v2-grid input:not([type=checkbox]) {width:100%;min-width:80px;padding:6px;border:1px solid #d0dce8;border-radius:5px}
+    #ig-invoice-generator .ig-v2-grid tr.ig-v2-excluded {opacity:.55;background:#f5f7f9}
+    #ig-invoice-generator .ig-v2-counts {background:#f3f8ff;border-radius:8px;padding:11px;white-space:pre-wrap}
+    #ig-invoice-generator .ig-v2-hint {font-size:12px;color:#52677d;margin:8px 0}
+    #ig-invoice-generator .ig-v2-warning {color:#995112;background:#fff5e6;padding:9px;border-radius:7px}
+    #ig-invoice-generator #ig-loaded-banner {font-size:12px;font-weight:650;padding:9px;border-radius:8px;background:#eaf2fd}
+    #ig-invoice-generator input:disabled,#ig-invoice-generator select:disabled {background:#f1f3f6}
+  </style>
+  <h2 id="ig-invoice-title">Generate Tax Invoice — Meghraj Express · Version 2</h2>
+  <p class="ig-v2-hint">Verified SBI branch, editable billing period and selected AWB annexure.
+    Nothing is recorded until an authorized finalize action. Existing finalized invoices remain immutable.</p>
+
+  <div class="ig-v2-panel">
+    <h3>01 · Find Invoice / Start New</h3>
+    <div class="ig-v2-row">
+      <div class="ig-v2-field">
+        <label for="ig-search-number">Existing Invoice Number</label>
+        <input type="search" id="ig-search-number" placeholder="MXP18430" pattern="MXP[0-9]{4,10}" maxlength="13">
+      </div>
+      <button type="button" id="ig-find">Find &amp; Load Full Invoice</button>
+      <button type="button" id="ig-new">New Invoice</button>
+      <button type="button" id="ig-correction" hidden>Prepare Correction Draft (Review Only)</button>
+    </div>
+    <div id="ig-loaded-banner" role="status">New working invoice · No database changes</div>
+    <p class="ig-v2-hint">A finalized invoice loads its original AWB annexure read-only.
+      A correction copy needs a NEW invoice number and independent approval; it cannot overwrite the original.</p>
+  </div>
+
   <form id="ig-form">
-    <p><label for="ig-branch">Verified customer / branch</label>
-    <select id="ig-branch" required style="display:block;width:100%;max-width:580px;padding:9px"></select></p>
-    <p><label for="ig-number">New unique invoice number</label>
-    <input id="ig-number" placeholder="MXP00000" pattern="MXP[0-9]{4,10}" required></p>
-    <p><label for="ig-from">From Date</label>
-    <input type="date" id="ig-from" required>
-    <label for="ig-to">To Date</label>
-    <input type="date" id="ig-to" required>
-    <label for="ig-date">Invoice Date</label>
-    <input type="date" id="ig-date" required></p>
-    <p><label for="ig-annexure">Shipment annexure — paste all six columns from Excel (tab-separated)</label></p>
-    <p><small>Dispatch Date | LR No | Packet Ref No | Consignee | Weight | Amount.
-    Keep empty Packet Ref No cells when copying. Each shipment must belong to the service period.</small></p>
-    <textarea id="ig-annexure" rows="7" required
-      placeholder="02/02/2026&#9;334371520&#9;&#9;LA MARTINIER&#9;0.100&#9;15.00"
-      style="width:100%;padding:10px;border-radius:8px;resize:vertical"></textarea>
-    <p><button type="button" id="ig-preview">Preview Invoice &amp; GST</button>
-    <button type="button" id="ig-finalize" disabled>Finalize &amp; Record in Database</button>
-    <button type="button" id="ig-pdf" disabled>Download Finalized Invoice PDF</button></p>
+    <div class="ig-v2-panel">
+      <h3>02 · Customer, Bill Period &amp; Invoice Date</h3>
+      <div class="ig-v2-row">
+        <div class="ig-v2-field">
+          <label for="ig-branch-search">Verified SBI Branch * — Search SOL ID or Branch Name</label>
+          <input id="ig-branch-search" type="search" autocomplete="off"
+                 maxlength="80" placeholder="Type SOL 05011 or branch name">
+        </div>
+        <div class="ig-v2-field">
+          <label for="ig-branch">Select Matching Verified Branch *</label>
+          <select id="ig-branch" required><option value="">Select a verified SBI branch</option></select>
+        </div>
+      </div>
+      <p class="ig-v2-hint" id="ig-branch-status" role="status">Only approved branch-master entries are selectable.</p>
+      <div class="ig-v2-row">
+        <div class="ig-v2-field">
+          <label for="ig-number">Invoice No. *</label>
+          <input id="ig-number" placeholder="MXP00000" pattern="MXP[0-9]{4,10}" required maxlength="13">
+        </div>
+        <div class="ig-v2-field">
+          <label for="ig-date">Invoice Date *</label>
+          <input type="date" id="ig-date" required>
+        </div>
+        <div class="ig-v2-field">
+          <label for="ig-from">Bill Period From *</label>
+          <input type="date" id="ig-from" required>
+        </div>
+        <div class="ig-v2-field">
+          <label for="ig-to">Bill Period To *</label>
+          <input type="date" id="ig-to" required>
+        </div>
+      </div>
+      <div class="ig-v2-row">
+        <div class="ig-v2-field">
+          <label for="ig-service-label">Service Month — Auto-calculated</label>
+          <input id="ig-service-label" readonly placeholder="Sept To Oct 2026">
+        </div>
+        <div class="ig-v2-field">
+          <label for="ig-fy-label">Financial Year</label>
+          <input id="ig-fy-label" readonly placeholder="2026-2027">
+        </div>
+      </div>
+      <p id="ig-period-status" class="ig-v2-hint" role="status">
+        Billing period can cross calendar months within the same Indian financial year.
+        Cross-FY periods require separate review.
+      </p>
+    </div>
+
+    <div class="ig-v2-panel">
+      <h3>03 · Annexure — Upload, Merge &amp; Select AWBs</h3>
+      <p class="ig-v2-hint">Import a six-column .xlsx: Dispatch Date, LR/AWB No, Packet Ref No,
+        Consignee, Weight (kg), Amount. Upload another Excel file to merge;
+        duplicate AWB/date pairs are skipped and reported. Files are parsed without database writes.</p>
+      <div class="ig-v2-row">
+        <div class="ig-v2-field">
+          <label for="ig-annexure-file">AWB Excel File (.xlsx)</label>
+          <input type="file" id="ig-annexure-file" accept=".xlsx">
+        </div>
+        <button type="button" id="ig-merge-excel">Upload &amp; Merge AWBs</button>
+        <button type="button" id="ig-merge-paste">Merge Pasted Excel Rows</button>
+      </div>
+      <details>
+        <summary>Paste six tab-separated Excel columns instead</summary>
+        <textarea id="ig-annexure" rows="4" aria-label="Paste Excel AWB rows"
+          placeholder="02/09/2026&#9;334371520&#9;&#9;SAMPLE CONSIGNEE&#9;0.100&#9;15.00"></textarea>
+      </details>
+      <p class="ig-v2-hint" id="ig-merge-status" role="status">
+        No annexure loaded. All imported rows are selected by default if within the Bill Period.
+      </p>
+      <div class="ig-v2-row">
+        <button type="button" id="ig-select-all">Select All Eligible AWBs</button>
+        <button type="button" id="ig-deselect-all">Deselect All AWBs</button>
+        <button type="button" id="ig-remove-excluded">Remove Unselected from Working Draft</button>
+      </div>
+      <div class="ig-v2-scroll">
+        <table class="ig-v2-grid" aria-label="Selectable and editable AWB annexure">
+          <thead><tr>
+            <th scope="col">Use</th><th scope="col">Dispatch Date</th>
+            <th scope="col">AWB / LR No.</th><th scope="col">Packet Ref</th>
+            <th scope="col">Consignee</th><th scope="col">Weight (kg)</th>
+            <th scope="col">Amount ₹</th><th scope="col">Review</th>
+          </tr></thead>
+          <tbody id="ig-awb-body">
+            <tr><td colspan="8">No AWBs loaded.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="ig-v2-row">
+        <button type="button" id="ig-awb-prev">Previous 100</button>
+        <span id="ig-awb-page" role="status">Page 0 of 0</span>
+        <button type="button" id="ig-awb-next">Next 100</button>
+      </div>
+      <div class="ig-v2-counts" id="ig-awb-count" role="status">Imported: 0 | Selected: 0 | Excluded: 0</div>
+      <div class="ig-v2-counts" id="ig-awb-summary" role="status">Taxable ₹0.00 | CGST ₹0.00 | SGST ₹0.00 | Invoice total ₹0.00</div>
+    </div>
+    <div class="ig-v2-panel">
+      <h3>04 · Verify &amp; Generate Invoice</h3>
+      <p class="ig-v2-hint">Only checked AWBs are used for invoice totals. Editing
+        Packet Ref, Consignee, Weight or Amount invalidates previous preview.
+        Finalized-source correction copies remain review-only.</p>
+      <div class="ig-v2-row">
+        <button type="button" id="ig-preview">Preview Selected AWBs &amp; GST</button>
+        <button type="button" id="ig-finalize" disabled>Finalize &amp; Record in Database</button>
+        <button type="button" id="ig-pdf" disabled>Download Finalized Invoice PDF</button>
+      </div>
+    </div>
   </form>
   <pre id="ig-message" style="white-space:pre-wrap;overflow-wrap:anywhere"
-       role="status" aria-live="polite">Invoice feature not verified yet.</pre>
+       role="status" aria-live="polite">Invoice UI v2: Load approved branch data to begin.</pre>
 </section>
 
 <!-- Credit note generator: multi-invoice, DB-sourced immutable reference data. -->
