@@ -230,6 +230,12 @@ def create_invoice_gst_blueprint(can_read, can_create, csrf_valid,
                 try:
                     with conn.transaction():
                         with conn.cursor() as cur:
+                            # Never infer database safety from deployment-mode
+                            # environment strings alone. Writes are permitted
+                            # ONLY to the explicitly isolated invoice_qa DB.
+                            cur.execute("SELECT current_database() AS db")
+                            if cur.fetchone()["db"] != "invoice_qa":
+                                return failure("REFUSE_NON_ISOLATED_QA_DATABASE", 403)
                             # Shares the same invoice-number advisory lock as
                             # the append-only void/cancellation endpoint.
                             cur.execute(
