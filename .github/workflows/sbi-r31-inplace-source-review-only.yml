@@ -1,0 +1,31 @@
+name: R31 Same-URL In-Place Source Review (targeted offline)
+on:
+  push:
+    branches:
+      - feature/sbi-r31-inplace-source-security-review-20261128
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-security-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Checkout review-only source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run only new no-AWS source-review tests
+        run: |
+          python3 -B -m unittest discover \
+            -s staging/existing_preview_deployment \
+            -p 'test_r31_inplace_source_security_review.py' -v
+      - name: Source review is not deployment approval
+        run: |
+          echo "R31_INPLACE_LIVE_AWS=NOT_TESTED_BY_CI"
+          echo "R31_INPLACE_REAL_HTTPS_TENANT_RLS=NOT_TESTED"
+          echo "R31_INPLACE_INTEGRATION_DEPLOYMENT=NOT_AUTHORIZED"
+          echo "R31_INPLACE_FINANCIAL_APPLY=LOCKED"
+          echo "R31_INPLACE_PRODUCTION_RELEASE=BLOCKED"
