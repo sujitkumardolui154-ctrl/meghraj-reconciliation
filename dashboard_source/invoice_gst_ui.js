@@ -259,15 +259,20 @@
     if (rows.length+awbs.length>10000)throw new Error("Annexure merge limit exceeded.");
     const keys=new Set(awbs.map(x=>x.dispatch_date+"|"+x.lr_no));
     let added=0,dups=uploadDuplicates,outside=0;
+    const pending=[];
     for (const raw of rows) {
       const row=normalizeRow(raw),key=row.dispatch_date+"|"+row.lr_no;
       if (keys.has(key)) {dups++;continue;}
-      if (awbs.length>=5000)throw new Error("Maximum 5,000 AWBs per draft.");
+      if (awbs.length+pending.length>=5000)
+        throw new Error("Maximum 5,000 AWBs per draft. No rows from this upload were merged.");
       keys.add(key);
       row.selected=inPeriod(row);
       if(!row.selected)outside++;
-      awbs.push(row);added++;
+      pending.push(row);added++;
     }
+    // Atomic local merge: even a rejected 5001st AWB cannot leave a partial
+    // uploaded draft or invalidate a previously approved preview unnoticed.
+    awbs.push(...pending);
     page=0;invalidate();paintRows();
     $("ig-merge-status").textContent="Merged "+added+" AWB(s), skipped "+dups+
       " duplicate(s), "+outside+" outside bill period (unchecked). "+
