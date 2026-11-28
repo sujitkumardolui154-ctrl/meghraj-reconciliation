@@ -159,7 +159,9 @@ def build_invoice(source, branch):
             weight = Decimal(str(item.get("weight_kg")))
         except (InvalidOperation, ValueError):
             raise InvoiceError("INVALID_WEIGHT") from None
-        if not weight.is_finite() or weight <= 0 or weight.as_tuple().exponent < -3:
+        if (not weight.is_finite() or weight <= 0
+                or weight.as_tuple().exponent < -3
+                or weight > Decimal("999999999.999")):
             raise InvoiceError("INVALID_WEIGHT")
         amount = money(item.get("amount"), "shipment_amount", positive=True)
         taxable += amount
