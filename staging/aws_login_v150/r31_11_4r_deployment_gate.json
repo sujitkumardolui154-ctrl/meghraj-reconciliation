@@ -1,0 +1,203 @@
+{
+  "schema": "DB-R31.11.4R-ISOLATED-QA-DEPLOYMENT-GATE-V1",
+  "classification": "READONLY_DEPLOYMENT_APPROVAL_PRECHECK_NO_EXECUTION",
+  "mode": "APPROVAL_PREFLIGHT_ONLY",
+  "deployment_authorization": "NOT_GRANTED",
+  "approved_qa_fqdn": "PENDING",
+  "independent_owner_and_security_approval": "NOT_VERIFIED",
+  "policy_constraints": {
+    "public_caddy_sha256": "61d14b20bd57ce7ba4e6150324bddacefa186e5196b40c19fd57827907b0877b",
+    "public_caddy_change": "FORBIDDEN",
+    "qa_ingress": "NOT_DEPLOYED",
+    "qa_http_adapter": "NOT_DEPLOYED",
+    "qa_postgres_public_port": "FORBIDDEN",
+    "qa_to_production_finance": "FORBIDDEN",
+    "qa_proxy_to_docker_socket": "FORBIDDEN",
+    "qa_proxy_to_postgres_direct": "FORBIDDEN",
+    "restricted_cidr_list": "PENDING",
+    "test_client_ca": "NOT_APPROVED",
+    "client_revocation": "NOT_IMPLEMENTED",
+    "signed_firebase_test_session": "REQUIRED_FOR_FUTURE_TEST_ONLY",
+    "finance_write_endpoint": "FORBIDDEN",
+    "financial_apply": "LOCKED",
+    "production_release": "BLOCKED"
+  },
+  "independent_prerequisites": [
+    {
+      "id": "ORGANIZATION_CONTROLLED_QA_FQDN_AND_DNS",
+      "state": "NOT_APPROVED_OR_VERIFIED"
+    },
+    {
+      "id": "RESTRICTED_QA_INGRESS_AND_FIREWALL",
+      "state": "NOT_APPROVED_OR_VERIFIED"
+    },
+    {
+      "id": "TEST_CLIENT_CA_AND_REAL_REVOCATION",
+      "state": "NOT_APPROVED_OR_VERIFIED"
+    },
+    {
+      "id": "VALID_QA_SERVER_TLS_CERTIFICATE",
+      "state": "NOT_APPROVED_OR_VERIFIED"
+    },
+    {
+      "id": "DEDICATED_NONROOT_QA_HTTP_ADAPTER",
+      "state": "NOT_APPROVED_OR_VERIFIED"
+    },
+    {
+      "id": "EXACT_ROUTES_FIREBASE_AND_RLS_SECURITY",
+      "state": "NOT_APPROVED_OR_VERIFIED"
+    },
+    {
+      "id": "INDEPENDENT_SECURITY_CHANGE_AND_ROLLBACK_APPROVAL",
+      "state": "NOT_APPROVED_OR_VERIFIED"
+    },
+    {
+      "id": "MONITORING_ALERTING_AND_EXTERNAL_TEST_OWNER",
+      "state": "NOT_APPROVED_OR_VERIFIED"
+    }
+  ],
+  "linked_approvals": [
+    {
+      "field": "fqdn_owner_approved",
+      "state": "PENDING"
+    },
+    {
+      "field": "dns_control_verified",
+      "state": "PENDING"
+    },
+    {
+      "field": "qa_only_public_endpoint_scope_approved",
+      "state": "PENDING"
+    },
+    {
+      "field": "firewall_cidr_scope_approved",
+      "state": "PENDING"
+    },
+    {
+      "field": "qa_client_ca_owner_approved",
+      "state": "PENDING"
+    },
+    {
+      "field": "qa_client_cert_inventory_approved",
+      "state": "PENDING"
+    },
+    {
+      "field": "qa_client_revocation_mechanism_approved",
+      "state": "PENDING"
+    },
+    {
+      "field": "server_certificate_lifecycle_approved",
+      "state": "PENDING"
+    },
+    {
+      "field": "qa_proxy_isolation_peer_reviewed",
+      "state": "PENDING"
+    },
+    {
+      "field": "qa_proxy_config_peer_reviewed",
+      "state": "PENDING"
+    },
+    {
+      "field": "firebase_test_origin_approved",
+      "state": "PENDING"
+    },
+    {
+      "field": "finance_routes_excluded_verified",
+      "state": "PENDING"
+    },
+    {
+      "field": "rollback_owner_and_test_approved",
+      "state": "PENDING"
+    },
+    {
+      "field": "monitoring_and_alerts_approved",
+      "state": "PENDING"
+    },
+    {
+      "field": "external_negative_test_plan_approved",
+      "state": "PENDING"
+    },
+    {
+      "field": "independent_security_reviewer_approved",
+      "state": "PENDING"
+    },
+    {
+      "field": "change_ticket",
+      "state": "PENDING"
+    },
+    {
+      "field": "qa_fqdn",
+      "state": "PENDING"
+    },
+    {
+      "field": "approved_source_cidrs",
+      "state": "PENDING"
+    },
+    {
+      "field": "server_certificate_provider",
+      "state": "PENDING"
+    },
+    {
+      "field": "client_ca_metadata_reference",
+      "state": "PENDING"
+    },
+    {
+      "field": "rollback_ticket",
+      "state": "PENDING"
+    },
+    {
+      "field": "external_test_owner",
+      "state": "PENDING"
+    }
+  ],
+  "reviewed_rollback": [
+    {
+      "id": "VERIFY_APPROVED_CHANGE_TICKET_AND_ROLLBACK_OWNER",
+      "state": "DESIGNED_NOT_EXECUTED"
+    },
+    {
+      "id": "CAPTURE_PUBLIC_CADDY_SHA256_AND_PRIVATE_PG_QA_ROW_COUNTS",
+      "state": "DESIGNED_NOT_EXECUTED"
+    },
+    {
+      "id": "STOP_ONLY_LABELED_ISOLATED_QA_INGRESS_AFTER_APPROVAL",
+      "state": "DESIGNED_NOT_EXECUTED"
+    },
+    {
+      "id": "REVOKE_ONLY_APPROVED_QA_CLIENT_CERT_ACCESS",
+      "state": "DESIGNED_NOT_EXECUTED"
+    },
+    {
+      "id": "RESTORE_RESTRICTED_INGRESS_AND_DNS_VIA_SEPARATE_CHANGE",
+      "state": "DESIGNED_NOT_EXECUTED"
+    },
+    {
+      "id": "VERIFY_ORIGINAL_PUBLIC_CADDY_ROUTE_AND_SHA256_UNCHANGED",
+      "state": "DESIGNED_NOT_EXECUTED"
+    },
+    {
+      "id": "VERIFY_QA_PG_RLS_ROWS_ZERO_AND_TWO_OWNER_MAPS",
+      "state": "DESIGNED_NOT_EXECUTED"
+    },
+    {
+      "id": "VERIFY_NO_EPHEMERAL_ADC_OR_UNAPPROVED_LISTENER",
+      "state": "DESIGNED_NOT_EXECUTED"
+    },
+    {
+      "id": "RECORD_ROLLBACK_REVIEW_SIGNOFF",
+      "state": "DESIGNED_NOT_EXECUTED"
+    }
+  ],
+  "remote_acceptance": {
+    "planned_case_count": 22,
+    "executed_case_count": 0,
+    "external_https_mtls": "NOT_TESTED",
+    "real_client_revocation": "NOT_TESTED",
+    "real_firebase_expired_revoked": "NOT_TESTED"
+  },
+  "release_decision": "BLOCKED_NO_DEPLOYMENT_PERMISSION",
+  "r3112": "ACTIVE_QA_DESIGN_RELEASE_GATED",
+  "financial_apply": "LOCKED",
+  "production_release": "BLOCKED",
+  "statement": "No manifest, SHA, evidence ticket or self-declaration constitutes independent domain, PKI, firewall, endpoint deployment, external acceptance or financial release authorization."
+}
