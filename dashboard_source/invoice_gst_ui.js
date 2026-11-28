@@ -193,7 +193,7 @@
       updateTotals();
       const issue=validateRow(row);
       const status=cell.parentElement.lastChild;
-      status.textContent=issue||"Eligible";
+      status.textContent=issue||(row.selected?"Eligible":"Excluded");
     });
     cell.appendChild(input);
   }
@@ -224,7 +224,7 @@
         row.selected=cb.checked;invalidate();
         tr.className=row.selected?"":"ig-v2-excluded";
         const issue=validateRow(row);
-        tr.lastChild.textContent=row.selected ? (issue||"Eligible") : "Excluded";
+        tr.lastChild.textContent=issue||(row.selected?"Eligible":"Excluded");
         updateTotals();
       });
       choose.appendChild(cb);
@@ -234,7 +234,7 @@
         const c=td("");
         editableInput(row,field,c,field==="amount"?"money":field==="weight_kg"?"weight":"text");
       }
-      td(row.selected ? (validateRow(row)||"Eligible") : "Excluded");
+      td(validateRow(row)||(row.selected?"Eligible":"Excluded"));
       body.appendChild(tr);
     }
     $("ig-awb-page").textContent="Page "+(pages?page+1:0)+" of "+pages;
