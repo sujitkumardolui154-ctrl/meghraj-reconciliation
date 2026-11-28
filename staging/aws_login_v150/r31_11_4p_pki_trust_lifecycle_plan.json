@@ -1,0 +1,119 @@
+{
+  "schema": "DB-R31.11.4P-PKI-TRUST-LIFECYCLE-V1",
+  "classification": "NONSECRET_DESIGN_NOT_CERTIFICATE_ISSUANCE",
+  "environment": "qa_isolated_external_mtls",
+  "deployment_authorization": "NOT_GRANTED",
+  "qa_fqdn": "PENDING",
+  "trusted_client_ca": "NOT_SELECTED_OR_APPROVED",
+  "server_certificate_provider": "NOT_SELECTED_OR_APPROVED",
+  "revocation_enforcement": "NOT_SELECTED_OR_TESTED",
+  "reference_security_requirements": {
+    "separate_qa_client_ca": "REQUIRED_DESIGN_ONLY",
+    "unique_client_certificate_identity": "REQUIRED_DESIGN_ONLY",
+    "client_certificate_eku": "CLIENT_AUTH_DESIGN_ONLY",
+    "server_certificate_san": "MATCH_APPROVED_QA_FQDN_WHEN_AVAILABLE",
+    "server_certificate_eku": "SERVER_AUTH_DESIGN_ONLY",
+    "minimum_tls_version": "TLS_1_2_OR_HIGHER_DESIGN_ONLY",
+    "client_certificate_revocation": "MUST_DENY_REVOKED_CERTS_WITH_VERIFIED_ENFORCEMENT",
+    "expired_client_and_server_certificates": "MUST_DENY",
+    "unknown_client_ca": "MUST_DENY",
+    "nonproduction_key_custody": "PRIVATE_KEY_MATERIAL_NEVER_IN_GIT_OR_CHAT",
+    "independent_pki_reviewer": "REQUIRED_NOT_ASSIGNED",
+    "production_financial_apply": "LOCKED"
+  },
+  "evidence_requirements": [
+    {
+      "field": "qa_client_ca_owner_approved",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "reviewer_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "qa_client_cert_inventory_approved",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "reviewer_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "qa_client_revocation_mechanism_approved",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "reviewer_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "server_certificate_lifecycle_approved",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "reviewer_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "server_certificate_provider",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "reviewer_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    },
+    {
+      "field": "client_ca_metadata_reference",
+      "state": "PENDING",
+      "evidence_ticket": "PENDING",
+      "evidence_sha256": "PENDING",
+      "reviewer_ticket": "PENDING",
+      "reviewed_at_utc": "PENDING"
+    }
+  ],
+  "lifecycle_workflow": [
+    {
+      "id": "CA_TRUST_OWNER_APPROVAL",
+      "status": "NOT_IMPLEMENTED_OR_TESTED"
+    },
+    {
+      "id": "CLIENT_CERT_PROFILE_REVIEW",
+      "status": "NOT_IMPLEMENTED_OR_TESTED"
+    },
+    {
+      "id": "SERVER_CERT_SAN_EKU_VALIDITY_REVIEW",
+      "status": "NOT_IMPLEMENTED_OR_TESTED"
+    },
+    {
+      "id": "ISSUANCE_WITH_CONTROLLED_KEY_CUSTODY",
+      "status": "NOT_IMPLEMENTED_OR_TESTED"
+    },
+    {
+      "id": "VALIDITY_MONITORING_AND_RENEWAL_PLAN",
+      "status": "NOT_IMPLEMENTED_OR_TESTED"
+    },
+    {
+      "id": "REVOCATION_MECHANISM_INDEPENDENT_REVIEW",
+      "status": "NOT_IMPLEMENTED_OR_TESTED"
+    },
+    {
+      "id": "REVOKED_CERT_REJECTION_EXTERNAL_TEST",
+      "status": "NOT_IMPLEMENTED_OR_TESTED"
+    },
+    {
+      "id": "ROTATION_ROLLBACK_AND_TERMINATION_REVIEW",
+      "status": "NOT_IMPLEMENTED_OR_TESTED"
+    }
+  ],
+  "caveat": "TLS client_ca trust chain validation alone does not demonstrate revocation enforcement. Certificate revocation must be implemented, reviewed, and tested separately; no real certificate identities or secrets are stored in this plan.",
+  "status": {
+    "real_ca_custody": "NOT_VERIFIED",
+    "real_qa_server_certificate": "NOT_ISSUED_OR_VERIFIED",
+    "real_qa_client_certificates": "NOT_ISSUED_OR_VERIFIED",
+    "client_revocation": "NOT_TESTED",
+    "external_mtls": "NOT_TESTED",
+    "financial_apply": "LOCKED",
+    "production_release": "BLOCKED",
+    "r3112": "ACTIVE_QA_DESIGN_RELEASE_GATED"
+  }
+}
