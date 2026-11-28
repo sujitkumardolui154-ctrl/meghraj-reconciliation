@@ -108,19 +108,19 @@ def prior_success_for_exact_sha(runs, sha, workflow_name=None, current_run_id=No
     """Only a completed SUCCESS for this exact commit/workflow may be reused."""
     if not isinstance(runs, list) or not SHA_RE.fullmatch(str(sha)):
         return False
-    for run in runs:
-        if not isinstance(run, dict):
-            continue
-        if str(run.get("id")) == str(current_run_id):
-            continue
-        if run.get("head_sha") != sha:
-            continue
-        if run.get("status") != "completed" or run.get("conclusion") != "success":
-            continue
-        if workflow_name and run.get("name") != workflow_name:
-            continue
-        return True
-    return False
+    candidates = [
+        run for run in runs
+        if isinstance(run, dict)
+        and str(run.get("id")) != str(current_run_id)
+        and run.get("head_sha") == sha
+        and (not workflow_name or run.get("name") == workflow_name)
+    ]
+    if not candidates:
+        return False
+    # A newer failed/cancelled run supersedes an older PASS for the same
+    # workflow/commit; prefer a failed-job-only rerun rather than a false PASS.
+    latest = max(candidates, key=lambda r: int(r.get("id") or 0))
+    return latest.get("status") == "completed" and latest.get("conclusion") == "success"
 
 
 def github_runs(repo, workflow_file, sha, token="", timeout=8):
@@ -156,7 +156,7 @@ def changed_files(base_sha, head_sha):
         return None
     try:
         raw = subprocess.run(
-            ["git", "diff", "--name-only", "--diff-filter=ACMR",
+            ["git", "diff", "--name-only", "--diff-filter=ACMRD",
              base_sha, head_sha, "--"],
             check=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
             text=True, timeout=12
