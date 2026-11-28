@@ -24,9 +24,45 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
+  qa-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      qa_required: ${{ steps.policy.outputs.qa_required }}
+      qa_reuse: ${{ steps.policy.outputs.qa_reuse }}
+      invoice_db: ${{ steps.policy.outputs.invoice_db }}
+      invoice_ui: ${{ steps.policy.outputs.invoice_ui }}
+      credit_note: ${{ steps.policy.outputs.credit_note }}
+      historical: ${{ steps.policy.outputs.historical }}
+      private_sources: ${{ steps.policy.outputs.private_sources }}
+      branch_master: ${{ steps.policy.outputs.branch_master }}
+      gst: ${{ steps.policy.outputs.gst }}
+    steps:
+      - name: Checkout reviewed PR head for QA availability check
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Inspect GitHub exact-SHA QA evidence before any test
+        id: policy
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          QA_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          QA_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+        run: |
+          python3 tools/qa_module_policy.py \
+            --base-sha "$QA_BASE_SHA" \
+            --head-sha "$QA_HEAD_SHA" \
+            --repo "$GITHUB_REPOSITORY" \
+            --event "$GITHUB_EVENT_NAME" \
+            --check-github --github-output "$GITHUB_OUTPUT"
   combined-isolated:
+    needs: qa-preflight
+    if: needs.qa-preflight.outputs.qa_required == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -50,6 +86,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -63,19 +100,28 @@ jobs:
           node --check dashboard_source/invoice_gst_cancellation_ui.js
           node --check dashboard_source/credit_note_ui.js
       - name: Combined invoice and real isolated Postgres test
+        if: needs.qa-preflight.outputs.invoice_db == 'true'
         run: python -m unittest discover -s tests -p 'test_invoice_gst_combined.py' -v
+      - name: Invoice v2 XLSX and multi-month regression (if module is present)
+        if: needs.qa-preflight.outputs.invoice_ui == 'true' && hashFiles('tests/test_invoice_v2_qa.py') != ''
+        run: python -m unittest discover -s tests -p 'test_invoice_v2_qa.py' -v
       - name: Multi-invoice credit note + real isolated Postgres QA
+        if: needs.qa-preflight.outputs.credit_note == 'true'
         run: python -m unittest discover -s tests -p 'test_credit_note_qa.py' -v
       - name: Credit note historical report evidence and PostgreSQL catalog read-only QA
+        if: needs.qa-preflight.outputs.historical == 'true'
         run: |
           python -m unittest discover -s dashboard_source -p 'test_credit_note_historical_evidence.py' -v
           python -m unittest discover -s tests -p 'test_credit_note_history_catalog.py' -v
       - name: Private master and vendor source-import safeguards
+        if: needs.qa-preflight.outputs.private_sources == 'true'
         run: |
           python -m unittest discover -s tests -p 'test_invoice_gst_private_*.py' -v
       - name: Four-tab original SBI master workbook source QA
+        if: needs.qa-preflight.outputs.branch_master == 'true'
         run: python -m unittest discover -s tests -p 'test_invoice_gst_master_workbook_gate.py' -v
       - name: Private staging readiness go no-go safeguards
+        if: needs.qa-preflight.outputs.invoice_db == 'true' || needs.qa-preflight.outputs.credit_note == 'true' || needs.qa-preflight.outputs.private_sources == 'true' || needs.qa-preflight.outputs.branch_master == 'true'
         run: |
           # Unit tests are already covered by the private_* suite above.
           python scripts/sbi_invoice_gst_aws_staging_readiness.py > /tmp/invoice-staging-readiness.json
@@ -94,8 +140,10 @@ jobs:
           print("PRIVATE_QA_PREREQUISITES_MISSING_FAIL_CLOSED=PASS")
           PY
       - name: Existing GST contract regression
+        if: needs.qa-preflight.outputs.gst == 'true'
         run: python -m unittest discover -s staging/mxp-gst/tests -p 'test_*.py' -v
       - name: Safe AWS staging preflight default remains read-only
+        if: needs.qa-preflight.outputs.invoice_db == 'true' || needs.qa-preflight.outputs.private_sources == 'true' || needs.qa-preflight.outputs.branch_master == 'true'
         run: |
           python scripts/sbi_invoice_gst_aws_staging_readiness.py > /tmp/invoice-staging-preflight.json
           python - <<'PY'
