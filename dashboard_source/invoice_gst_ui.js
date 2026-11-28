@@ -275,7 +275,7 @@
     awbs.push(...pending);
     page=0;invalidate();paintRows();
     $("ig-merge-status").textContent="Merged "+added+" AWB(s), skipped "+dups+
-      " duplicate(s), "+outside+" outside bill period (unchecked). "+
+      " duplicate(s), "+outside+" outside period or invalid (unchecked). "+
       "Edit Packet Ref, Consignee, Weight or Amount directly in the table.";
   }
   function pastedRows() {
