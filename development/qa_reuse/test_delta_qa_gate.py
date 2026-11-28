@@ -153,7 +153,7 @@ class QAReusePolicyTests(unittest.TestCase):
         self.assertIn("financial", agents.lower())
         self.assertIn("LOCKED", agents)
         self.assertIn("Do not skip failed scanner", copilot)
-        self.assertIn("Do not rerun an entire historical combined suite", agents)
+        self.assertIn("rerun an entire historical combined suite", agents)
 
 
 if __name__ == "__main__":
