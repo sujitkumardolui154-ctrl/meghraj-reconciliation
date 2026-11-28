@@ -1,4 +1,4 @@
-# SBI Reconciliation Workspace — Private multi-location access (review-only proposal)
+> **SUPERSEDED DEPLOYMENT TARGET — 2026-11-28:** The owner explicitly requires deployment at **https://sbi-preview.13-232-241-221.sslip.io/login** on the existing AWS Lightsail application. Do **not** replace the user-facing hostname with a new `*.ts.net` address, launch a separate application platform, or purchase a domain. The Tailscale Serve and new-WSGI-entrypoint proposals below remain historical design candidates, **not authorized deployment instructions**. The controlling decision is [existing_preview_target_policy.json](../existing_preview_deployment/existing_preview_target_policy.json) and [the updated runbook](../existing_preview_deployment/EXISTING_PREVIEW_DEPLOYMENT_RUNBOOK.md). Keep all old QA and release locks intact.\n\n# SBI Reconciliation Workspace — Private multi-location access (review-only proposal)
 Owner scope changed on 28 November 2026: **authorized employees from multiple locations, no public application access and no domain purchase**.
 
 ## Decision: private tailnet, NOT a public HTTPS QA endpoint
