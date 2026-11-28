@@ -1,0 +1,34 @@
+name: R31 Existing PostgreSQL Tenant RLS Catalog (offline targeted)
+on:
+  push:
+    branches:
+      - feature/sbi-r31-existing-postgres-tenant-rls-acceptance-20261128
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-readonly-tenant-catalog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Exact source checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Targeted offline RLS audit source tests only
+        run: |
+          python3 -B -m unittest discover \
+            -s staging/existing_preview_deployment \
+            -p 'test_postgres_tenant_rls_catalog_readonly.py' -v
+      - name: Preserve financial release refusal
+        run: |
+          echo "R31_RLS_LIVE_AWS=NOT_TESTED_IN_CI"
+          echo "R31_RLS_REAL_CROSS_TENANT_HTTPS=NOT_TESTED_IN_CI"
+          echo "R31_RLS_FINANCIAL_APPLY=LOCKED"
+          echo "R31_RLS_PRODUCTION_RELEASE=BLOCKED"
