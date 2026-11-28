@@ -1,0 +1,92 @@
+{
+  "schema": "SBI-PRIVATE-MULTISITE-ACCESS-GATE-V1",
+  "classification": "SOURCE_ONLY_NOT_DEPLOYED_OR_APPROVED",
+  "architecture": "TAILSCALE_TAILNET_STAFF_ONLY_WITH_PRIVATE_HTTPS",
+  "owner_request": "NO_DOMAIN_PURCHASE_AUTHORIZED_EMPLOYEES_MULTIPLE_LOCATIONS",
+  "domain_purchase_required": false,
+  "dns_hostname_source": "TAILSCALE_MAGICDNS_TS_NET_SUBDOMAIN_NOT_YET_PROVISIONED",
+  "network_access": "TAILNET_GRANTS_DENY_ALL_EXCEPT_APPROVED_STAFF_DEVICES_TO_APP_TCP_443",
+  "https_transport": "TAILSCALE_SERVE_PRIVATE_HTTPS_NO_FUNNEL",
+  "app_authentication": "EXISTING_FIREBASE_SESSIONS_WITH_VERIFIED_STAFF_CLAIMS_AND_CSRF",
+  "database_access": "PG16_OWNER_SCOPED_RESTRICTED_RLS_SELECT_ONLY_UNTIL_SEPARATE_APPROVAL",
+  "public_ingress": "CURRENT_PUBLIC_PREVIEW_EXISTS_MUST_BE_CLOSED_AFTER_APPROVED_CUTOVER",
+  "original_public_external_mtls": {
+    "regime": "R31_11_4S_LEGACY_EXTERNAL_QA",
+    "acceptance_tests_planned": 22,
+    "acceptance_tests_executed": 0,
+    "scope": "STILL_NOT_TESTED_NO_AUTOMATIC_WAIVER",
+    "disposition": "REQUIRES_INDEPENDENT_SECURITY_CHANGE_APPROVAL_TO_REPLACE_WITH_TAILNET_E2E",
+    "prior_23_approvals": "REMAIN_PENDING_IN_ORIGINAL_PACKET_NOT_FABRICATED"
+  },
+  "reused_evidence": [
+    {
+      "id": "R31_11_4W_CADDY_AND_UNPUBLISHED_PG",
+      "sha": "cc14dc96abfdfd07465929e1b7ead4ef2a42b7de",
+      "scope": "OPERATOR_REPORTED_EXISTING_AWS_READONLY_HOST_INVENTORY_NOT_TAILNET"
+    },
+    {
+      "id": "R31_11_4U_SCANNER",
+      "sha": "35dbc930c04faccd42777b12076fd764211e5910",
+      "scope": "TARGETED_SCANNER_TEST_ONLY"
+    },
+    {
+      "id": "R31_14_SYNTHETIC_TLS_DOMAIN_PKI",
+      "sha": "bd23b5f7adb53f2c0e761fb7ca4fc86ff382e9d0",
+      "scope": "EXACT_BLOB_SYNTHETIC_DESIGN_ONLY"
+    },
+    {
+      "id": "INVOICE_UI_V2_QA",
+      "sha": "84260273ae06ec080d1748e2f6a902e9d47ce1df",
+      "scope": "INVOICE_SYNTHETIC_INTEGRATION_NOT_LIVE_RELEASE"
+    },
+    {
+      "id": "QA_MODULE_REUSE_POLICY",
+      "sha": "5b8e5aa03fde0694abe5e76647250a972c623aba",
+      "scope": "OFFLINE_POLICY_NOT_PRODUCTION_GOVERNANCE_MERGED"
+    }
+  ],
+  "gates": [
+    {
+      "id": "P1_APPROVE_PRIVATE_ARCHITECTURE_AND_ROLLBACK",
+      "status": "PENDING",
+      "evidence": "independently authorized network change, owners and pre/post baselines"
+    },
+    {
+      "id": "P2_IDENTITY_MFA_DEVICES_AND_DENY_BY_DEFAULT",
+      "status": "PENDING",
+      "evidence": "tailnet tenant, MFA-capable IdP, employee groups, approved devices and restrictive grants"
+    },
+    {
+      "id": "P3_PRIVATE_HTTPS_SERVE_WITH_NO_FUNNEL",
+      "status": "PENDING",
+      "evidence": "server Tailscale healthy, private HTTPS Serve, port-bound upstream, no public DNS purchase"
+    },
+    {
+      "id": "P4_FIREBASE_ORIGIN_TWO_USER_AUTHZ_CSRF",
+      "status": "PENDING",
+      "evidence": "exact approved ts.net HTTPS origin, Firebase credentials policy, two real staff distinct scopes and negative tests"
+    },
+    {
+      "id": "P5_RLS_REPORTS_BACKUPS_AND_FINANCE_PARITY",
+      "status": "PENDING",
+      "evidence": "owner-scoped PG RLS real tests, locked finance Apply, reconciliation and credit-note report parity, verified backups"
+    },
+    {
+      "id": "P6_TWO_SITE_PRIVATE_E2E_AND_REVOCATION",
+      "status": "PENDING",
+      "evidence": "two external locations via authenticated tailnet, unauthorized devices blocked, revoked devices/users denied, negative routes, logs"
+    },
+    {
+      "id": "P7_PUBLIC_IPV4_IPV6_CUTOVER_ROLLBACK_RELEASE",
+      "status": "PENDING",
+      "evidence": "verify 80/443 public closed for new app, IPv4+IPv6 ingress and Docker publishing, rollback, independent signoff"
+    }
+  ],
+  "actual_tailnet_deployed": false,
+  "actual_employee_access_tests_completed": 0,
+  "public_ingress_closed_verified": false,
+  "domain_ownership_evidence": "NOT_NEEDED_FOR_TAILNET_HOST_ONLY_AFTER_SECURITY_SCOPE_APPROVAL",
+  "legacy_external_design_change_approved": false,
+  "financial_apply": "LOCKED",
+  "production_release": "BLOCKED"
+}
