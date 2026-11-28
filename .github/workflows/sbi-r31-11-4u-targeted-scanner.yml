@@ -1,0 +1,30 @@
+name: SBI R31.11.4U targeted scanner and fixture QA (no deploy)
+on:
+  push:
+    branches:
+      - feature/sbi-r31-11-4u-scanner-targeted-remediation-20261128
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  scanner-and-4k-fixture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Existing public source scanner (not weakened)
+        run: python3 migration/check_public_tree.py
+      - name: Install offline test imports only
+        run: python3 -m pip install --disable-pip-version-check 'Flask>=3,<4' 'firebase-admin>=6,<8' 'cryptography>=43,<49'
+      - name: Run only affected 4K approval packet unit tests
+        run: python3 -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4k_external_mtls_readiness.py' -v
+      - name: Assert forbidden real deploy and financial changes absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f staging/aws_login_v150/DB_R31_11_4U_SCANNER_TARGETED_REMEDIATION.md
+          grep -Fq 'FINANCIAL_APPLY=LOCKED' staging/aws_login_v150/r31_11_4k_external_mtls_readiness.py
+          grep -Fq 'PRODUCTION_RELEASE=BLOCKED' staging/aws_login_v150/r31_11_4k_external_mtls_readiness.py
