@@ -158,7 +158,10 @@ def create_invoice_gst_blueprint(can_read, can_create, csrf_valid,
                     r"MXP[0-9]{4,10}", correction_source
                 ) is None or correction_source == invoice["invoice_no"]:
                     return failure("INVALID_CORRECTION_SOURCE_NUMBER", 422)
-                with conn.cursor() as cur:
+                # The preceding branch lookup context has ended. Re-open an
+                # isolated read-only verification context instead of using
+                # a closed connection for the correction source.
+                with private_db() as correction_conn, correction_conn.cursor() as cur:
                     cur.execute(
                         """SELECT i.status,
                                   EXISTS (
