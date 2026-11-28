@@ -1,0 +1,44 @@
+name: SBI Private Multi-site Tailnet Policy QA (offline no deploy)
+
+on:
+  pull_request:
+    paths:
+      - 'staging/private_multisite/**'
+      - '.github/workflows/sbi-private-multisite-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  private-transport-source-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout exact reviewed source only
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check private source syntax
+        run: |
+          python3 -m py_compile \
+            staging/private_multisite/private_origin.py \
+            staging/private_multisite/private_entrypoint.py \
+            staging/private_multisite/private_qa_preflight.py \
+            staging/private_multisite/test_private_multisite.py
+      - name: Only new private-access module unit tests
+        run: python3 -B -m unittest discover -s staging/private_multisite -p 'test_private_multisite.py' -v
+      - name: Source-only seven-gate status and 22-case non-waiver
+        run: |
+          python3 -B staging/private_multisite/private_qa_preflight.py
+          echo 'QA_SCOPE=PRIVATE_TAILNET_DEVELOPMENT_ONLY'
+          echo 'LIVE_PRIVATE_ACCESS_E2E=NOT_TESTED'
+          echo 'PREVIOUS_PUBLIC_EXTERNAL_MTLS=0_OF_22_EXECUTED_NOT_WAIVED'
+          echo 'PRODUCTION_DEPLOYMENT=NOT_PERFORMED'
+          echo 'FINANCIAL_RECONCILIATION_WRITES=NONE'
+          echo 'FINANCIAL_APPLY=LOCKED'
