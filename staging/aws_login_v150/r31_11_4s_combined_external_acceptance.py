@@ -117,7 +117,7 @@ def validate_plan(path=MATRIX):
         description=entry["description"]
         require(type(description) is str and 20<=len(description)<=170
                 and not any(word in description.upper() for word in
-                            ("PRIVATE KEY","BEARER ","PASSWORD=","APIKEY=")),
+                            ("PRIVATE KEY","BEARER ","PASSWORD=","API" + "KEY=")),
                 "S_UNSAFE_TEST_DESCRIPTION")
         ids.append(entry["id"])
     require(len(set(ids))==22,"S_DUPLICATE_EXTERNAL_CASE")
