@@ -1,0 +1,29 @@
+name: SBI R31.11.4W source-only host inventory safety checks
+on:
+  push:
+    branches:
+      - feature/sbi-r31-11-4w-aws-resource-reuse-audit-20261128
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  static-safety-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax and public-source scanner
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B - <<'PY'
+          import ast
+          from pathlib import Path
+          p=Path("staging/aws_login_v150/r31_11_4w_existing_aws_resources_readonly.py")
+          ast.parse(p.read_text())
+          print("DB_R31_11_4W_SCRIPT_SYNTAX=PASS")
+          PY
+          python3 migration/check_public_tree.py
+      - name: Confirm read-only intent, not a live AWS test
+        run: |
+          grep -Fq 'DB_R31_11_4W_EXTERNAL_TESTS=0_OF_22_EXECUTED' staging/aws_login_v150/r31_11_4w_existing_aws_resources_readonly.py
+          grep -Fq 'DB_R31_11_4W_PRODUCTION_RELEASE=BLOCKED' staging/aws_login_v150/r31_11_4w_existing_aws_resources_readonly.py
