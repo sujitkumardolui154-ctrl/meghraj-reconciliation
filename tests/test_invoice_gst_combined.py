@@ -735,7 +735,13 @@ class IsolatedPostgresCombinedTests(unittest.TestCase):
             denied=self.client.post("/api/invoice-gst/finalize",json=data)
             self.assertEqual(denied.status_code,403,denied.get_json())
             self.assertEqual(denied.get_json()["error"],
-                             "MULTI_MONTH_GST_PERIOD_POLICY_NOT_APPROVED")
+                             "INVOICE_UI_V2_PRODUCTION_FINALIZATION_LOCKED")
+            one_month=deepcopy(SOURCE)
+            one_month["invoice_no"]="MXP90073"
+            denied_single=self.client.post("/api/invoice-gst/finalize",json=one_month)
+            self.assertEqual(denied_single.status_code,403,denied_single.get_json())
+            self.assertEqual(denied_single.get_json()["error"],
+                             "INVOICE_UI_V2_PRODUCTION_FINALIZATION_LOCKED")
         finally:
             os.environ["SBI_INVOICE_GST_DEPLOYMENT_MODE"]=original
 
