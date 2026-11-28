@@ -43,9 +43,17 @@ class CatalogTests(unittest.TestCase):
         good=secure_catalog()
         for k in good:
             changed=deepcopy(good)
-            changed[k]= ("wrong" if k=="db" else False if k=="pg16" else 1)
-            if k in {"writer_roles","mapping_readers","data_rows","other_policies"}:
-                changed[k]=1
+            expected=good[k]
+            # Mutate every field to a genuinely different value. In the
+            # original test invoker_view=1 was replaced by 1 (no change),
+            # causing a false failure of the test, not the RLS checker.
+            if type(expected) is str:
+                changed[k]="wrong"
+            elif type(expected) is bool:
+                changed[k]=not expected
+            else:
+                changed[k]=expected - 1 if expected > 0 else 1
+            self.assertNotEqual(changed[k],expected)
             with self.subTest(field=k):
                 self.assertEqual(mod.classify(changed),"REVIEW_REQUIRED")
 
