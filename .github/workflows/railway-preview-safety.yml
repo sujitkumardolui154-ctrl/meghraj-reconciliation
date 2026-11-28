@@ -3,6 +3,10 @@ on:
   push:
     branches: ['railway/public-login-staging-20261102']
   pull_request:
+    paths:
+      - 'staging/railway_public/**'
+      - 'deployment/railway/**'
+      - '.github/workflows/railway-preview-safety.yml'
   workflow_dispatch:
 permissions:
   contents: read
