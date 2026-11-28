@@ -1,0 +1,89 @@
+{
+  "schema": "SBI-CROSS-MODULE-QA-REUSE-V1",
+  "modules": [
+    "database_creation",
+    "reconciliation_engine",
+    "deployment_security",
+    "invoice_gst"
+  ],
+  "policy": "Reuse an earlier exact workflow PASS only when verified current repository source blobs match the executed source, the workflow run ID/commit/name are exact, and its assurance scope matches; never treat CI-only synthetic or planning PASS as real external or production release evidence.",
+  "source_evidence": [
+    {
+      "id": "synthetic_mtls_4j",
+      "origin_module": "database_creation",
+      "assurance_scope": "synthetic_localhost_tls_only",
+      "workflow_run_id": 45972166459,
+      "workflow_name": "SBI R31.11.4J synthetic mTLS security (offline CI only)",
+      "executed_sha": "e2416fb8d822e0dc3302c89397593b3e0218a39f",
+      "source_blobs": {
+        "staging/aws_login_v150/r31_11_4j_loopback_mtls.py": "649edbe26208494b28b452831d2981731be41b4b",
+        "staging/aws_login_v150/r31_11_4j_combined_mtls_gate.py": "91981e3183a0d4492a8c20b301f654e9d87a89cc",
+        "staging/aws_login_v150/test_r31_11_4j_combined_gate.py": "f24ade7fd22fd4f1b2bb0ac18b552ea2782e1d8d",
+        ".github/workflows/sbi-r31-11-4j-mtls-security.yml": "547d26cbf6c933e4724f7fd641afef1c67459c60"
+      },
+      "required_if_changed": "Only synthetic TLS unit and handshake test, never full prior 4H/4I/4J combined AWS QA"
+    },
+    {
+      "id": "dns_owner_4o_design",
+      "origin_module": "database_creation",
+      "assurance_scope": "domain_evidence_design_only",
+      "workflow_run_id": 46004935631,
+      "workflow_name": "SBI R31.11.4O domain-owner DNS evidence (offline full-combined regressions)",
+      "executed_sha": "79e2fc28ffc2ca19232e6b3db3ab520c1ef22935",
+      "source_blobs": {
+        "staging/aws_login_v150/r31_11_4o_combined_domain_ownership.py": "0966f3ce4783f563853f4778187101dee5a1ed8b",
+        "staging/aws_login_v150/test_r31_11_4o_combined_domain_ownership.py": "0d4c5df9e756c0b79d11d3b1601cf6cf2b15dff9",
+        "staging/aws_login_v150/r31_11_4o_domain_ownership_dossier.json": "3c0fcc2203f0af696a2fa6fc46149973a70e6986"
+      },
+      "required_if_changed": "Only domain evidence validation and source policy tests; no duplicate previous synthetic TLS"
+    },
+    {
+      "id": "pki_4p_design",
+      "origin_module": "database_creation",
+      "assurance_scope": "pki_design_metadata_simulation_only",
+      "workflow_run_id": 46121196969,
+      "workflow_name": "SBI R31.11.4P PKI trust and revocation planning (offline no-deploy QA)",
+      "executed_sha": "a3776e44eacc97e2126ee6e80441f157abee089c",
+      "source_blobs": {
+        "staging/aws_login_v150/r31_11_4p_combined_pki_preflight.py": "6163c14a9ec7e69f4cd6cdf66866d11abc8bb22e",
+        "staging/aws_login_v150/test_r31_11_4p_combined_pki_preflight.py": "e834b3b7bc2136bd3944e0916ffdf22903668230",
+        "staging/aws_login_v150/r31_11_4p_pki_trust_lifecycle_plan.json": "94406d3d9578a7f59afbdb70bbe5e710067eef84"
+      },
+      "required_if_changed": "Only PKI design and revocation-metadata contract tests, not real TLS issuance"
+    }
+  ],
+  "known_nonpassing_workflows": [
+    {
+      "id": "private_migration_safety_4p",
+      "origin_module": "deployment_security",
+      "workflow_run_id": 46121221654,
+      "workflow_name": "Private migration safety (synthetic only)",
+      "executed_sha": "a3776e44eacc97e2126ee6e80441f157abee089c",
+      "disposition": "REVIEW_REQUIRED_NOT_WAIVED_BY_OTHER_GREEN_WORKFLOWS"
+    }
+  ],
+  "operator_reported_evidence": [
+    {
+      "id": "firebase_postgres_binding_4i_13",
+      "scope": "private_in_process_two_firebase_users_rls",
+      "status": "PRIOR_AWS_USER_REPORT_AND_LOCAL_4I_RECEIPT_NOT_EXTERNAL_ATTESTATION",
+      "cross_module": "reusable_as_prior_scope_evidence_only",
+      "freshness_requirement": "Any changed Firebase auth code, PG role mapping, secrets metadata, approved test UIDs, Caddy network or scope requires targeted new validation; do not infer live network acceptance."
+    }
+  ],
+  "remaining_live_gates": [
+    "ORGANIZATION_CONTROLLED_QA_HOSTNAME_AND_DNS_OWNER_APPROVAL",
+    "APPROVED_ISOLATED_EXTERNAL_INGRESS_SCOPE_AND_ROLLBACK",
+    "APPROVED_REAL_SERVER_CERTIFICATE_AND_TEST_CLIENT_CA",
+    "ACTUAL_CLIENT_CERTIFICATE_REVOCATION_ENFORCEMENT_AND_NEGATIVE_TEST",
+    "EXTERNAL_HTTPS_MTLS_REAL_CLIENT_POSITIVE_AND_NEGATIVE_TESTS",
+    "REAL_EXPIRED_REVOKED_FIREBASE_SESSIONS_AND_TWO_TENANT_RLS_OVER_HTTPS",
+    "INDEPENDENT_SECURITY_AND_FINANCIAL_RELEASE_SIGN_OFF"
+  ],
+  "release": {
+    "external_mtls": "NOT_TESTED",
+    "production_runtime": "NOT_APPROVED",
+    "financial_apply": "LOCKED",
+    "production_release": "BLOCKED"
+  }
+}
