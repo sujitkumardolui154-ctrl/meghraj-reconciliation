@@ -1,0 +1,28 @@
+name: R31 Existing Firebase HTTPS Acceptance (offline harness QA)
+on:
+  push:
+    branches:
+      - feature/sbi-r31-existing-firebase-https-acceptance-20261128
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa-existing-https-harness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Checkout exact tested source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check public tree scanner
+        run: python3 migration/check_public_tree.py
+      - name: Test only new existing-URL Firebase acceptance harness
+        run: python3 -B -m unittest discover -s staging/existing_preview_deployment -p 'test_firebase_https_acceptance.py' -v
+      - name: Preserve release locks
+        run: |
+          echo "R31_FIREBASE_REAL_HTTPS=NOT_EXECUTED_IN_CI"
+          echo "R31_FINANCIAL_APPLY=LOCKED"
+          echo "R31_PRODUCTION_RELEASE=BLOCKED"
