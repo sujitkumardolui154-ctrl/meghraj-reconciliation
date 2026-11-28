@@ -17,7 +17,7 @@
 
 - `service_month` stores the approved human-readable label, while the legacy `service_month_key` remains **the starting month** solely for backward-compatible indexing. It does **not** automatically allocate taxable revenue between months.
 - The monthly GST report now **blocks** with `MULTI_MONTH_GST_REPORT_PERIOD_POLICY_PENDING` if any active finalized cross-month invoice overlaps the requested calendar month, so the application neither silently omits such an invoice nor duplicates it across months.
-- **All finalization, including single-month, is QA-only** under `SBI_INVOICE_GST_DEPLOYMENT_MODE=ISOLATED_QA`. Any other mode returns `INVOICE_UI_V2_PRODUCTION_FINALIZATION_LOCKED`. This prevents editing and selected-AWB workflows from being used for live financial writes before a separately approved release.
+- **All finalization, including single-month, is QA-only** under `SBI_INVOICE_GST_DEPLOYMENT_MODE=ISOLATED_QA`. Any other mode returns `INVOICE_UI_V2_PRODUCTION_FINALIZATION_LOCKED`. This prevents editing and selected-AWB workflows from being used for live financial writes before a separately approved release. Even with that mode set, the server verifies `current_database()='invoice_qa'` inside the transaction before any insertion; pointing the same code at `sbi_reconciliation_main` is refused.
 - Invoice-source corrections are review-only and never override previously finalized headers or AWBs. Existing append-only PostgreSQL triggers are unchanged.
 - **No production financial writes**, reconciliation allocations, GST filings, invoice master migrations, service config changes, deployment or new database creation under this PR.
 
