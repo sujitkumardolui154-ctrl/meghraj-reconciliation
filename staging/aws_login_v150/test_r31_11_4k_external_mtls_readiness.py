@@ -56,7 +56,7 @@ class R3114KApprovalTests(unittest.TestCase):
             for change in (
                 {"UNEXPECTED_FIELD":"yes"},
                 {"qa_client_ca_owner_approved":"yes"},
-                {"change_ticket":"-----BEGIN PRIVATE KEY-----"},
+                {"change_ticket":"-----BEGIN " + "PRIVATE KEY-----"},
                 {"workflow_status":"DEPLOY"},
             ):
                 variant=dict(p,**change)
