@@ -1,0 +1,18 @@
+name: SBI R31.11.4X approval records preflight (no deploy)
+on:
+  push:
+    branches:
+      - feature/sbi-r31-11-4x-external-authorization-preflight-20261128
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  metadata-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Existing public repository scanner
+        run: python3 -B migration/check_public_tree.py
+      - name: Run only new 4X approval metadata validation
+        run: python3 -B staging/aws_login_v150/r31_11_4x_external_authorization_preflight.py
