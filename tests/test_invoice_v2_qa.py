@@ -116,6 +116,9 @@ class InvoiceV2ServicePeriod(unittest.TestCase):
         p=deepcopy(BASE);p["shipments"][0]["dispatch_date"]="2026-08-31"
         with self.assertRaisesRegex(InvoiceError,"DISPATCH_DATE_OUTSIDE_SERVICE_PERIOD"):
             build_invoice(p,BRANCH)
+        p=deepcopy(BASE);p["shipments"][0]["weight_kg"]="1000000000.000"
+        with self.assertRaisesRegex(InvoiceError,"INVALID_WEIGHT"):
+            build_invoice(p,BRANCH)
 
 
 class InvoiceV2ExcelParsing(unittest.TestCase):
