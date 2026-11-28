@@ -1,0 +1,56 @@
+name: SBI R31.11.4S real external HTTPS/mTLS acceptance readiness (offline only)
+on:
+  push:
+    branches: [feature/sbi-r31-11-4s-external-mtls-acceptance-gate-20261128]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  exact-22-unexecuted-no-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install offline mocks and source-only test dependencies
+        run: python -m pip install --disable-pip-version-check 'Flask>=3,<4' 'firebase-admin>=6,<8' 'cryptography>=43,<49'
+      - name: Run 4S and predecessor source-only regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -B -m py_compile staging/aws_login_v150/r31_11_4s_combined_external_acceptance.py
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4s_*.py' -v
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4r_*.py' -v
+          python -B -m unittest discover -s staging/aws_login_v150 -p 'test_r31_11_4q_*.py' -v
+      - name: Check exact original 22-case matrix and zero real receipts
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE=staging/aws_login_v150/r31_11_4s_external_acceptance_matrix.json
+          CODE=staging/aws_login_v150/r31_11_4s_combined_external_acceptance.py
+          python -m json.tool "$FILE" >/dev/null
+          python - <<'PY'
+          import json
+          s=json.load(open("staging/aws_login_v150/r31_11_4s_external_acceptance_matrix.json"))
+          l=json.load(open("staging/aws_login_v150/r31_11_4l_isolated_mtls_design.json"))
+          assert s["authorization"]=="NOT_GRANTED"
+          assert s["approved_fqdn"]=="PENDING"
+          assert s["external_https_endpoint"]=="NOT_DEPLOYED"
+          assert s["remote_test_client"]=="NOT_AUTHORIZED"
+          assert s["witnessed_execution"]=="NOT_PERFORMED"
+          assert [r["id"] for r in s["external_cases"]]==[
+              r["id"] for r in l["external_acceptance_cases"]]
+          assert all(r["status"]=="NOT_TESTED_EXTERNAL"
+                     and r["evidence_ticket"]=="PENDING"
+                     and r["independent_review_ticket"]=="PENDING"
+                     for r in s["external_cases"])
+          assert s["financial_apply"]=="LOCKED"
+          assert s["production_release"]=="BLOCKED"
+          PY
+          grep -Fq 'DB_R31_11_4S_ACTUAL_REMOTE_TESTS=0_OF_22_EXECUTED' "$CODE"
+          grep -Fq 'DB_R31_11_4S_EXTERNAL_HTTPS_MTLS=NOT_TESTED' "$CODE"
+          grep -Fq 'DB_R31_11_4S_FINANCIAL_APPLY=LOCKED' "$CODE"
+          grep -Fq 'DB_R31_11_4S_PRODUCTION_RELEASE=BLOCKED' "$CODE"
+          ! grep -En 'FINANCIAL_APPLY=ENABLED|DROP DATABASE|CREATE ROLE|docker.*--publish|CADDY_CONFIG_WRITE_ENABLED|certbot.*issue' "$CODE"
