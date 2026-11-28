@@ -1,0 +1,225 @@
+{
+  "schema": "DB-R31.11.4S-REAL-EXTERNAL-MTLS-ACCEPTANCE-V1",
+  "classification": "EXTERNAL_ACCEPTANCE_PLAN_NOT_EXECUTION",
+  "scope": "DEDICATED_NONPRODUCTION_QA_ONLY",
+  "source_4r_gate": "r31_11_4r_deployment_gate.json",
+  "source_4l_matrix": "r31_11_4l_isolated_mtls_design.json",
+  "authorization": "NOT_GRANTED",
+  "approved_fqdn": "PENDING",
+  "remote_test_client": "NOT_AUTHORIZED",
+  "external_https_endpoint": "NOT_DEPLOYED",
+  "approved_dns_and_certificate_evidence": "PENDING",
+  "approved_network_scope": "PENDING",
+  "rollback_authorization": "PENDING",
+  "witnessed_execution": "NOT_PERFORMED",
+  "external_cases": [
+    {
+      "id": "REAL_TLS_VALID_CERT_AUTH_FIREBASE_A_PG_A_READONLY",
+      "kind": "remote_identity",
+      "expected": "ALLOW_READONLY",
+      "description": "Verify externally signed session A and tenant-A-only PG SELECT",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    },
+    {
+      "id": "REAL_TLS_VALID_CERT_AUTH_FIREBASE_B_PG_B_READONLY",
+      "kind": "remote_identity",
+      "expected": "ALLOW_READONLY",
+      "description": "Verify externally signed session B and tenant-B-only PG SELECT",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    },
+    {
+      "id": "TLS_MISSING_CLIENT_CERT_DENIED",
+      "kind": "tls_boundary",
+      "expected": "DENY_HANDSHAKE_OR_REQUEST",
+      "description": "Client certificate absent",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    },
+    {
+      "id": "TLS_UNTRUSTED_CLIENT_CA_DENIED",
+      "kind": "tls_boundary",
+      "expected": "DENY_HANDSHAKE_OR_REQUEST",
+      "description": "Client certificate from unapproved test CA",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    },
+    {
+      "id": "TLS_EXPIRED_CLIENT_CERT_DENIED",
+      "kind": "tls_boundary",
+      "expected": "DENY_HANDSHAKE_OR_REQUEST",
+      "description": "Genuinely expired client certificate",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    },
+    {
+      "id": "TLS_REVOKED_CLIENT_CERT_DENIED",
+      "kind": "tls_boundary",
+      "expected": "DENY_HANDSHAKE_OR_REQUEST",
+      "description": "Genuinely revoked client cert with verified enforcement",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    },
+    {
+      "id": "TLS_WRONG_SERVER_HOSTNAME_DENIED",
+      "kind": "tls_boundary",
+      "expected": "DENY_HANDSHAKE_OR_REQUEST",
+      "description": "Validating client rejects incorrect server hostname",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    },
+    {
+      "id": "TLS_WRONG_SERVER_TRUST_CA_DENIED",
+      "kind": "tls_boundary",
+      "expected": "DENY_HANDSHAKE_OR_REQUEST",
+      "description": "Validating client rejects untrusted server CA",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    },
+    {
+      "id": "TLS_SNI_HOST_MISMATCH_DENIED",
+      "kind": "tls_boundary",
+      "expected": "DENY_HANDSHAKE_OR_REQUEST",
+      "description": "SNI and HTTP Host mismatch rejected",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    },
+    {
+      "id": "TLS_BELOW_1_2_DENIED",
+      "kind": "tls_boundary",
+      "expected": "DENY_HANDSHAKE_OR_REQUEST",
+      "description": "TLS protocols below 1.2 rejected",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    },
+    {
+      "id": "FIREBASE_ANONYMOUS_DENIED",
+      "kind": "firebase_session",
+      "expected": "DENY_REQUEST",
+      "description": "No Firebase session provided",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    },
+    {
+      "id": "FIREBASE_TAMPERED_COOKIE_DENIED",
+      "kind": "firebase_session",
+      "expected": "DENY_REQUEST",
+      "description": "Tampered session cookie denied",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    },
+    {
+      "id": "FIREBASE_REAL_EXPIRED_COOKIE_DENIED",
+      "kind": "firebase_session",
+      "expected": "DENY_REQUEST",
+      "description": "Truly expired session cookie denied",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    },
+    {
+      "id": "FIREBASE_REAL_REVOKED_COOKIE_DENIED",
+      "kind": "firebase_session",
+      "expected": "DENY_REQUEST",
+      "description": "Truly revoked session cookie denied",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    },
+    {
+      "id": "TENANT_A_TO_B_DATA_DENIED",
+      "kind": "tenant_rls",
+      "expected": "DENY_CROSS_TENANT",
+      "description": "Valid A identity cannot read B-owned data",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    },
+    {
+      "id": "TENANT_B_TO_A_DATA_DENIED",
+      "kind": "tenant_rls",
+      "expected": "DENY_CROSS_TENANT",
+      "description": "Valid B identity cannot read A-owned data",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    },
+    {
+      "id": "FORGED_OWNER_UID_OR_PG_ROLE_DENIED",
+      "kind": "tenant_rls",
+      "expected": "DENY_FORGED_IDENTITY",
+      "description": "Forged tenant headers and Postgres role claims ignored",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    },
+    {
+      "id": "FINANCIAL_WRITE_UPLOAD_GST_AND_INVOICE_ROUTES_DENIED",
+      "kind": "finance_boundary",
+      "expected": "DENY_FINANCIAL_WRITE",
+      "description": "Finance writes and upload/invoice/GST endpoints denied",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    },
+    {
+      "id": "TLS_RATE_LIMITS_AND_AUDIT_EVENTS_VERIFIED",
+      "kind": "monitoring",
+      "expected": "VERIFY_TELEMETRY",
+      "description": "Externally observe approved rate limits and non-secret audit logging",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    },
+    {
+      "id": "CADDY_PRODUCTION_BASELINE_UNCHANGED",
+      "kind": "postconditions",
+      "expected": "VERIFY_UNCHANGED",
+      "description": "Production Caddy SHA matches approved baseline after external probes",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    },
+    {
+      "id": "QA_DATABASE_ROWS_ZERO_MAPS_TWO",
+      "kind": "postconditions",
+      "expected": "VERIFY_DB_READONLY",
+      "description": "Four QA evidence tables empty and two owner maps unchanged",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    },
+    {
+      "id": "APPROVED_ROLLBACK_EXECUTION_VERIFIED",
+      "kind": "postconditions",
+      "expected": "VERIFY_APPROVED_ROLLBACK",
+      "description": "Independently approved rollback exercised and verified",
+      "status": "NOT_TESTED_EXTERNAL",
+      "evidence_ticket": "PENDING",
+      "independent_review_ticket": "PENDING"
+    }
+  ],
+  "postconditions": {
+    "public_caddy": "REQUIRE_EXISTING_UNCHANGED",
+    "qa_postgres": "REQUIRE_ZERO_ROWS_TWO_OWNER_MAPPINGS",
+    "financial_apply": "LOCKED",
+    "production_release": "BLOCKED"
+  },
+  "r3112": "ACTIVE_QA_DESIGN_RELEASE_GATED",
+  "financial_apply": "LOCKED",
+  "production_release": "BLOCKED",
+  "notice": "This plan is not a TLS probe, proof of an executed test, security sign-off, or permission to deploy. Real evidence must be independently verified before any acceptance claim."
+}
