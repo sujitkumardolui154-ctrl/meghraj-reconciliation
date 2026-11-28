@@ -68,14 +68,46 @@ def create_invoice_gst_blueprint(can_read, can_create, csrf_valid,
                 cur.execute(
                     """SELECT branch_key, client_name, sol_id, invoice_branch
                        FROM sbi_invoice_gst.verified_branches
-                       WHERE verified = TRUE AND client_name ILIKE %s
+                       WHERE verified = TRUE AND (
+                         client_name ILIKE %s
+                         OR sol_id ILIKE %s
+                         OR invoice_branch ILIKE %s
+                       )
                        ORDER BY client_name, sol_id LIMIT 50""",
-                    ("%" + query + "%",),
+                    ("%" + query + "%", "%" + query + "%",
+                     "%" + query + "%"),
                 )
                 rows = cur.fetchall()
             return jsonify(branches=rows, count=len(rows))
         except Exception:
             return failure("INVOICE_DATABASE_UNAVAILABLE", 503)
+
+    @blueprint.post("/annexure/parse")
+    def parse_excel_annexure():
+        """Upload/normalize ONLY in memory; no DB insert or payment writes."""
+        from invoice_annexure_intake import (
+            AnnexureImportError, MAX_FILE_BYTES, parse_xlsx_annexure,
+        )
+        if request.content_length and request.content_length > MAX_FILE_BYTES + 16384:
+            return failure("EXCEL_FILE_SIZE_LIMIT", 413)
+        upload = request.files.get("file")
+        if not upload or not isinstance(upload.filename, str) or not (
+            upload.filename.lower().endswith(".xlsx")
+        ):
+            return failure("XLSX_FILE_REQUIRED", 422)
+        try:
+            raw = upload.stream.read(MAX_FILE_BYTES + 1)
+            if len(raw) > MAX_FILE_BYTES:
+                return failure("EXCEL_FILE_SIZE_LIMIT", 413)
+            info = parse_xlsx_annexure(raw)
+            response = jsonify(info)
+            response.headers["Cache-Control"] = "private, no-store"
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            return response
+        except AnnexureImportError as exc:
+            return failure(str(exc), 422)
+        except Exception:
+            return failure("EXCEL_ANNEXURE_PARSER_UNAVAILABLE", 503)
 
     def read_branch(conn, branch_key):
         with conn.cursor() as cur:
@@ -119,6 +151,15 @@ def create_invoice_gst_blueprint(can_read, can_create, csrf_valid,
                         if cur.fetchone() is not None:
                             return failure("CANCELLED_INVOICE_NUMBER_CANNOT_BE_REUSED", 409)
             invoice = build_invoice(payload, branch)
+            # A correction is a review-only copy, not a replacement invoice.
+            correction_source = payload.get("replaces_invoice_no")
+            if correction_source is not None:
+                if not isinstance(correction_source, str) or re.fullmatch(
+                    r"MXP[0-9]{4,10}", correction_source
+                ) is None or correction_source == invoice["invoice_no"]:
+                    return failure("INVALID_CORRECTION_SOURCE_NUMBER", 422)
+                invoice["correction_review_only"] = True
+                invoice["correction_source_invoice_no"] = correction_source
             # Do not place the untrusted submitted annexure into logs.
             invoice.pop("shipments")
             return jsonify(invoice=invoice, persistence="NONE",
@@ -139,9 +180,14 @@ def create_invoice_gst_blueprint(can_read, can_create, csrf_valid,
             return failure("AUTHENTICATED_INVOICE_OWNER_REQUIRED", 403)
         try:
             payload, key = validate_request()
+            if payload.get("replaces_invoice_no") is not None:
+                return failure("CORRECTION_REQUIRES_APPROVED_REVISION_WORKFLOW", 403)
             with private_db() as conn:
                 branch = read_branch(conn, key)
                 invoice = build_invoice(payload, branch)
+                if (invoice["multi_month_period"]
+                        and os.environ.get("SBI_INVOICE_GST_DEPLOYMENT_MODE") != "ISOLATED_QA"):
+                    return failure("MULTI_MONTH_GST_PERIOD_POLICY_NOT_APPROVED", 403)
                 # Exact source logo/company details must be approved privately
                 # before permitting finalized invoices.
                 with conn.cursor() as cur:
@@ -232,18 +278,27 @@ def create_invoice_gst_blueprint(can_read, can_create, csrf_valid,
 
     @blueprint.get("/invoices/<invoice_no>")
     def get_invoice(invoice_no):
+        """Return a finalized invoice and, when requested, all original AWBs.
+
+        This is an immutable source read. Correction copies are never saved
+        back to this number; a separately approved revision flow is required.
+        """
         if re.fullmatch(r"MXP[0-9]{4,10}", invoice_no) is None:
             return failure("INVALID_INVOICE_NUMBER", 400)
+        include_lines = request.args.get("include_lines", "0")
+        if include_lines not in ("0", "1"):
+            return failure("INVALID_INVOICE_LOOKUP_OPTIONS", 400)
         try:
             with private_db() as conn, conn.cursor() as cur:
                 cur.execute(
                     """SELECT invoice_no, branch_key, service_from::text AS service_from,
                               service_to::text AS service_to, invoice_date::text AS invoice_date,
-                              service_month, fy, invoice_branch, invoice_generate_location,
+                              service_month, service_month_key, fy,
+                              invoice_branch, invoice_generate_location,
                               original_branch_name, sol_id, client_name, gstin,
                               taxable::text AS taxable, cgst::text AS cgst,
                               sgst::text AS sgst, total::text AS total,
-                              shipment_count,
+                              shipment_count, verification_flags,
                               CASE WHEN EXISTS (
                                   SELECT 1 FROM sbi_invoice_gst.invoice_number_cancellations c
                                   WHERE c.invoice_no = i.invoice_no
@@ -253,9 +308,33 @@ def create_invoice_gst_blueprint(can_read, can_create, csrf_valid,
                     (invoice_no,),
                 )
                 row = cur.fetchone()
-            if row is None:
-                return failure("INVOICE_NOT_FOUND", 404)
-            return jsonify(invoice=row, reconciliation_applied=False)
+                if row is None:
+                    return failure("INVOICE_NOT_FOUND", 404)
+                lines = None
+                if include_lines == "1":
+                    cur.execute(
+                        """SELECT line_no, dispatch_date::text AS dispatch_date,
+                                  lr_no, packet_ref_no, consignee,
+                                  weight_kg::text AS weight_kg,
+                                  amount::text AS amount
+                           FROM sbi_invoice_gst.invoice_lines
+                           WHERE invoice_no=%s ORDER BY line_no""",
+                        (invoice_no,),
+                    )
+                    lines = cur.fetchall()
+                    if len(lines) != row["shipment_count"]:
+                        return failure("INVOICE_ANNEXURE_INTEGRITY_REVIEW_REQUIRED", 409)
+            result = {
+                "invoice": row, "reconciliation_applied": False,
+                "original_immutable": True,
+                "correction_requires_separate_approval": True,
+            }
+            if lines is not None:
+                result["shipments"] = lines
+            response = jsonify(result)
+            response.headers["Cache-Control"] = "private, no-store"
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            return response
         except Exception:
             return failure("INVOICE_DATABASE_UNAVAILABLE", 503)
 
