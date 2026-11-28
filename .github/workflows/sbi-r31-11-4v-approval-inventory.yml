@@ -1,0 +1,23 @@
+name: SBI R31.11.4V static external QA approval inventory (no deploy)
+on:
+  push:
+    branches:
+      - feature/sbi-r31-11-4v-external-qa-approval-audit-20261128
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  static-approval-inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Targeted 4V audit only
+        run: python3 -B staging/aws_login_v150/r31_11_4v_approval_inventory.py
+      - name: Verify no live approval asserted
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'NO external endpoint approval' staging/aws_login_v150/DB_R31_11_4V_EXTERNAL_QA_APPROVAL_RUNBOOK.md
+          grep -Fq 'FINANCIAL_APPLY=LOCKED' staging/aws_login_v150/r31_11_4v_approval_inventory.py
+          grep -Fq 'PRODUCTION_RELEASE=BLOCKED' staging/aws_login_v150/r31_11_4v_approval_inventory.py
