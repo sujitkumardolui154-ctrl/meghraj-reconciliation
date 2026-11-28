@@ -21,7 +21,8 @@
         "staging/aws_login_v150/test_r31_11_4j_combined_gate.py": "f24ade7fd22fd4f1b2bb0ac18b552ea2782e1d8d",
         ".github/workflows/sbi-r31-11-4j-mtls-security.yml": "547d26cbf6c933e4724f7fd641afef1c67459c60"
       },
-      "required_if_changed": "Only synthetic TLS unit and handshake test, never full prior 4H/4I/4J combined AWS QA"
+      "required_if_changed": "Only synthetic TLS unit and handshake test, never full prior 4H/4I/4J combined AWS QA",
+      "workflow_file": "sbi-r31-11-4j-mtls-security.yml"
     },
     {
       "id": "dns_owner_4o_design",
@@ -35,7 +36,8 @@
         "staging/aws_login_v150/test_r31_11_4o_combined_domain_ownership.py": "0d4c5df9e756c0b79d11d3b1601cf6cf2b15dff9",
         "staging/aws_login_v150/r31_11_4o_domain_ownership_dossier.json": "3c0fcc2203f0af696a2fa6fc46149973a70e6986"
       },
-      "required_if_changed": "Only domain evidence validation and source policy tests; no duplicate previous synthetic TLS"
+      "required_if_changed": "Only domain evidence validation and source policy tests; no duplicate previous synthetic TLS",
+      "workflow_file": "sbi-r31-11-4o-domain-ownership.yml"
     },
     {
       "id": "pki_4p_design",
@@ -49,7 +51,8 @@
         "staging/aws_login_v150/test_r31_11_4p_combined_pki_preflight.py": "e834b3b7bc2136bd3944e0916ffdf22903668230",
         "staging/aws_login_v150/r31_11_4p_pki_trust_lifecycle_plan.json": "94406d3d9578a7f59afbdb70bbe5e710067eef84"
       },
-      "required_if_changed": "Only PKI design and revocation-metadata contract tests, not real TLS issuance"
+      "required_if_changed": "Only PKI design and revocation-metadata contract tests, not real TLS issuance",
+      "workflow_file": "sbi-r31-11-4p-pki-trust-readiness.yml"
     }
   ],
   "known_nonpassing_workflows": [
