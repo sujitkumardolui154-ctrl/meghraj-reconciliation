@@ -118,7 +118,8 @@ def validate_manifest(path=MANIFEST):
             "R_EXTERNAL_ACCEPTANCE_FALSIFIED")
     note=doc["statement"]
     require(type(note) is str and 80<=len(note)<=350
-            and "does" in note and "not" in note
+            and "No manifest" in note
+            and "independent" in note
             and "authorization" in note,
             "R_INDEPENDENT_APPROVAL_NOTICE_CHANGED")
 
