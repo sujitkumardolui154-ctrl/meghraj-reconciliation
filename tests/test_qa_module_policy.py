@@ -80,6 +80,15 @@ class ModulePolicyTests(unittest.TestCase):
         self.assertFalse(policy.prior_success_for_exact_sha(
             [receipt()],HEAD,RUN_NAME,current_run_id=55))
 
+    def test_newer_failure_supersedes_prior_success(self):
+        older = receipt(run_id=100)
+        newer = receipt(run_id=101, conclusion="failure")
+        self.assertFalse(policy.prior_success_for_exact_sha(
+            [older, newer], HEAD, RUN_NAME))
+        self.assertTrue(policy.prior_success_for_exact_sha(
+            [newer, older], HEAD, RUN_NAME,
+            current_run_id=101))
+
     def test_plan_reuses_only_same_exact_commit_and_workflow(self):
         p=policy.build_plan(
             ["dashboard_source/invoice_gst_ui.js"],head_sha=HEAD,
